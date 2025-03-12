@@ -1,0 +1,32 @@
+[project]
+name = "exalsius"
+version = "0.0.1"
+description = "The exalsius CLI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "kubernetes>=32.0.1",
+    "rich>=13.9.4",
+    "typer>=0.15.2",
+    "skypilot[aws,gcp,kubernetes] @ git+https://github.com/skypilot-org/skypilot.git@db832e82e19faa3e428e946c74825a752ebb7402",
+    "pandas>=2.2.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["exalsius*"] 
+
+[project.scripts]
+exalsius = "exalsius.cli:app" 
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "pre-commit>=4.1.0",
+    "ruff>=0.9.9",
+]

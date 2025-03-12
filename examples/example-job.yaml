@@ -1,0 +1,36 @@
+apiVersion: training.exalsius.ai/v1
+kind: DilocoTorchDDP
+metadata:
+  name: gpt-neo-diloco
+spec:
+  # The job should run on the following GPU type
+  gpuTypes:
+    - "RTXA6000"
+    - "A10G"
+  # We want to run the job on 2 nodes
+  parallelism: 2
+  # each node should have 1 GPU
+  nprocPerNode: 1  # Use 1 GPUs per node (pod)
+  # Use the following container image
+  image: srnbckr/diloco-training:latest
+  # The path to the script to run
+  scriptPath: "/app/diloco_training/training/diloco_trainer.py"
+  # The API key for Weights and Biases
+  wandbApiKey: "XXXXXXXXX"
+  # The arguments to pass to the script
+  args:
+    - "--per_device_train_batch_size"
+    - "16"
+    - "--batch_size"
+    - "256"
+    - "--lr"
+    - "1e-3"
+    - "--warmup_steps"
+    - "50"
+    - "--local_steps"
+    - "10"
+    - "--model"
+    - "gpt-neo"
+    - "--dataset"
+    - "c4"
+
