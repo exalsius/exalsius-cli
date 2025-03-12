@@ -75,7 +75,7 @@ exalsius [OPTIONS] COMMAND [ARGS]...
 
 ### List Available Cloud Providers
 ```bash
-exalsius clouds
+exalsius clouds list
 ```
 
 ### Scan GPU Prices Across Cloud Providers
