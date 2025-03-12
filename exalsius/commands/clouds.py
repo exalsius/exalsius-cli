@@ -1,27 +1,35 @@
 import typer
 from rich.console import Console
-from rich.theme import Theme
 from sky.client import sdk
+from sky.exceptions import ApiServerConnectionError
+
+from exalsius.utils.theme import custom_theme
 
 app = typer.Typer()
-
-custom_theme = Theme(
-    {
-        "custom": "#f46907",
-    }
-)
 
 
 def _check_clouds():
     # this check needs to be run first to get the enabled clouds
-    sdk.stream_and_get(
-        sdk.check(clouds=["kubernetes", "aws", "gcp"], verbose=False),
-        output_stream="/dev/null",
-    )
+    try:
+        sdk.stream_and_get(
+            sdk.check(clouds=["kubernetes", "aws", "gcp"], verbose=False),
+            output_stream="/dev/null",
+        )
+    except ApiServerConnectionError as e:
+        print(e)
+        raise typer.Exit()
 
 
 def _list_enabled_clouds() -> list[str]:
-    enabled_clouds = sdk.stream_and_get(sdk.enabled_clouds())
+    console = Console(theme=custom_theme)
+    try:
+        enabled_clouds = sdk.stream_and_get(sdk.enabled_clouds())
+    except ApiServerConnectionError:
+        console.print(
+            "The SkyPilot API server is not reachable. Please check the SKYPILOT_API_SERVER_ENDPOINT env variable.",
+            style="custom",
+        )
+        raise typer.Exit()
     if enabled_clouds == []:
         _check_clouds()
         enabled_clouds = sdk.stream_and_get(sdk.enabled_clouds())

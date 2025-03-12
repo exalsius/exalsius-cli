@@ -1,136 +1,28 @@
 import threading
 from typing import Optional
 
-import pandas as pd
 import typer
 import yaml
 from jinja2 import Template
-from kubernetes import client, config, watch
+from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from rich.console import Console
 from rich.table import Table
-from rich.theme import Theme
 from sky.client import sdk
 
 from exalsius.commands.clouds import _list_enabled_clouds
 from exalsius.commands.colony import _wait_for_colony_to_be_ready
-from exalsius.commands.scan_prices import create_rich_table
+from exalsius.utils.cli_utils import create_rich_table
+from exalsius.utils.k8s_utils import (
+    create_custom_object_from_yaml,
+    create_custom_object_from_yaml_file,
+    get_ddp_jobs,
+    stream_pod_logs,
+)
+from exalsius.utils.price_utils import _sort_by_cheapest
+from exalsius.utils.theme import custom_theme
 
 app = typer.Typer()
-
-
-custom_theme = Theme(
-    {
-        "custom": "#f46907",
-    }
-)
-
-
-def stream_pod_logs(
-    pod_name: str, namespace: str, container: str = None, color: str = "white"
-):
-    """
-    Stream logs from a single pod using a Watch.
-    """
-    console = Console(theme=custom_theme)
-    v1 = client.CoreV1Api()
-    w = watch.Watch()
-    try:
-        # The stream() method yields lines from the pod logs.
-        for log_line in w.stream(
-            v1.read_namespaced_pod_log,
-            name=pod_name,
-            namespace=namespace,
-            follow=True,
-            container=container,
-            _preload_content=False,
-        ):
-            console.print(f"{pod_name} : {log_line.rstrip()}", style=color)
-    except Exception as e:
-        console.print(f"Error streaming logs for pod {pod_name}: {e}", style="red")
-
-
-def create_custom_object_from_yaml(manifest_str: str, default_namespace="default"):
-    """
-    Reads a YAML manifest string (which can contain multiple documents)
-    and creates each custom resource using the CustomObjectsApi.
-    """
-    console = Console()
-
-    try:
-        config.load_kube_config()
-    except Exception as e:
-        console.print(f"[red]Failed to load kubeconfig: {e}[/red]")
-        raise typer.Exit(1)
-
-    api_client = client.ApiClient()
-    custom_api = client.CustomObjectsApi(api_client)
-
-    api_version = manifest_str["apiVersion"]
-    kind = manifest_str["kind"]
-    metadata = manifest_str["metadata"]
-
-    if "/" in api_version:
-        group, version = api_version.split("/", 1)
-    else:
-        group = ""
-        version = api_version
-
-    plural = kind.lower() + "s"
-
-    # TODO: remove this hack
-    if kind == "Colony":
-        plural = "colonies"
-
-    namespace = metadata.get("namespace", default_namespace)
-
-    try:
-        custom_api.create_namespaced_custom_object(
-            group=group,
-            version=version,
-            namespace=namespace,
-            plural=plural,
-            body=manifest_str,
-        )
-        console.print(
-            f"Created {kind} '{metadata.get('name')}' in namespace '{namespace}'."
-        )
-    except ApiException as e:
-        typer.echo(f"Failed to create {kind}: {e}")
-        raise typer.Exit(1)
-
-
-def create_custom_object_from_yaml_file(
-    api_client, manifest_path: str, default_namespace="default"
-):
-    """
-    Reads a YAML manifest file (which can contain multiple documents)
-    and creates each custom resource using the CustomObjectsApi.
-    """
-    with open(manifest_path, "r") as f:
-        docs = list(yaml.safe_load_all(f))
-
-    for doc in docs:
-        if not isinstance(doc, dict):
-            continue
-        create_custom_object_from_yaml(doc, default_namespace)
-
-
-def get_diloco_jobs() -> list:
-    """
-    Returns a list of Diloco Pytorch DDP training jobs.
-    """
-    config.load_kube_config()
-    api = client.CustomObjectsApi()
-
-    group = "training.exalsius.ai"
-    version = "v1"
-    plural = "dilocotorchddps"
-
-    response = api.list_cluster_custom_object(
-        group=group, version=version, plural=plural
-    )
-    return response.get("items", [])
 
 
 @app.command("list")
@@ -149,10 +41,10 @@ def list_jobs():
     table.add_column("Parallelism", style="green")
     table.add_column("GPUs per Node", style="green")
 
-    try:
-        jobs = get_diloco_jobs()
-    except Exception as e:
-        console.print(f"[red]Error retrieving training jobs: {e}[/red]")
+    jobs, error = get_ddp_jobs()
+
+    if error:
+        console.print(f"[red]{error}[/red]")
         raise typer.Exit(1)
 
     if not jobs:
@@ -206,27 +98,6 @@ def _render_colony_template(
         instance_type=instance_type,
     )
     return yaml.safe_load(rendered_template)
-
-
-def _sort_by_cheapest(result: dict) -> pd.DataFrame:
-    """Process the raw accelerator data into a single sorted DataFrame"""
-    # Create list to hold all data
-    all_items = []
-
-    # Flatten the dictionary into a list of records with GPU info
-    for gpu, items in result.items():
-        for item in items:
-            data = item._asdict()
-            data["gpu"] = gpu  # Add GPU name to each record
-            all_items.append(data)
-
-    # Convert to DataFrame
-    df = pd.DataFrame(all_items)
-
-    # Sort by price and spot price
-    df = df.sort_values(by=["price", "spot_price", "cloud", "gpu"], na_position="last")
-
-    return df
 
 
 @app.command("submit")

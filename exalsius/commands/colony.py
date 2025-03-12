@@ -3,52 +3,11 @@ from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from rich.console import Console
 from rich.table import Table
-from rich.theme import Theme
+
+from exalsius.utils.k8s_utils import get_cluster_nodes, get_colony_objects
+from exalsius.utils.theme import custom_theme
 
 app = typer.Typer()
-
-custom_theme = Theme(
-    {
-        "custom": "#f46907",
-    }
-)
-
-
-def get_colony_objects() -> list:
-    """
-    Returns a list of Colony custom resources from the cluster.
-    """
-    config.load_kube_config()
-    api = client.CustomObjectsApi()
-
-    group = "infra.exalsius.ai"
-    version = "v1"
-    plural = "colonies"
-
-    response = api.list_cluster_custom_object(
-        group=group, version=version, plural=plural
-    )
-    return response.get("items", [])
-
-
-def get_cluster_nodes(cluster_name: str) -> list:
-    config.load_kube_config()
-    api = client.CustomObjectsApi()
-
-    group = "cluster.x-k8s.io"
-    version = "v1beta1"
-    plural = "machines"
-
-    response = api.list_cluster_custom_object(
-        group=group, version=version, plural=plural
-    )
-    # only return the nodes where spec.clusterName matches the cluster_name
-    nodes = [
-        node
-        for node in response.get("items", [])
-        if node.get("spec", {}).get("clusterName") == cluster_name
-    ]
-    return nodes
 
 
 @app.command("list")
@@ -72,15 +31,15 @@ def list_colonies():
     table.add_column("K8s Version", style="blue")
     table.add_column("Nodes", style="blue")
 
-    try:
-        colonies = get_colony_objects()
-    except Exception as e:
-        console.print(f"[red]Error retrieving colonies: {e}[/red]")
+    colonies, error = get_colony_objects()
+
+    if error:
+        console.print(f"[red]{error}[/red]")
         raise typer.Exit(1)
 
     if not colonies:
         console.print("[yellow]No colonies found.[/yellow]")
-        raise typer.Exit(0)
+        return
 
     for colony in colonies:
         metadata = colony.get("metadata", {})
@@ -179,7 +138,6 @@ def get_kubeconfig(
     console = Console()
 
     try:
-        # TODO: fetch kubeconfig of all clusters and merge them into one kubeconfig
         secret = v1.read_namespaced_secret(f"{colony_name}-kubeconfig", namespace)
         kubeconfig = secret.data["value"]
 
