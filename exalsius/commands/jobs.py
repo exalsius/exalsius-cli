@@ -13,6 +13,7 @@ from sky.client import sdk
 from exalsius.commands.clouds import _list_enabled_clouds
 from exalsius.commands.colony import _wait_for_colony_to_be_ready
 from exalsius.utils.cli_utils import create_rich_table
+from exalsius.utils.cloud_utils import get_aws_ubuntu_image_ami
 from exalsius.utils.k8s_utils import (
     create_custom_object_from_yaml,
     create_custom_object_from_yaml_file,
@@ -208,10 +209,6 @@ def submit_job(
         console.print("Operation cancelled", style="custom")
         raise typer.Exit(0)
 
-    colony_template = _render_colony_template(
-        job_name, instance_type, parallelism, region
-    )
-
     # create_custom_object_from_yaml(client.ApiClient(), colony_template)
     # TODO: fix this hack
     if cloud == "Kubernetes":
@@ -220,6 +217,18 @@ def submit_job(
             style="custom",
         )
     else:
+        # This needs to be adjusted as soon as we support other clouds
+        if cloud == "AWS":
+            ami_id = get_aws_ubuntu_image_ami(region)
+            if ami_id is None:
+                console.print(
+                    f"No AMI ID found for Ubuntu 24.04 in region {region}",
+                    style="custom",
+                )
+                raise typer.Exit(1)
+        colony_template = _render_colony_template(
+            job_name, instance_type, parallelism, region, ami_id
+        )
         create_custom_object_from_yaml(colony_template)
         colony_name = f"{job_name}-colony"
         _wait_for_colony_to_be_ready(colony_name, "default")
