@@ -79,7 +79,7 @@ def get_ddp_jobs() -> Tuple[Optional[list], Optional[str]]:
     api = client.CustomObjectsApi()
     group = "training.exalsius.ai"
     version = "v1"
-    plural = "dilocotorchddps"
+    plural = "ddpjobs"
 
     try:
         response = api.list_cluster_custom_object(

@@ -1,5 +1,5 @@
 apiVersion: training.exalsius.ai/v1
-kind: DilocoTorchDDP
+kind: DDPJob
 metadata:
   name: gpt-neo-diloco
 spec:
