@@ -13,7 +13,6 @@ def _check_clouds():
     try:
         sdk.stream_and_get(
             sdk.check(clouds=["kubernetes", "aws", "gcp"], verbose=False),
-            output_stream="/dev/null",
         )
     except ApiServerConnectionError as e:
         print(e)
