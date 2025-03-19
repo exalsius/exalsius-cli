@@ -14,7 +14,8 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     permissions:
-      checks: write
+      contents: read        
+      checks: write         
       pull-requests: write
 
     steps:
