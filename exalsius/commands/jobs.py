@@ -241,7 +241,7 @@ def create_job(
     ),
 ):
     """
-    Create a Diloco DDPjob by applying the YAML manifest.
+    Create a DDPjob by applying the YAML manifest.
 
     This command reads the provided YAML file (which can contain one or more
     Kubernetes resource definitions) and creates them in the cluster.
@@ -277,7 +277,7 @@ def delete_job(
     ),
 ):
     """
-    Delete a Diloco DDP Job by name.
+    Delete a DDP Job by name.
     """
     try:
         config.load_kube_config()
@@ -294,7 +294,7 @@ def delete_job(
             group="training.exalsius.ai",
             version="v1",
             namespace=namespace,
-            plural="dilocotorchddps",
+            plural="ddpjobs",
             name=job_name,
         )
         console.print(
@@ -322,7 +322,7 @@ def stream_logs(
     ),
 ):
     """
-    Stream logs for all pods related to a Diloco DDP job.
+    Stream logs for all pods related to a DDP job.
     """
     try:
         config.load_kube_config()
@@ -333,7 +333,7 @@ def stream_logs(
     colors = ["cyan", "magenta", "green", "yellow", "blue", "red", "white"]
 
     # Build the label selector for the pods
-    label_selector = f"job-name=diloco-job-{job_name}"
+    label_selector = f"job-name=ddp-job-{job_name}"
     v1 = client.CoreV1Api()
     pods = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
 
