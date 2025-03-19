@@ -1,0 +1,68 @@
+name: Lint and test code
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Set up Python
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+
+    # Install Poetry
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 2.0.1
+
+    - name: Install dependencies
+      run: |
+        poetry install --no-interaction
+
+    # Lint with ruff
+    - name: Lint code with ruff
+      run: poetry run ruff check .
+
+    - name: Check code formatting with black
+      run: poetry run black --check .
+
+    - name: Check import sorting with isort
+      run: poetry run isort . --check-only --profile black
+
+    - name: Run tests with pytest
+      run: poetry run pytest --cov ./ --junitxml=test-report.xml
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.xml
+
+    - name: Upload test report
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-report
+        path: test-report.xml
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      with:
+        name: Unit Tests
+        path: test-report.xml
+        reporter: java-junit
