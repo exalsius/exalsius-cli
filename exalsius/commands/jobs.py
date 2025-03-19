@@ -28,7 +28,7 @@ app = typer.Typer()
 @app.command("list")
 def list_jobs():
     """
-    Lists all available instances Diloco Pytorch DDP training jobs along with their status.
+    Lists all available instances of Pytorch DDP training jobs along with their status.
     """
     console = Console(theme=custom_theme)
     table = Table(title="exalsius Training Jobs", border_style="custom")
@@ -141,7 +141,10 @@ def submit_job(
                     case_sensitive=False,
                 )
             )
-            all_instances[gpu] = result[gpu]
+            if gpu in result:
+                all_instances[gpu] = result[gpu]
+            else:
+                console.print(f"No instances found for GPU {gpu}", style="custom")
 
         processed_data = _sort_by_cheapest(all_instances)
         data_df = processed_data
