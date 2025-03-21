@@ -1,5 +1,5 @@
 import threading
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 import typer
@@ -61,7 +61,7 @@ def list_jobs():
         parallelism = job.get("spec", {}).get("parallelism", "unknown")
         gpus_per_node = job.get("spec", {}).get("nprocPerNode", "unknown")
 
-        status = job.get("status", {}).get("status", "unknown")
+        status = job.get("status", {}).get("phase", "unknown")
         creation = metadata.get("creationTimestamp", "N/A")
         table.add_row(
             name,
@@ -172,9 +172,9 @@ def display_options_and_get_choice(
     data_df: pd.DataFrame,
     top_n: int,
     gpu_types: list[str],
-) -> Optional[pd.Series]:
+) -> Optional[Dict]:
     """Display options and get user choice."""
-    if data_df is None:
+    if data_df is None or data_df.empty:
         return None
 
     if top_n:
@@ -188,10 +188,19 @@ def display_options_and_get_choice(
     )
     console.print(table)
 
-    choice = console.input(
-        "[custom]Please select an option by entering its ID: [/custom]"
-    )
-    return data_df.loc[data_df["id"] == int(choice)].iloc[0]
+    try:
+        choice = console.input(
+            "[custom]Please select an option by entering its ID: [/custom]"
+        )
+        choice_id = int(choice)
+        matching_rows = data_df[data_df["id"] == choice_id]
+
+        if matching_rows.empty:
+            return None
+
+        return matching_rows.iloc[0].to_dict()
+    except (ValueError, IndexError):
+        return None
 
 
 def create_colony_if_needed(
@@ -225,8 +234,10 @@ def create_colony_if_needed(
         ami_id=ami_id,
     )
 
+    yaml_dict = yaml.safe_load(colony_template)
+
     try:
-        create_custom_object_from_yaml(colony_template)
+        create_custom_object_from_yaml(yaml_dict)
         colony_name = f"{job_name}-colony"
         _wait_for_colony_to_be_ready(colony_name, "default")
         console.print(
@@ -277,27 +288,33 @@ def submit_job(
 
     # Get user choice
     selected = display_options_and_get_choice(console, data_df, top_n, gpu_types)
-    if not selected:
+    if selected is None:
         console.print("[error]Invalid selection[/error]")
         raise typer.Exit(1)
 
     # Display configuration and get confirmation
-    cloud, instance_type, region = selected[["cloud", "instance_type", "region"]]
-    console.print("\n[info]Selected configuration:[/info]")
-    console.print(f"• Cloud: {cloud}")
-    console.print(f"• Instance Type: {instance_type}")
-    console.print(f"• Region: {region}")
-    console.print(f"• Parallelism: {parallelism}")
-    console.print(f"• Total cost: ${selected['price'] * parallelism:.2f}/hour\n")
+    cloud = selected["cloud"]
+    instance_type = selected["instance_type"]
+    region = selected["region"]
+    price = selected["price"]
+
+    console.print("\n[info]Selected configuration:[/info]", style="custom")
+    console.print(f"• Cloud: {cloud}", style="custom")
+    console.print(f"• Instance Type: {instance_type}", style="custom")
+    console.print(f"• Region: {region}", style="custom")
+    console.print(f"• Parallelism: {parallelism}", style="custom")
+    console.print(f"• Total cost: ${price * parallelism:.2f}/hour", style="custom")
 
     if not typer.confirm("Do you want to proceed?"):
         console.print("[info]Operation cancelled[/info]")
         raise typer.Exit(0)
 
     # Create colony and job
-    if not create_colony_if_needed(
+    successul_colony_creation = create_colony_if_needed(
         console, cloud, instance_type, region, parallelism, job_name
-    ):
+    )
+
+    if not successul_colony_creation:
         raise typer.Exit(1)
 
     try:
