@@ -1,7 +1,10 @@
-# exalsius CLI
-<p align="center">                                                                                                                                                                            
-  <img src="docs/assets/logo.png" alt="exalsius Logo" width="300"/>                                                                                                                           
-</p>                                                                                                                                                                                               
+<h1 align="center">
+  <br>
+  <img height="300" src="docs/assets/logo.png"> <br>
+    exalsius-cli
+<br>
+</h1>
+                                                                                                                                                                                           
 exalsius CLI (`exalsius`) is a command-line tool designed for orchestrating and managing distributed AI training workloads. As part of the Exalsius stack, it enables seamless deployment and execution of AI training jobs on ephemeral clusters across multiple cloud providers and hyperscalers, referred to as "colonies". A colony may consist of one or more GPU clusters, deployed across a single or multiple cloud providers, optimizing flexibility and scalability.
 
 In addition to workload orchestration, exalsius CLI provides GPU price scanning and comparison across various public cloud platforms and hyperscalers, empowering users to identify the most cost-effective resources for their AI training workloads.
