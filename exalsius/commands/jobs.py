@@ -1,6 +1,7 @@
 import threading
-from typing import Optional
+from typing import Optional, Tuple
 
+import pandas as pd
 import typer
 import yaml
 from jinja2 import Template
@@ -87,6 +88,7 @@ def _render_colony_template(
     instance_type: str,
     parallelism: int,
     region: str,
+    ami_id: Optional[str] = None,
 ) -> str:
     with open("exalsius/templates/colony-template.yaml.j2", "r") as f:
         template_content = f.read()
@@ -104,8 +106,136 @@ def _render_colony_template(
         instance_type=instance_type,
         aws_enabled=aws_enabled,
         docker_enabled=docker_enabled,
+        ami_id=ami_id,
     )
-    return yaml.safe_load(rendered_template)
+    return rendered_template
+
+
+def process_job_manifest(path: str) -> Tuple[dict, Optional[str]]:
+    """Process and validate the job manifest."""
+    try:
+        job_manifest = _read_yaml(path)
+        target_colony = job_manifest.get("spec", {}).get("targetColony")
+        if target_colony:
+            return job_manifest, target_colony
+
+        return job_manifest, None
+    except Exception as e:
+        return None, f"Error reading manifest: {str(e)}"
+
+
+def create_job_with_existing_colony(
+    console: Console, path: str, target_colony: str
+) -> bool:
+    """Create a job when target colony is already specified."""
+    try:
+        create_custom_object_from_yaml_file(path)
+        console.print("[success]Job created successfully![/success]")
+        console.print("[info]You can check the status with: exalsius jobs list[/info]")
+        return True
+    except Exception as e:
+        console.print(f"[error]Error creating job: {e}[/error]")
+        return False
+
+
+def get_instance_options(
+    console: Console,
+    gpu_types: list[str],
+    parallelism: int,
+) -> Optional[pd.DataFrame]:
+    """Get and process available instance options."""
+    enabled_clouds = _list_enabled_clouds()
+    console.print(f"Enabled clouds: {enabled_clouds}", style="custom")
+
+    all_instances = {}
+    for gpu in gpu_types:
+        result = sdk.stream_and_get(
+            sdk.list_accelerators(
+                gpus_only=True,
+                name_filter=gpu,
+                all_regions=True,
+                clouds=enabled_clouds,
+                case_sensitive=False,
+            )
+        )
+        if gpu in result:
+            all_instances[gpu] = result[gpu]
+        else:
+            console.print(f"No instances found for GPU {gpu}", style="custom")
+
+    processed_data = _sort_by_cheapest(all_instances)
+    return processed_data
+
+
+def display_options_and_get_choice(
+    console: Console,
+    data_df: pd.DataFrame,
+    top_n: int,
+    gpu_types: list[str],
+) -> Optional[pd.Series]:
+    """Display options and get user choice."""
+    if data_df is None:
+        return None
+
+    if top_n:
+        data_df = data_df.head(top_n)
+    data_df.insert(0, "id", range(1, 1 + len(data_df)))
+
+    table = create_rich_table(
+        data_df,
+        f"Top {top_n} cheapest options for {gpu_types} in enabled clouds:",
+        id_column=True,
+    )
+    console.print(table)
+
+    choice = console.input(
+        "[custom]Please select an option by entering its ID: [/custom]"
+    )
+    return data_df.loc[data_df["id"] == int(choice)].iloc[0]
+
+
+def create_colony_if_needed(
+    console: Console,
+    cloud: str,
+    instance_type: str,
+    region: str,
+    parallelism: int,
+    job_name: str,
+) -> bool:
+    """Create colony if needed based on selected configuration."""
+    if cloud == "Kubernetes":
+        console.print("[info]Using existing Kubernetes cluster[/info]")
+        return True
+
+    if cloud == "AWS":
+        ami_id = get_aws_ubuntu_image_ami(region)
+        if not ami_id:
+            console.print(
+                f"[error]No AMI ID found for Ubuntu 24.04 in region {region}[/error]"
+            )
+            return False
+
+    colony_template = _render_colony_template(
+        aws_enabled=(cloud == "AWS"),
+        docker_enabled=False,
+        job_name=job_name,
+        instance_type=instance_type,
+        parallelism=parallelism,
+        region=region,
+        ami_id=ami_id,
+    )
+
+    try:
+        create_custom_object_from_yaml(colony_template)
+        colony_name = f"{job_name}-colony"
+        _wait_for_colony_to_be_ready(colony_name, "default")
+        console.print(
+            f"[success]Created colony {colony_name} for job {job_name}[/success]"
+        )
+        return True
+    except Exception as e:
+        console.print(f"[error]Failed to create colony: {e}[/error]")
+        return False
 
 
 @app.command("submit")
@@ -115,175 +245,67 @@ def submit_job(
         5, "--top", help="Number of top options to show"
     ),
 ):
-    """
-    Submit a training job.
-    """
+    """Submit a training job."""
     console = Console(theme=custom_theme)
 
-    job_manifest = _read_yaml(path)
-    console.print(f"Job manifest loaded from {path}", style="custom")
-
-    job_name: str = job_manifest.get("metadata", {}).get("name", "unknown")
-    gpu_types: list[str] = job_manifest.get("spec", {}).get("gpuTypes", [])
-    parallelism: int = job_manifest.get("spec", {}).get("parallelism", 1)
-    # gpus_per_node: int = job_manifest.get("spec", {}).get("nprocPerNode", 1)
-
-    with console.status(
-        "[bold custom]Scanning for cheapest options...[/bold custom]",
-        spinner="bouncingBall",
-        spinner_style="custom",
-    ):
-        enabled_clouds = _list_enabled_clouds()
-        console.print(f"Enabled clouds: {enabled_clouds}", style="custom")
-
-        all_instances = {}
-        for gpu in gpu_types:
-            result = sdk.stream_and_get(
-                sdk.list_accelerators(
-                    gpus_only=True,
-                    name_filter=gpu,
-                    # TODO: fix the quantity_filter so that at least gpus_per_node are returned
-                    # quantity_filter=gpus_per_node,
-                    all_regions=True,
-                    clouds=enabled_clouds,
-                    case_sensitive=False,
-                )
-            )
-            if gpu in result:
-                all_instances[gpu] = result[gpu]
-            else:
-                console.print(f"No instances found for GPU {gpu}", style="custom")
-
-        processed_data = _sort_by_cheapest(all_instances)
-        data_df = processed_data
-
-        if data_df is None:
-            typer.echo(f"No instances found for GPUs {gpu_types}")
-            raise typer.Exit(1)
-
-        # Only keep the the top n entries
-        if top_n is not None:
-            data_df = data_df.head(top_n)
-
-        # we only scanned for one gpu type
-        data_df.insert(0, "id", range(1, 1 + len(data_df)))
-
-    # sort by price
-    # console.print(f"The following are the top {top_n} cheapest options for {gpu_types} in the enabled clouds:", style="custom")
-    table = create_rich_table(
-        data_df,
-        f"The following are the top {top_n} cheapest options for {gpu_types} in the enabled clouds:",
-        id_column=True,
-    )
-    console.print(table)
-
-    choice = console.input(
-        "[custom]Please select an option by entering its ID: [/custom]"
-    )
-
-    # get the row from the dataframe
-    row = data_df.loc[data_df["id"] == int(choice)]
-
-    cloud = row["cloud"].values[0]
-    instance_type = row["instance_type"].values[0]
-    region = row["region"].values[0]
-
-    console.print(
-        "This will create a colony and training job with the following configuration:",
-        style="custom",
-    )
-    # hacky workaround to print the correct instance type for Kubernetes clusters
-    if cloud == "Kubernetes":
-        console.print(
-            f"Config: Using {parallelism} instances in the already provisioned {cloud} cloud.\n",
-            style="custom",
-        )
-    else:
-        console.print(
-            f"Config: {parallelism} {instance_type} instances in {region} using the {cloud} cloud.\n",
-            style="custom",
-        )
-    console.print()
-    console.print(
-        f"Total price:  $ {row['price'].values[0] * parallelism} / hour", style="custom"
-    )
-
-    console.print()
-    confirmation = console.input(
-        "[custom]Are you sure you want to proceed? (y/n): [/custom]"
-    )
-    if confirmation != "y":
-        console.print("Operation cancelled", style="custom")
-        raise typer.Exit(0)
-
-    # TODO: fix this hack
-    if cloud == "Kubernetes":
-        console.print(
-            "No colony will be created since the Kubernetes cluster is already provisioned",
-            style="custom",
-        )
-    else:
-        # This needs to be adjusted as soon as we support other clouds
-        if cloud == "AWS":
-            ami_id = get_aws_ubuntu_image_ami(region)
-            if ami_id is None:
-                console.print(
-                    f"No AMI ID found for Ubuntu 24.04 in region {region}",
-                    style="custom",
-                )
-                raise typer.Exit(1)
-        colony_template = _render_colony_template(
-            aws_enabled=True,
-            docker_enabled=False,
-            job_name=job_name,
-            instance_type=instance_type,
-            parallelism=parallelism,
-            region=region,
-            ami_id=ami_id,
-        )
-        create_custom_object_from_yaml(colony_template)
-        colony_name = f"{job_name}-colony"
-        _wait_for_colony_to_be_ready(colony_name, "default")
-        console.print(
-            f"Created colony {colony_name} for job {job_name}", style="custom"
-        )
-
-    # create the job
-    create_custom_object_from_yaml(job_manifest)
-
-
-def create_job(
-    manifest: str = typer.Argument(..., help="Path to the YAML manifest file"),
-    namespace: str = typer.Option(
-        "default",
-        "--namespace",
-        "-n",
-        help="Namespace of the job (default is 'default')",
-    ),
-):
-    """
-    Create a DDPjob by applying the YAML manifest.
-
-    This command reads the provided YAML file (which can contain one or more
-    Kubernetes resource definitions) and creates them in the cluster.
-    """
-    console = Console()
-
-    try:
-        config.load_kube_config()
-    except Exception as e:
-        console.print(f"[red]Failed to load kubeconfig: {e}[/red]")
+    # Process manifest
+    job_manifest, target_colony = process_job_manifest(path)
+    if not job_manifest:
+        console.print(f"[error]{target_colony}[/error]")
         raise typer.Exit(1)
 
-    api_client = client.ApiClient()
+    # Handle existing colony case
+    if target_colony:
+        console.print(f"[info]Target colony already set to {target_colony}[/info]")
+        if create_job_with_existing_colony(console, path, target_colony):
+            raise typer.Exit(0)
+        raise typer.Exit(1)
+
+    # Extract job details
+    job_name = job_manifest.get("metadata", {}).get("name", "unknown")
+    gpu_types = job_manifest.get("spec", {}).get("gpuTypes", [])
+    parallelism = job_manifest.get("spec", {}).get("parallelism", 1)
+
+    # Get instance options
+    with console.status(
+        "[custom]Scanning for cheapest options...[/custom]", spinner="bouncingBall"
+    ):
+        data_df = get_instance_options(console, gpu_types, parallelism)
+        if data_df is None:
+            console.print(f"[error]No instances found for GPUs {gpu_types}[/error]")
+            raise typer.Exit(1)
+
+    # Get user choice
+    selected = display_options_and_get_choice(console, data_df, top_n, gpu_types)
+    if not selected:
+        console.print("[error]Invalid selection[/error]")
+        raise typer.Exit(1)
+
+    # Display configuration and get confirmation
+    cloud, instance_type, region = selected[["cloud", "instance_type", "region"]]
+    console.print("\n[info]Selected configuration:[/info]")
+    console.print(f"• Cloud: {cloud}")
+    console.print(f"• Instance Type: {instance_type}")
+    console.print(f"• Region: {region}")
+    console.print(f"• Parallelism: {parallelism}")
+    console.print(f"• Total cost: ${selected['price'] * parallelism:.2f}/hour\n")
+
+    if not typer.confirm("Do you want to proceed?"):
+        console.print("[info]Operation cancelled[/info]")
+        raise typer.Exit(0)
+
+    # Create colony and job
+    if not create_colony_if_needed(
+        console, cloud, instance_type, region, parallelism, job_name
+    ):
+        raise typer.Exit(1)
 
     try:
-        create_custom_object_from_yaml_file(
-            api_client, manifest, default_namespace=namespace
-        )
-        console.print("[green]Job created successfully![/green]")
+        create_custom_object_from_yaml(job_manifest)
+        console.print("[success]Job created successfully![/success]")
+        console.print("[info]You can check the status with: exalsius jobs list[/info]")
     except Exception as e:
-        console.print(f"[red]Error creating job: {e}[/red]")
+        console.print(f"[error]Error creating job: {e}[/error]")
         raise typer.Exit(1)
 
 
