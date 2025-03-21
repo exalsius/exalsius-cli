@@ -1,13 +1,26 @@
+import base64
+from pathlib import Path
+from typing import Optional
+
 import typer
+import yaml
+from jinja2 import Environment, FileSystemLoader
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.utils.k8s_utils import get_cluster_nodes, get_colony_objects
+from exalsius.utils.k8s_utils import (
+    create_custom_object_from_yaml,
+    create_custom_object_from_yaml_file,
+    get_cluster_nodes,
+    get_colony_objects,
+)
 from exalsius.utils.theme import custom_theme
 
 app = typer.Typer()
+
+TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
 
 @app.command("list")
@@ -112,6 +125,95 @@ def delete_colony(
         raise typer.Exit(1)
 
 
+def create_docker_colony(
+    name: str,
+    nodes: int = 1,
+) -> None:
+    """Create a Docker-based colony."""
+    env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+    template = env.get_template("colony-template.yaml.j2")
+
+    values = {
+        "name": name,
+        "docker_enabled": True,
+        "docker_replicas": nodes,
+    }
+
+    try:
+        rendered = template.render(**values)
+        yaml_dict = yaml.safe_load(rendered)
+        create_custom_object_from_yaml(yaml_dict)
+        return True
+    except Exception as e:
+        return f"Failed to create Docker colony: {str(e)}"
+
+
+def create_file_based_colony(
+    file_path: Path,
+) -> None:
+    """Create a colony from a YAML file."""
+    try:
+        create_custom_object_from_yaml_file(file_path)
+        return True
+    except FileNotFoundError:
+        return f"Colony configuration file not found: {file_path}"
+    except Exception as e:
+        return f"Failed to create colony from file: {str(e)}"
+
+
+@app.command("create")
+def create_colony(
+    name: str = typer.Option(
+        "docker-colony", "--name", "-n", help="Name of the colony"
+    ),
+    file_path: Optional[Path] = typer.Option(
+        None, "--file", "-f", help="Path to YAML file containing colony configuration"
+    ),
+    docker: bool = typer.Option(False, "--docker", "-d", help="Enable Docker mode"),
+    nodes: Optional[int] = typer.Option(
+        None, "--nodes", help="Number of Docker nodes (default: 1)"
+    ),
+):
+    """
+    Create a new Colony.
+
+    You can either:\n
+    1. Provide a YAML file with the colony configuration using --file\n
+    2. Create a Docker-based colony using --docker (optionally with --nodes)
+    """
+    console = Console(theme=custom_theme)
+
+    if not docker and not file_path:
+        console.print(
+            "[error]Error: You must provide either --file or --docker[/error]"
+        )
+        console.print(
+            "[info]Run 'exalsius colony create --help' for usage information[/info]"
+        )
+        raise typer.Exit(1)
+
+    if docker and file_path:
+        console.print(
+            "[error]Error: Cannot use both --docker and --file together[/error]"
+        )
+        raise typer.Exit(1)
+
+    result = (
+        create_docker_colony(name, nodes or 1)
+        if docker
+        else create_file_based_colony(file_path)
+    )
+
+    if result is True:
+        console.print("Colony provisioning started.", style="custom")
+        console.print(
+            "You can check the status with: exalsius colonies list.", style="custom"
+        )
+    else:
+        console.print(f"[error]{result}[/error]")
+        raise typer.Exit(1)
+
+
 @app.command("get-kubeconfig")
 def get_kubeconfig(
     colony_name: str = typer.Argument(..., help="Name of the colony"),
@@ -141,12 +243,8 @@ def get_kubeconfig(
         secret = v1.read_namespaced_secret(f"{colony_name}-kubeconfig", namespace)
         kubeconfig = secret.data["value"]
 
-        # Base64 decode the kubeconfig
-        import base64
-
         decoded_kubeconfig = base64.b64decode(kubeconfig).decode()
 
-        # Write to file
         with open(output_file, "w") as f:
             f.write(decoded_kubeconfig)
 

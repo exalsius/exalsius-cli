@@ -81,7 +81,12 @@ def _read_yaml(path: str) -> dict:
 
 
 def _render_colony_template(
-    job_name: str, instance_type: str, parallelism: int, region: str
+    aws_enabled: bool,
+    docker_enabled: bool,
+    job_name: str,
+    instance_type: str,
+    parallelism: int,
+    region: str,
 ) -> str:
     with open("exalsius/templates/colony-template.yaml.j2", "r") as f:
         template_content = f.read()
@@ -97,6 +102,8 @@ def _render_colony_template(
         replicas=replicas,
         region=region,
         instance_type=instance_type,
+        aws_enabled=aws_enabled,
+        docker_enabled=docker_enabled,
     )
     return yaml.safe_load(rendered_template)
 
@@ -209,7 +216,6 @@ def submit_job(
         console.print("Operation cancelled", style="custom")
         raise typer.Exit(0)
 
-    # create_custom_object_from_yaml(client.ApiClient(), colony_template)
     # TODO: fix this hack
     if cloud == "Kubernetes":
         console.print(
@@ -227,7 +233,13 @@ def submit_job(
                 )
                 raise typer.Exit(1)
         colony_template = _render_colony_template(
-            job_name, instance_type, parallelism, region, ami_id
+            aws_enabled=True,
+            docker_enabled=False,
+            job_name=job_name,
+            instance_type=instance_type,
+            parallelism=parallelism,
+            region=region,
+            ami_id=ami_id,
         )
         create_custom_object_from_yaml(colony_template)
         colony_name = f"{job_name}-colony"

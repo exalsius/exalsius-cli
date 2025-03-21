@@ -120,10 +120,9 @@ def stream_pod_logs(
         console.print(f"Error streaming logs for pod {pod_name}: {e}", style="red")
 
 
-def create_custom_object_from_yaml(manifest_str: str, default_namespace="default"):
+def create_custom_object_from_yaml(manifest_dict: dict, default_namespace="default"):
     """
-    Reads a YAML manifest string (which can contain multiple documents)
-    and creates each custom resource using the CustomObjectsApi.
+    Reads a YAML manifest dict and creates each custom resource using the CustomObjectsApi.
     """
     console = Console()
 
@@ -136,9 +135,9 @@ def create_custom_object_from_yaml(manifest_str: str, default_namespace="default
     api_client = client.ApiClient()
     custom_api = client.CustomObjectsApi(api_client)
 
-    api_version = manifest_str["apiVersion"]
-    kind = manifest_str["kind"]
-    metadata = manifest_str["metadata"]
+    api_version = manifest_dict["apiVersion"]
+    kind = manifest_dict["kind"]
+    metadata = manifest_dict["metadata"]
 
     if "/" in api_version:
         group, version = api_version.split("/", 1)
@@ -160,7 +159,7 @@ def create_custom_object_from_yaml(manifest_str: str, default_namespace="default
             version=version,
             namespace=namespace,
             plural=plural,
-            body=manifest_str,
+            body=manifest_dict,
         )
         console.print(
             f"Created {kind} '{metadata.get('name')}' in namespace '{namespace}'."
@@ -171,7 +170,7 @@ def create_custom_object_from_yaml(manifest_str: str, default_namespace="default
 
 
 def create_custom_object_from_yaml_file(
-    api_client, manifest_path: str, default_namespace="default"
+    manifest_path: str, default_namespace="default"
 ):
     """
     Reads a YAML manifest file (which can contain multiple documents)
