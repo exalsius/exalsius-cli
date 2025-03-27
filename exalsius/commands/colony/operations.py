@@ -115,6 +115,7 @@ class CreateColonyOperation(ColonyOperation):
         remote: bool = False,
         nodes: int = 1,
         file_path: Optional[Path] = None,
+        external_address: Optional[str] = None,
     ):
         super().__init__()
         self.name = name
@@ -122,6 +123,7 @@ class CreateColonyOperation(ColonyOperation):
         self.remote = remote
         self.nodes = nodes
         self.file_path = file_path
+        self.external_address = external_address
 
     def _create_docker_colony(self) -> Tuple[bool, Optional[str]]:
         """Create a Docker-based colony."""
@@ -135,7 +137,6 @@ class CreateColonyOperation(ColonyOperation):
             }
             rendered = template.render(**values)
             yaml_dict = yaml.safe_load(rendered)
-            print(yaml_dict)
             return self.resource_manager.create_custom_object_from_dict(yaml_dict)
         except Exception as e:
             return False, f"Failed to create Docker colony: {str(e)}"
@@ -143,7 +144,19 @@ class CreateColonyOperation(ColonyOperation):
     def _create_remote_colony(self) -> Tuple[bool, Optional[str]]:
         """Create a remote colony."""
         # Implement remote colony creation logic
-        return False, "Remote colony creation not implemented yet"
+        env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+        try:
+            template = env.get_template("colony-template.yaml.j2")
+            values = {
+                "name": self.name,
+                "remote_enabled": True,
+                "external_address": self.external_address,
+            }
+            rendered = template.render(**values)
+            yaml_dict = yaml.safe_load(rendered)
+            return self.resource_manager.create_custom_object_from_dict(yaml_dict)
+        except Exception as e:
+            return False, f"Failed to create remote colony: {str(e)}"
 
     def _create_colony_from_file(self) -> Tuple[bool, Optional[str]]:
         """Create a colony from a YAML file."""

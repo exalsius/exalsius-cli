@@ -81,6 +81,12 @@ def create_colony(
         None, "--nodes", help="Number of Docker nodes (default: 1)"
     ),
     remote: bool = typer.Option(False, "--remote", "-r", help="Enable remote mode"),
+    external_address: Optional[str] = typer.Option(
+        None,
+        "--external-address",
+        "-e",
+        help="External address of a master node of the exalsius management cluster",
+    ),
 ):
     """
     Create a new Colony.
@@ -99,7 +105,12 @@ def create_colony(
         raise typer.Exit(1)
 
     operation = CreateColonyOperation(
-        name=name, docker=docker, remote=remote, nodes=nodes or 1, file_path=file_path
+        name=name,
+        docker=docker,
+        remote=remote,
+        nodes=nodes or 1,
+        file_path=file_path,
+        external_address=external_address,
     )
 
     result = operation.execute()
