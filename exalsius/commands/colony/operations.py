@@ -229,3 +229,91 @@ class WaitForColonyReadyOperation(ColonyOperation):
 
         except KubernetesClientError as e:
             return False, str(e)
+
+
+class AddNodeOperation(ColonyOperation):
+    def __init__(
+        self,
+        node_name: str,
+        colony_name: str,
+        cluster_name: str,
+        ip_address: str,
+        username: str,
+        ssh_key_path: Path,
+        namespace: str = "default",
+    ):
+        super().__init__()
+        self.node_name = node_name
+        self.colony_name = colony_name
+        self.cluster_name = cluster_name
+        self.ip_address = ip_address
+        self.username = username
+        self.ssh_key_path = ssh_key_path
+        self.namespace = namespace
+
+    def _create_secret(self) -> Tuple[bool, Optional[str]]:
+        ssh_key_name: str = f"{self.colony_name}-{self.node_name}-ssh-key"
+        with open(self.ssh_key_path, "r") as key_file:
+            ssh_key = key_file.read()
+
+        response = self.resource_manager.core_api.create_namespaced_secret(
+            self.namespace,
+            body={
+                "apiVersion": "v1",
+                "kind": "Secret",
+                "metadata": {
+                    "name": ssh_key_name,
+                },
+                "data": {"value": base64.b64encode(ssh_key.encode()).decode()},
+            },
+        )
+        if response.status_code != 201:
+            return False, f"Failed to create secret: {response.status_code}"
+        return True, ssh_key_name
+
+    def _get_k8s_version_of_colony(self) -> str:
+        """Get the Kubernetes version of the colony."""
+        colony = self.resource_manager.custom_objects_api.get_namespaced_custom_object(
+            group="infra.exalsius.ai",
+            version="v1",
+            namespace=self.namespace,
+            plural="colonies",
+            name=self.colony_name,
+        )
+        k8s_version = colony.get("spec", {}).get("k8sVersion", "v1.27.2+k0s.0")
+
+        # check if k8s version ends with +k0s.0
+        # TODO(srnbckr): find a better way to do this
+        if not k8s_version.endswith("+k0s.0"):
+            k8s_version = k8s_version + "+k0s.0"
+
+        return k8s_version
+
+    def execute(self) -> Tuple[bool, Optional[str]]:
+        """Execute the add node operation."""
+        env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+        # create a secret with the SSH key
+        success, ssh_key_name = self._create_secret()
+        if not success:
+            return False, ssh_key_name
+
+        k8s_version = self._get_k8s_version_of_colony()
+
+        template = env.get_template("remote-machine.yaml.j2")
+        values = {
+            "node_name": self.node_name,
+            "cluster_name": self.cluster_name,
+            "ip_address": self.ip_address,
+            "username": self.username,
+            "ssh_key_name": ssh_key_name,
+            "use_sudo": True,
+            "k8s_version": k8s_version,
+        }
+        rendered = template.render(**values)
+        docs = list(yaml.safe_load_all(rendered))
+        for doc in docs:
+            success, error = self.resource_manager.create_custom_object_from_dict(doc)
+            if not success:
+                return False, error
+
+        return True, None
