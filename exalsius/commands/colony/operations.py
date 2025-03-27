@@ -256,7 +256,7 @@ class AddNodeOperation(ColonyOperation):
         with open(self.ssh_key_path, "r") as key_file:
             ssh_key = key_file.read()
 
-        response = self.resource_manager.core_api.create_namespaced_secret(
+        self.resource_manager.core_api.create_namespaced_secret(
             self.namespace,
             body={
                 "apiVersion": "v1",
@@ -267,8 +267,7 @@ class AddNodeOperation(ColonyOperation):
                 "data": {"value": base64.b64encode(ssh_key.encode()).decode()},
             },
         )
-        if response.status_code != 201:
-            return False, f"Failed to create secret: {response.status_code}"
+
         return True, ssh_key_name
 
     def _get_k8s_version_of_colony(self) -> str:
@@ -312,8 +311,6 @@ class AddNodeOperation(ColonyOperation):
         rendered = template.render(**values)
         docs = list(yaml.safe_load_all(rendered))
         for doc in docs:
-            success, error = self.resource_manager.create_custom_object_from_dict(doc)
-            if not success:
-                return False, error
+            self.resource_manager.create_custom_object_from_dict(doc)
 
         return True, None
