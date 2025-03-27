@@ -131,10 +131,12 @@ def create_colony(
 
 @app.command("add-node")
 def add_node(
-    node_name: str = typer.Option(..., "--name", "-n", help="Name of the node"),
-    colony_name: str = typer.Argument(..., help="Name of the colony"),
+    node_name: str = typer.Argument(..., help="Name of the node"),
+    colony_name: str = typer.Option(
+        ..., "--colony-name", "-c", help="Name of the colony"
+    ),
     cluster_name: str = typer.Option(
-        ..., "--cluster-name", "-c", help="Name of a remote cluster of the colony"
+        ..., "--cluster-name", "-cl", help="Name of a remote cluster of the colony"
     ),
     ip_address: str = typer.Option(
         ..., "--ip-address", "-i", help="IP address of the node"
