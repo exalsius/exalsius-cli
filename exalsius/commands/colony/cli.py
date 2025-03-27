@@ -1,3 +1,4 @@
+import pathlib
 from pathlib import Path
 from typing import Optional
 
@@ -5,6 +6,7 @@ import typer
 from rich.console import Console
 
 from exalsius.commands.colony.operations import (
+    AddNodeOperation,
     CreateColonyOperation,
     DeleteColonyOperation,
     GetKubeconfigOperation,
@@ -125,6 +127,48 @@ def create_colony(
     console.print(
         "You can check the status with: exalsius colonies list.", style="custom"
     )
+
+
+@app.command("add-node")
+def add_node(
+    node_name: str = typer.Option(..., "--name", "-n", help="Name of the node"),
+    colony_name: str = typer.Argument(..., help="Name of the colony"),
+    cluster_name: str = typer.Option(
+        ..., "--cluster-name", "-c", help="Name of a remote cluster of the colony"
+    ),
+    ip_address: str = typer.Option(
+        ..., "--ip-address", "-i", help="IP address of the node"
+    ),
+    username: str = typer.Option(..., "--username", "-u", help="Username of the node"),
+    ssh_key_path: pathlib.Path = typer.Option(
+        ..., "--ssh-key-path", "-k", help="Path to the SSH key"
+    ),
+):
+    """
+    Add a node via SSH to a remote colony
+
+    This command will provision a new node via SSH and add it to a remote cluster of a colony.
+
+    Attention: The SSH key will be added to the exalsius management cluster as a secret.
+    This currently only works with the "root" user.
+    """
+    console = Console(theme=custom_theme)
+    service = ColonyService()
+
+    node, error = service.execute_operation(
+        AddNodeOperation(
+            node_name, colony_name, cluster_name, ip_address, username, ssh_key_path
+        )
+    )
+
+    if error:
+        console.print(f"[error]{error}[/error]")
+        raise typer.Exit(1)
+
+    if node:
+        console.print(
+            f"[green]Node '{node_name}' added to colony '{colony_name}' successfully.[/green]"
+        )
 
 
 @app.command("get-kubeconfig")
