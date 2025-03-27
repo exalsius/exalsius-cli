@@ -9,12 +9,22 @@ spec:
 
   hostedControlPlaneEnabled: true
 
+  {% if remote_enabled and external_address %}
+  externalAddress: "{{ external_address }}"
+  {% endif %}
+
+
   colonyClusters:
   {% if docker_enabled %}
     - clusterName: {{ name }}-docker
       dockerEnabled: true
       docker:
         replicas: {{ docker_replicas | default(1) }}
+  {% endif %}
+
+  {% if remote_enabled %}
+    - clusterName: {{ name }}-remote
+      remoteClusterEnabled: true
   {% endif %}
 
   {% if aws_enabled %}
