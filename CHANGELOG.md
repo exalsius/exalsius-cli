@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/exalsius/exalsius-cli/compare/v0.1.0...v0.2.0) (2025-03-27)
+
+
+### Features
+
+* add a colonies add-node command to add nodes via SSH to a remote cluster ([fd4baa9](https://github.com/exalsius/exalsius-cli/commit/fd4baa96495e557749d9fc1a4f52cc596a654667))
+* add a command to create a remote colony ([6ea973c](https://github.com/exalsius/exalsius-cli/commit/6ea973ca0967e39f1d118dfe4ef1bdb64aed48e0))
+* add example colony and job files ([#14](https://github.com/exalsius/exalsius-cli/issues/14)) ([4e01a7b](https://github.com/exalsius/exalsius-cli/commit/4e01a7b8e70300a0f46a4ee354c4b1237d1e168b))
+
+
+### Bug Fixes
+
+* argument parsing for colonies add-node command ([cdb6f39](https://github.com/exalsius/exalsius-cli/commit/cdb6f393771f5576294220f2174a6fe532b67d86))
+
 ## 0.1.0 (2025-03-27)
 
 
