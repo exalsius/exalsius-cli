@@ -1,10 +1,10 @@
 import typer
 
 from exalsius import __version__
-from exalsius.commands.clouds import app as clouds_app
-from exalsius.commands.colony import app as colony_app
-from exalsius.commands.jobs import app as jobs_app
-from exalsius.commands.scan_prices import app as prices_app
+from exalsius.commands.clouds.cli import app as clouds_app
+from exalsius.commands.colony.cli import app as colony_app
+from exalsius.commands.jobs.cli import app as jobs_app
+from exalsius.commands.scan_prices.cli import app as prices_app
 
 app = typer.Typer()
 

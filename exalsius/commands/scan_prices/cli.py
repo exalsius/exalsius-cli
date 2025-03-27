@@ -2,11 +2,10 @@ from typing import Optional
 
 import typer
 from rich.console import Console
-from sky.client import sdk
 
-from exalsius.commands.clouds import _list_enabled_clouds
-from exalsius.utils.cli_utils import create_rich_table
-from exalsius.utils.price_utils import process_accelerator_data
+from exalsius.commands.scan_prices.operations import ListAcceleratorsOperation
+from exalsius.display.scan_prices_display import ScanPricesDisplayManager
+from exalsius.services.scan_prices_service import ScanPricesService
 from exalsius.utils.theme import custom_theme
 
 app = typer.Typer()
@@ -44,33 +43,24 @@ def list_available_accelerators(
     List available accelerator instances in public and configured clouds.
     """
     console = Console(theme=custom_theme)
+    service = ScanPricesService()
+    display_manager = ScanPricesDisplayManager(console)
+
     with console.status(
         "[bold custom]Scanning for prices...[/bold custom]",
         spinner="bouncingBall",
         spinner_style="custom",
     ):
-        if not all_clouds and clouds is None:
-            clouds = _list_enabled_clouds()
-
-        # Get accelerator data
-        result = sdk.stream_and_get(
-            sdk.list_accelerators(
-                gpus_only=True,
-                name_filter=gpu,
-                quantity_filter=quantity,
-                region_filter=region,
-                all_regions=not bool(region),
-                clouds=clouds if not all_clouds else None,
-                case_sensitive=False,
-            )
+        operation = ListAcceleratorsOperation(
+            gpu=gpu,
+            quantity=quantity,
+            region=region,
+            clouds=parse_clouds(clouds),
+            all_clouds=all_clouds,
         )
+        processed_data = service.execute_operation(operation)
 
-        # Process data and create tables
-        processed_data = process_accelerator_data(result)
-
-    for gpu_name, df in processed_data.items():
-        table = create_rich_table(df, gpu_name)
-        console.print(table)
+    display_manager.display_accelerator_prices(processed_data)
 
 
 @app.callback(invoke_without_command=True)
