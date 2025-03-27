@@ -1,0 +1,14 @@
+apiVersion: infra.exalsius.ai/v1
+kind: Colony
+metadata:
+  name: "{{ colony_name | default('exalsius-colony') }}"
+spec:
+  clusterName: "{{ cluster_name | default('exalsius-cluster') }}"
+  k8sVersion: "{{ k8s_version | default('v1.30.3+k0s.0') }}"
+  aws:
+    replicas: {{ replicas | default(3) }}
+    ami: "{{ ami | default('ami-0ca03f7e7f0df9d7a') }}"
+    region: "{{ region | default('eu-central-1') }}"
+    instanceType: "{{ instance_type | default('t3.large') }}"
+    sshKeyName: "{{ ssh_key_name | default('exalsius') }}"
+    iamInstanceProfile: "{{ aws_iamInstanceProfile | default('nodes.cluster-api-provider-aws.sigs.k8s.io') }}"
