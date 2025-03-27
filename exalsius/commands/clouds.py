@@ -11,7 +11,7 @@ app = typer.Typer()
 def _check_clouds():
     # this check needs to be run first to get the enabled clouds
     try:
-        sdk.stream_and_get(
+        sdk.get(
             sdk.check(clouds=["kubernetes", "aws", "gcp"], verbose=False),
         )
     except ApiServerConnectionError as e:
