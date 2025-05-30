@@ -3,13 +3,13 @@ name = "exalsius"
 version = "0.2.0"
 description = "The exalsius CLI"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "kubernetes>=32.0.1",
     "rich>=13.9.4",
     "typer>=0.15.2",
-    "skypilot[aws,gcp,kubernetes] @ git+https://github.com/skypilot-org/skypilot.git@db832e82e19faa3e428e946c74825a752ebb7402",
     "pandas>=2.2.3",
+    "exalsius-api-client @ git+https://github.com/exalsius/exalsius-api-spec.git@v1.3.0#subdirectory=client-sdk"
 ]
 
 [tool.setuptools.packages.find]
