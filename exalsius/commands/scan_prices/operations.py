@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
+import exalsius_api_client
 import pandas as pd
 import typer
-from sky.client import sdk
-from sky.exceptions import ApiServerConnectionError
+from exalsius_api_client.models.offers_list_response import OffersListResponse
 
-from exalsius.services.clouds_service import CloudService
-from exalsius.utils.price_utils import process_accelerator_data
+# TODO: use an env variable instead of the hardcoded value
+configuration = exalsius_api_client.Configuration(host="http://localhost:5000")
 
 
 class ScanPricesOperation(ABC):
@@ -30,7 +30,6 @@ class ListAcceleratorsOperation(ScanPricesOperation):
         self.region = region
         self.clouds = clouds
         self.all_clouds = all_clouds
-        self.cloud_service = CloudService()
 
     def execute(self) -> Dict[str, pd.DataFrame]:
         """
@@ -39,23 +38,19 @@ class ListAcceleratorsOperation(ScanPricesOperation):
         Returns:
             dict[str, pd.DataFrame]: Dictionary mapping GPU names to their price data
         """
-        if not self.all_clouds and self.clouds is None:
-            self.clouds = self.cloud_service.get_enabled_clouds()
+        with exalsius_api_client.ApiClient(configuration) as api_client:
+            api_instance = exalsius_api_client.OffersApi(api_client)
 
-        try:
-            result = sdk.stream_and_get(
-                sdk.list_accelerators(
-                    gpus_only=True,
-                    name_filter=self.gpu,
-                    quantity_filter=self.quantity,
-                    region_filter=self.region,
-                    all_regions=not bool(self.region),
-                    clouds=self.clouds if not self.all_clouds else None,
-                    case_sensitive=False,
+            try:
+                offers_list: OffersListResponse = api_instance.get_offers(
+                    gpu_vendor=self.gpu,
+                    gpu_type=self.gpu,
+                    cloud_provider=self.clouds,
+                    region=self.region,
+                    gpu_count=self.quantity,
                 )
-            )
-        except ApiServerConnectionError as e:
-            self.console.print(f"[red]Error listing accelerators: {str(e)}[/red]")
-            raise typer.Exit(1)
+            except Exception as e:
+                self.console.print(f"[red]Error listing accelerators: {str(e)}[/red]")
+                raise typer.Exit(1)
 
-        return process_accelerator_data(result)
+        return offers_list

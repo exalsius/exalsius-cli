@@ -1,6 +1,7 @@
 from typing import Optional
 
 import typer
+from exalsius_api_client.models.offers_list_response import OffersListResponse
 from rich.console import Console
 
 from exalsius.commands.scan_prices.operations import ListAcceleratorsOperation
@@ -58,9 +59,9 @@ def list_available_accelerators(
             clouds=parse_clouds(clouds),
             all_clouds=all_clouds,
         )
-        processed_data = service.execute_operation(operation)
+        offers_list: OffersListResponse = service.execute_operation(operation)
 
-    display_manager.display_accelerator_prices(processed_data)
+    display_manager.display_accelerator_prices(offers_list)
 
 
 @app.callback(invoke_without_command=True)
