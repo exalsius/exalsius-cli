@@ -9,7 +9,6 @@ from rich.console import Console
 from exalsius.display.job_display import JobDisplayManager
 from exalsius.kubernetes.resources import KubernetesClientError, ResourceManager
 from exalsius.services.colony_service import ColonyService
-from exalsius.services.suggestion_service import SuggestionService
 from exalsius.utils.theme import custom_theme
 
 
@@ -106,7 +105,7 @@ class CreateJobOperation(JobOperation):
         self.job_file_path = job_file_path
         self.top_n = top_n
         self.extra_args = kwargs
-        self.suggestion_service = SuggestionService()
+        # self.suggestion_service = SuggestionService()
         self.colony_service = ColonyService()
         self.job_display_manager = job_display_manager
 

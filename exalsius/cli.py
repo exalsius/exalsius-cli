@@ -1,14 +1,12 @@
 import typer
 
 from exalsius import __version__
-from exalsius.commands.clouds.cli import app as clouds_app
 from exalsius.commands.colony.cli import app as colony_app
 from exalsius.commands.jobs.cli import app as jobs_app
 from exalsius.commands.scan_prices.cli import app as prices_app
 
 app = typer.Typer()
 
-app.add_typer(clouds_app, name="clouds", help="List available configured clouds")
 app.add_typer(
     prices_app,
     name="scan-prices",
