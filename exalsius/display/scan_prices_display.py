@@ -14,23 +14,19 @@ class ScanPricesDisplayManager:
         Args:
             offers_list (OffersListResponse): The list of offers to display
         """
-        # Group offers by GPU type
         offers_by_gpu = {}
         for offer in offers_list.offers:
             if offer.gpu_type not in offers_by_gpu:
                 offers_by_gpu[offer.gpu_type] = []
             offers_by_gpu[offer.gpu_type].append(offer)
 
-        # Create and display a table for each GPU type
         for gpu_type, offers in offers_by_gpu.items():
-            # Sort offers by hourly cost
             offers.sort(
                 key=lambda x: (
                     x.hourly_cost if x.hourly_cost is not None else float("inf")
                 )
             )
 
-            # Create table
             table = Table(
                 title=gpu_type,
                 show_header=True,
@@ -38,7 +34,6 @@ class ScanPricesDisplayManager:
                 border_style="custom",
             )
 
-            # Add columns
             table.add_column("GPU", style="cyan")
             table.add_column("QTY", style="green")
             table.add_column("CLOUD", style="magenta")
@@ -49,7 +44,6 @@ class ScanPricesDisplayManager:
             table.add_column("HOURLY COST", style="red")
             table.add_column("REGION", style="cyan")
 
-            # Add rows
             for offer in offers:
                 table.add_row(
                     str(offer.gpu_type),
