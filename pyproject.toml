@@ -18,7 +18,7 @@ where = ["."]
 include = ["exalsius*"] 
 
 [project.scripts]
-exls = "exalsius.cli:app" 
+exls = "exalsius.cli.app:app" 
 
 [build-system]
 requires = ["setuptools"]
