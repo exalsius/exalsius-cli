@@ -1,19 +1,27 @@
 import typer
 
 from exalsius import __version__
-from exalsius.commands.colony.cli import app as colony_app
-from exalsius.commands.jobs.cli import app as jobs_app
-from exalsius.commands.scan_prices.cli import app as prices_app
+from exalsius.cli.commands import management, nodes, offers
 
 app = typer.Typer()
 
 app.add_typer(
-    prices_app,
-    name="scan-prices",
-    help="Scan and search for GPU prices across cloud providers",
+    offers.app,
+    name="offers",
+    help="List and manage GPU offers from cloud providers",
 )
-app.add_typer(jobs_app, name="jobs", help="List and create training jobs")
-app.add_typer(colony_app, name="colonies", help="List and create exalsius colonies")
+
+app.add_typer(
+    nodes.app,
+    name="nodes",
+    help="Manage the node pool",
+)
+
+app.add_typer(
+    management.app,
+    name="management",
+    help="Manage SSH keys, cluster templates, and cloud credentials",
+)
 
 
 def version_callback(value: bool) -> None:

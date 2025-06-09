@@ -1,21 +1,23 @@
-from exalsius_api_client.models.offers_list_response import OffersListResponse
+from exalsius_api_client.models.offer import Offer
 from rich.console import Console
 from rich.table import Table
 
+from exalsius.display.base import BaseDisplayManager
 
-class ScanPricesDisplayManager:
+
+class OffersDisplayManager(BaseDisplayManager):
     def __init__(self, console: Console):
-        self.console = console
+        super().__init__(console)
 
-    def display_accelerator_prices(self, offers_list: OffersListResponse) -> None:
+    def display_offers(self, offers_list: list[Offer]) -> None:
         """
-        Display the accelerator prices in a formatted table.
+        Display the GPU instance prices in a formatted table.
 
         Args:
-            offers_list (OffersListResponse): The list of offers to display
+            offers_list (list[Offer]): The list of offers to display
         """
         offers_by_gpu = {}
-        for offer in offers_list.offers:
+        for offer in offers_list:
             if offer.gpu_type not in offers_by_gpu:
                 offers_by_gpu[offer.gpu_type] = []
             offers_by_gpu[offer.gpu_type].append(offer)
