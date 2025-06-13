@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 import exalsius_api_client
 from exalsius_api_client import ManagementApi
+from exalsius_api_client.models.error import Error as ExalsiusError
 from exalsius_api_client.models.ssh_key import SshKey
 from exalsius_api_client.models.ssh_key_create_request import SshKeyCreateRequest
 from exalsius_api_client.models.ssh_key_create_response import SshKeyCreateResponse
@@ -49,12 +50,8 @@ class AddSSHKeyOperation(BaseOperation[SshKeyCreateResponse]):
                 ssh_key_create_request
             )
         except ApiException as e:
-            if e.status == 409:
-                return None, f"An SSH key with name '{self.name}' already exists"
-            elif e.status == 400:
-                return None, f"Invalid SSH key format: {e.body}"
-            else:
-                return None, f"API error: {str(e)}"
+            error = ExalsiusError.from_json(e.body).detail
+            return None, error.detail
         except Exception as e:
             return None, f"Unexpected error: {str(e)}"
 
@@ -82,10 +79,8 @@ class DeleteSSHKeyOperation(BooleanOperation):
         try:
             _ = api_instance.delete_ssh_key(ssh_key.id)
         except ApiException as e:
-            if e.status == 404:
-                return False, f"SSH key with name '{self.name}' not found"
-            else:
-                return False, f"API error: {str(e)}"
+            error = ExalsiusError.from_json(e.body).detail
+            return False, error.detail
         except Exception as e:
             return None, f"Unexpected error: {str(e)}"
         return True, None
