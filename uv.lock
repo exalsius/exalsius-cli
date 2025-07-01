@@ -200,7 +200,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.5.0" },
+    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.7.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "kubernetes", specifier = ">=32.0.1" },
     { name = "pandas", specifier = ">=2.2.3" },
@@ -220,8 +220,8 @@ dev = [
 
 [[package]]
 name = "exalsius-api-client"
-version = "1.4.1"
-source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.5.0#9fd2d160b502da5b64a7aff49327dda4443904b2" }
+version = "1.6.0"
+source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.7.0#32f5e60e8adca6a245e712916c05d964a65e522e" }
 dependencies = [
     { name = "pydantic" },
     { name = "python-dateutil" },
