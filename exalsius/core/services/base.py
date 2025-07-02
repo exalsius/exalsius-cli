@@ -12,9 +12,26 @@ from exalsius.core.operations.base import BaseOperation
 class BaseService(ABC):
     def __init__(self, host: Optional[str] = None):
         api_host = host or os.getenv("EXALSIUS_API_HOST", "https://api.exalsius.ai")
-        self.api_client = exalsius_api_client.ApiClient(
-            configuration=exalsius_api_client.Configuration(host=api_host)
-        )
+
+        # Create configuration
+        config = exalsius_api_client.Configuration(host=api_host)
+
+        # Set up basic authentication from environment variables if they exist
+        username = os.getenv("EXALSIUS_USERNAME")
+        password = os.getenv("EXALSIUS_PASSWORD")
+
+        if username and password:
+            config.username = username
+            config.password = password
+
+        self.api_client = exalsius_api_client.ApiClient(configuration=config)
+
+        # Manually add basic auth header since the generated client doesn't include auth settings
+        if username and password:
+            auth_token = config.get_basic_auth_token()
+            if auth_token:
+                self.api_client.set_default_header("Authorization", auth_token)
+
         self._test_connection()
 
     def _test_connection(self) -> None:

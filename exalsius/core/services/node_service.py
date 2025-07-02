@@ -6,7 +6,7 @@ from exalsius_api_client.models.node_import_response import NodeImportResponse
 from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.self_managed_node import SelfManagedNode
 
-from exalsius.cli.commands.nodes import CloudProvider, NodeType
+from exalsius.core.models.enums import CloudProvider, NodeType
 from exalsius.core.operations.node_operations import (
     DeleteNodeOperation,
     GetNodeOperation,
