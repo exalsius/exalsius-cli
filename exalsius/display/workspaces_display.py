@@ -1,3 +1,4 @@
+from exalsius_api_client.models.workspace import Workspace
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 from rich.console import Console
 
@@ -10,4 +11,8 @@ class WorkspacesDisplayManager(BaseDisplayManager):
 
     def display_workspaces(self, workspaces: WorkspacesListResponse):
         # TODO: implement table view for workspaces
+        pass
+
+    def display_workspace(self, workspace: Workspace):
+        # TODO: implement table view for workspace
         pass
