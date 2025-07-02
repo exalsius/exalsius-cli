@@ -24,6 +24,12 @@ def list_workspaces(
         "-c",
         help="The ID of the cluster to list workspaces for",
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Show verbose output",
+    ),
 ):
     console = Console(theme=custom_theme)
     service = WorkspacesService()
@@ -37,4 +43,15 @@ def list_workspaces(
         display_manager.print_warning("No workspaces found")
         return
 
-    display_manager.display_workspaces(workspaces)
+    display_manager.display_workspaces(workspaces, verbose)
+
+    @app.command("get")
+    def get_workspace(workspace_id: str):
+        console = Console(theme=custom_theme)
+        service = WorkspacesService()
+        display_manager = WorkspacesDisplayManager(console)
+        workspace, error = service.get_workspace(workspace_id)
+        if error:
+            display_manager.print_error(f"Error: {error}")
+            raise typer.Exit(1)
+        display_manager.display_workspace(workspace)
