@@ -1,7 +1,7 @@
 import typer
 
 from exalsius import __version__
-from exalsius.cli.commands import clusters, management, nodes, offers
+from exalsius.cli.commands import clusters, management, nodes, offers, workspaces
 
 app = typer.Typer()
 
@@ -21,6 +21,12 @@ app.add_typer(
     clusters.app,
     name="clusters",
     help="Manage clusters",
+)
+
+app.add_typer(
+    workspaces.app,
+    name="workspaces",
+    help="Manage workspaces",
 )
 
 app.add_typer(
