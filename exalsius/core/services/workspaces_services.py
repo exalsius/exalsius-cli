@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 
-from exalsius_api_client.models.workspace import Workspace
+from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
 from exalsius.core.operations.workspaces_operations import (
@@ -21,10 +21,9 @@ class WorkspacesService(BaseService):
             )
         )
 
-    def get_workspace(self, workspace_id: str) -> Tuple[Workspace, Optional[str]]:
+    def get_workspace(
+        self, workspace_id: str
+    ) -> Tuple[WorkspaceResponse, Optional[str]]:
         return self.execute_operation(
-            GetWorkspaceOperation(
-                self.api_client,
-                workspace_id,
-            )
+            GetWorkspaceOperation(self.api_client, workspace_id)
         )
