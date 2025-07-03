@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.0](https://github.com/exalsius/exalsius-cli/compare/v0.2.0...v0.3.0) (2025-07-03)
+
+
+### Features
+
+* add boilerplate for workspaces implementation ([abce4bc](https://github.com/exalsius/exalsius-cli/commit/abce4bc9ad520785af8441b2b866b961c9048fb9))
+* add boilerplate to get workspace elem ([d1ec51b](https://github.com/exalsius/exalsius-cli/commit/d1ec51b8a62ab7394cc7844bec7a5e7e3f91e42e))
+* add cluster operations ([4ec7bc5](https://github.com/exalsius/exalsius-cli/commit/4ec7bc519b1c2ad91a5d99e432ec9ea0409394e7))
+* add node cli commands and operations ([3651b78](https://github.com/exalsius/exalsius-cli/commit/3651b78301b2aeebbc0e0fac5635e76013933dd4))
+* use exalsius-api instead of skypilot api for the scan-prices command ([ccdb23c](https://github.com/exalsius/exalsius-cli/commit/ccdb23c1e327a065da5843b5d55fed9736a30f0c))
+
+
+### Bug Fixes
+
+* add ExalsiusError to ssh key operations ([8776633](https://github.com/exalsius/exalsius-cli/commit/877663320ee26060eeb5ca0faf5aa77c604d8607))
+* rename exalsius cli app to exls ([8768942](https://github.com/exalsius/exalsius-cli/commit/8768942aa4a279c17eefa912f659b27b967d454e))
+
+
+### Documentation
+
+* adjust readme ([166f61c](https://github.com/exalsius/exalsius-cli/commit/166f61cd1dbcfaa782a7016a6bd115074c222ccc))
+
 ## [0.2.0](https://github.com/exalsius/exalsius-cli/compare/v0.1.0...v0.2.0) (2025-03-27)
 
 
