@@ -34,16 +34,16 @@ def list_workspaces(
     console = Console(theme=custom_theme)
     service = WorkspacesService()
     display_manager = WorkspacesDisplayManager(console)
-    workspaces, error = service.list_workspaces()
+    workspaces_response, error = service.list_workspaces(cluster_id=cluster_id)
     if error:
         typer.echo(f"Error: {error}")
         raise typer.Exit(1)
 
-    if not workspaces:
+    if not workspaces_response:
         display_manager.print_warning("No workspaces found")
         return
 
-    display_manager.display_workspaces(workspaces, verbose)
+    display_manager.display_workspaces(workspaces_response)
 
     @app.command("get")
     def get_workspace(workspace_id: str):
