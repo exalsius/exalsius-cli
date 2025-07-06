@@ -1,6 +1,10 @@
+from typing import Annotated
+
 import typer
+from pydantic import PositiveInt
 from rich.console import Console
 
+from exalsius.cli import config
 from exalsius.core.services.workspaces_services import WorkspacesService
 from exalsius.display.workspaces_display import WorkspacesDisplayManager
 from exalsius.utils.theme import custom_theme
@@ -9,8 +13,17 @@ app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context = typer.Context):
+def _root(
+    ctx: typer.Context,
+    cluster: Annotated[
+        str | None,
+        typer.Option("--cluster", "-c", help="Override active cluster for this call."),
+    ] = None,
+):
     """Manage workspaces"""
+    # Store the resolved active cluster in Typer's context so sub-commands can reuse it
+    ctx.obj = {"active_cluster": config.active_cluster(cluster)}
+
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
         raise typer.Exit()
@@ -18,25 +31,23 @@ def main(ctx: typer.Context = typer.Context):
 
 @app.command("list")
 def list_workspaces(
-    cluster_id: str = typer.Option(
-        None,
-        "--cluster-id",
-        "-c",
-        help="The ID of the cluster to list workspaces for",
-    ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Show verbose output",
-    ),
+    ctx: typer.Context,
 ):
     console = Console(theme=custom_theme)
     service = WorkspacesService()
     display_manager = WorkspacesDisplayManager(console)
-    workspaces_response, error = service.list_workspaces(cluster_id=cluster_id)
+
+    active_cluster = ctx.obj["active_cluster"]
+    if not active_cluster:
+        display_manager.print_error(
+            "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
+            "set a default cluster with `exalsius clusters set-default <cluster_id>`"
+        )
+        raise typer.Exit(1)
+
+    workspaces_response, error = service.list_workspaces(cluster_id=active_cluster.id)
     if error:
-        typer.echo(f"Error: {error}")
+        display_manager.print_error(f"Error: {error}")
         raise typer.Exit(1)
 
     if not workspaces_response:
@@ -60,3 +71,61 @@ def get_workspace(
         display_manager.print_error(f"Error: {error}")
         raise typer.Exit(1)
     display_manager.display_workspace(workspace)
+
+
+@app.command("add")
+def add_workspace(
+    ctx: typer.Context,
+    name: str = typer.Argument(
+        help="The name of the workspace to add",
+    ),
+    owner: str = typer.Option(
+        "exalsius",
+        "--owner",
+        "-o",
+        help="The owner of the workspace to add",
+    ),
+    gpu_count: PositiveInt = typer.Option(
+        1,
+        "--gpu-count",
+        "-g",
+        help="The number of GPUs to add to the workspace",
+    ),
+):
+    console = Console(theme=custom_theme)
+    service = WorkspacesService()
+    display_manager = WorkspacesDisplayManager(console)
+
+    active_cluster = ctx.obj["active_cluster"]
+    if not active_cluster:
+        typer.echo("No default cluster found")
+        raise typer.Exit(1)
+
+    workspace_response, error = service.create_workspace(
+        cluster_id=active_cluster.id,
+        name=name,
+        gpu_count=gpu_count,
+        owner=owner,
+    )
+    if error:
+        typer.echo(f"Error: {error}")
+        raise typer.Exit(1)
+    # TODO: display the workspace in a nice way
+    #       - show success and show access information about the workspace
+    display_manager.display_workspace(workspace_response)
+
+
+@app.command("delete")
+def delete_workspace(
+    workspace_id: str = typer.Argument(
+        help="The ID of the workspace to delete",
+    ),
+):
+    console = Console(theme=custom_theme)
+    service = WorkspacesService()
+    display_manager = WorkspacesDisplayManager(console)
+    workspace_response, error = service.delete_workspace(workspace_id)
+    if error:
+        display_manager.print_error(f"Error: {error}")
+        raise typer.Exit(1)
+    display_manager.display_workspace(workspace_response)
