@@ -3,6 +3,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
+from exalsius.cli import config
 from exalsius.core.services.clusters_service import ClustersService
 from exalsius.core.services.node_service import NodeService
 from exalsius.display.clusters_display import ClustersDisplayManager
@@ -12,7 +13,7 @@ app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context = typer.Context):
+def _root(ctx: typer.Context):
     """
     Manage clusters.
     """
@@ -27,7 +28,7 @@ def list_clusters(
         None,
         "--status",
         help="Filter clusters by status",
-    )
+    ),
 ):
     """
     List all clusters.
@@ -237,3 +238,47 @@ def add_node(
         f"Nodes {node_ids} added to cluster {cluster_id} successfully."
     )
     display_manager.display_cluster_nodes(cluster_nodes_response)
+
+
+@app.command("set-default", help="Set a default cluster")
+def set_default_cluster(
+    cluster_id: str = typer.Argument(help="The ID of the cluster to set as default"),
+):
+    """
+    Set a default cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ClustersDisplayManager(console)
+    service = ClustersService()
+
+    cluster_response, error = service.get_cluster(cluster_id)
+    if error:
+        display_manager.print_error(f"Error loading cluster: {error}")
+        raise typer.Exit(1)
+    if not cluster_response:
+        display_manager.print_error(f"Cluster with ID '{cluster_id}' not found.")
+        raise typer.Exit(1)
+
+    cfg: config.AppConfig = config.load()
+    cfg.default_cluster = config.ConfigDefaultCluster(
+        id=cluster_id, name=cluster_response.cluster.name
+    )
+    config.save(cfg)
+    display_manager.print_success(
+        f"Default cluster set to:\n{cfg.default_cluster.name} {cfg.default_cluster.id}"
+    )
+
+
+@app.command("get-default", help="Get the default cluster")
+def get_default_cluster():
+    """
+    Get the default cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ClustersDisplayManager(console)
+
+    cluster_id = config.active_cluster()
+    if not cluster_id:
+        display_manager.print_info("No default cluster set.")
+    else:
+        get_cluster(cluster_id.id)
