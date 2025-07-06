@@ -45,13 +45,18 @@ def list_workspaces(
 
     display_manager.display_workspaces(workspaces_response)
 
-    @app.command("get")
-    def get_workspace(workspace_id: str):
-        console = Console(theme=custom_theme)
-        service = WorkspacesService()
-        display_manager = WorkspacesDisplayManager(console)
-        workspace, error = service.get_workspace(workspace_id)
-        if error:
-            display_manager.print_error(f"Error: {error}")
-            raise typer.Exit(1)
-        display_manager.display_workspace(workspace)
+
+@app.command("get")
+def get_workspace(
+    workspace_id: str = typer.Argument(
+        help="The ID of the workspace to get",
+    ),
+):
+    console = Console(theme=custom_theme)
+    service = WorkspacesService()
+    display_manager = WorkspacesDisplayManager(console)
+    workspace, error = service.get_workspace(workspace_id)
+    if error:
+        display_manager.print_error(f"Error: {error}")
+        raise typer.Exit(1)
+    display_manager.display_workspace(workspace)
