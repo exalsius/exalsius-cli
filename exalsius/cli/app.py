@@ -43,7 +43,8 @@ def version_callback(value: bool) -> None:
 
 
 @app.callback(invoke_without_command=True)
-def main(
+def _root(
+    ctx: typer.Context,
     version: bool = typer.Option(
         None,
         "--version",
@@ -52,7 +53,6 @@ def main(
         callback=version_callback,
         is_eager=True,
     ),
-    ctx: typer.Context = typer.Context,
 ):
     """
     exalsius CLI - A tool for distributed training and infrastructure management
