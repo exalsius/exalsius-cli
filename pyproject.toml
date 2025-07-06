@@ -11,6 +11,9 @@ dependencies = [
     "pandas>=2.2.3",
     "exalsius-api-client @ git+https://github.com/exalsius/exalsius-api-spec.git@v1.7.0#subdirectory=client-sdk",
     "jinja2>=3.1.6",
+    "pydantic-settings>=2.10.1",
+    "pyyaml>=6.0.2",
+    "filelock>=3.17.0",
 ]
 
 [tool.setuptools.packages.find]
