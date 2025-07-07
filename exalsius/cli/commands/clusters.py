@@ -240,6 +240,26 @@ def add_node(
     display_manager.display_cluster_nodes(cluster_nodes_response)
 
 
+@app.command("show-available-resources", help="Get the resources of a cluster")
+def get_cluster_resources(
+    cluster_id: str = typer.Argument(help="The ID of the cluster to get resources of"),
+):
+    """
+    Get the resources of a cluster.
+    """
+    console = Console(theme=custom_theme)
+    service = ClustersService()
+    display_manager = ClustersDisplayManager(console)
+    cluster_resources_response, error = service.get_cluster_resources(cluster_id)
+    if error:
+        display_manager.print_error(f"Failed to get cluster resources: {error}")
+        raise typer.Exit(1)
+    if not cluster_resources_response:
+        display_manager.print_info("No resources available for this cluster.")
+        raise typer.Exit()
+    display_manager.display_cluster_resources(cluster_resources_response)
+
+
 @app.command("set-default", help="Set a default cluster")
 def set_default_cluster(
     cluster_id: str = typer.Argument(help="The ID of the cluster to set as default"),
