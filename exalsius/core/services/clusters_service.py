@@ -2,6 +2,9 @@ from typing import List, Optional, Tuple
 
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
+from exalsius_api_client.models.cluster_resources_list_response import (
+    ClusterResourcesListResponse,
+)
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.cluster_services_response import ClusterServicesResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
@@ -13,6 +16,7 @@ from exalsius.core.operations.clusters_operations import (
     DeployClusterOperation,
     GetClusterNodesOperation,
     GetClusterOperation,
+    GetClusterResourcesOperation,
     GetClusterServicesOperation,
     ListClustersOperation,
 )
@@ -95,4 +99,11 @@ class ClustersService(BaseService):
                 node_ids,
                 node_role,
             )
+        )
+
+    def get_cluster_resources(
+        self, cluster_id: str
+    ) -> Tuple[Optional[ClusterResourcesListResponse], Optional[str]]:
+        return self.execute_operation(
+            GetClusterResourcesOperation(self.api_client, cluster_id)
         )
