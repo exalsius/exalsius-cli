@@ -10,6 +10,9 @@ from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResp
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
 from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
+from exalsius_api_client.models.cluster_resources_list_response import (
+    ClusterResourcesListResponse,
+)
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.cluster_services_response import ClusterServicesResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
@@ -184,6 +187,25 @@ class AddClusterNodeOperation(BaseOperation[ClusterNodesResponse]):
                 self.cluster_id, cluster_add_node_request
             )
             return cluster_nodes_response, None
+        except ApiException as e:
+            error = ExalsiusError.from_json(e.body).detail
+            return None, error.detail
+        except Exception as e:
+            return None, str(e)
+
+
+class GetClusterResourcesOperation(BaseOperation[ClusterResourcesListResponse]):
+    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+        self.api_client = api_client
+        self.cluster_id = cluster_id
+
+    def execute(self) -> Tuple[Optional[ClusterResourcesListResponse], Optional[str]]:
+        api_instance = ClustersApi(self.api_client)
+        try:
+            cluster_resources_response: ClusterResourcesListResponse = (
+                api_instance.get_cluster_resources(self.cluster_id)
+            )
+            return cluster_resources_response, None
         except ApiException as e:
             error = ExalsiusError.from_json(e.body).detail
             return None, error.detail

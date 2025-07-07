@@ -1,4 +1,7 @@
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
+from exalsius_api_client.models.cluster_resources_list_response import (
+    ClusterResourcesListResponse,
+)
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.cluster_services_response import ClusterServicesResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
@@ -130,5 +133,33 @@ class ClustersDisplayManager(BaseDisplayManager):
             str(cluster_nodes_response.control_plane_node_ids),
             str(cluster_nodes_response.worker_node_ids),
         )
+
+        self.console.print(table)
+
+    def display_cluster_resources(
+        self, cluster_resources_response: ClusterResourcesListResponse
+    ):
+        table = Table(
+            title="Cluster Resource Availability",
+            show_header=True,
+            header_style="bold",
+            border_style="custom",
+        )
+
+        table.add_column("Node")
+        table.add_column("Available GPUs")
+        table.add_column("Available CPUs")
+        table.add_column("Available Memory")
+        table.add_column("Available Storage")
+
+        for node in cluster_resources_response.resources:
+            if node and node.available and node.occupied:
+                table.add_row(
+                    str(node.node_id),
+                    str(f"{node.available.gpu_count} GPUs"),
+                    str(f"{node.available.cpu_cores} cores"),
+                    str(f"{node.available.memory_gb} GB"),
+                    str(f"{node.available.storage_gb} GB"),
+                )
 
         self.console.print(table)
