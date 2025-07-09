@@ -62,3 +62,24 @@ class WorkspacesDisplayManager(BaseDisplayManager):
             self.print_error(
                 f"Error displaying workspace {workspace.name} ({workspace.id}): {e}"
             )
+
+    def display_workspace_created(self, workspace: Workspace):
+        self.console.print(
+            f"Workspace {workspace.name} ({workspace.id}) created successfully."
+        )
+
+    def display_workspace_deleted(self, workspace_name: str, workspace_id: str):
+        self.console.print(
+            f"Workspace {workspace_name} ({workspace_id}) deleted successfully."
+        )
+
+    def display_workspace_access_info(self, workspace: Workspace):
+        if workspace.template.name.startswith("jupyter"):
+            self.console.print(
+                f"Access to your workspace {workspace.name} via JupyterLab: "
+            )
+            self.console.print(f"  {workspace.access_information}")
+        else:
+            self.console.print(
+                f"Use your kubeconfig to access your workspace {workspace.name}"
+            )

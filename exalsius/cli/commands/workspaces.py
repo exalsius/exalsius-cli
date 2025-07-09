@@ -1,6 +1,7 @@
 from typing import Annotated
 
 import typer
+from exalsius_api_client.models.workspace import Workspace
 from pydantic import PositiveInt
 from rich.console import Console
 
@@ -115,12 +116,35 @@ def add_workspace(
         workspace_create_response.workspace_id
     )
     if error:
-        typer.echo(f"Error while reading workspace info: {error}")
+        display_manager.print_warning(
+            f"Error while reading workspace access info: {error}"
+        )
+        display_manager.print_warning(
+            "Try to run `exalsius workspaces show-access-info <workspace_id>` to get the access information"
+        )
         raise typer.Exit(1)
 
-    # TODO: display the workspace in a nice way
-    #       - show success and show access information about the workspace
-    display_manager.display_workspace(workspace_create_response)
+    # TODO: Wait for the workspace to be ready
+    workspace: Workspace = workspace_response.workspace
+    display_manager.display_workspace_created(workspace)
+    display_manager.display_workspace_access_info(workspace)
+
+
+@app.command("show-access-info")
+def show_workspace_access_info(
+    workspace_id: str = typer.Argument(
+        help="The ID of the workspace to show the access information",
+    ),
+):
+    console = Console(theme=custom_theme)
+    service = WorkspacesService()
+    display_manager = WorkspacesDisplayManager(console)
+    workspace_response, error = service.get_workspace(workspace_id)
+    if error:
+        display_manager.print_error(f"Error: {error}")
+        raise typer.Exit(1)
+    workspace: Workspace = workspace_response.workspace
+    display_manager.display_workspace_access_info(workspace)
 
 
 @app.command("delete")
