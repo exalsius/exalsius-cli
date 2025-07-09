@@ -1,3 +1,4 @@
+from exalsius_api_client.models.workspace import Workspace
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 from rich.console import Console
@@ -44,11 +45,20 @@ class WorkspacesDisplayManager(BaseDisplayManager):
                 return obj.isoformat()
             return str(obj)
 
-        # Convert to dict, then dump to JSON with custom serializer
-        data = (
-            workspace_response.to_dict()
-            if hasattr(workspace_response, "to_dict")
-            else workspace_response.dict()
-        )
-        json_str = json.dumps(data, default=default_serializer, indent=2)
-        self.console.print(JSON(json_str))
+        if workspace_response.workspace:
+            workspace: Workspace = workspace_response.workspace
+        else:
+            self.print_warning(
+                f"Workspace response is not a valid workspace: {workspace_response}"
+            )
+            return
+
+        try:
+            json_str = json.dumps(
+                workspace.to_dict(), default=default_serializer, indent=2
+            )
+            self.console.print(JSON(json_str))
+        except Exception as e:
+            self.print_error(
+                f"Error displaying workspace {workspace.name} ({workspace.id}): {e}"
+            )
