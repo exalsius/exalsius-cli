@@ -36,5 +36,19 @@ class WorkspacesDisplayManager(BaseDisplayManager):
         self.console.print(table)
 
     def display_workspace(self, workspace_response: WorkspaceResponse):
-        json_str = JSON(workspace_response.to_json())
-        self.console.print(json_str)
+        import json
+        from datetime import datetime
+
+        def default_serializer(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return str(obj)
+
+        # Convert to dict, then dump to JSON with custom serializer
+        data = (
+            workspace_response.to_dict()
+            if hasattr(workspace_response, "to_dict")
+            else workspace_response.dict()
+        )
+        json_str = json.dumps(data, default=default_serializer, indent=2)
+        self.console.print(JSON(json_str))
