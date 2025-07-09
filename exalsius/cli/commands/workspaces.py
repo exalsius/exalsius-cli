@@ -101,18 +101,26 @@ def add_workspace(
         typer.echo("No default cluster found")
         raise typer.Exit(1)
 
-    workspace_response, error = service.create_workspace(
+    workspace_create_response, error = service.create_workspace(
         cluster_id=active_cluster.id,
         name=name,
         gpu_count=gpu_count,
         owner=owner,
     )
     if error:
-        typer.echo(f"Error: {error}")
+        typer.echo(f"Error while creating workspace: {error}")
         raise typer.Exit(1)
+
+    workspace_response, error = service.get_workspace(
+        workspace_create_response.workspace_id
+    )
+    if error:
+        typer.echo(f"Error while reading workspace info: {error}")
+        raise typer.Exit(1)
+
     # TODO: display the workspace in a nice way
     #       - show success and show access information about the workspace
-    display_manager.display_workspace(workspace_response)
+    display_manager.display_workspace(workspace_create_response)
 
 
 @app.command("delete")

@@ -1,5 +1,6 @@
 from typing import Optional, Tuple
 
+from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
@@ -36,7 +37,7 @@ class WorkspacesService(BaseService):
         name: str,
         gpu_count: int,
         owner: str,
-    ) -> Tuple[WorkspaceResponse, Optional[str]]:
+    ) -> Tuple[WorkspaceCreateResponse, Optional[str]]:
         return self.execute_operation(
             CreateWorkspaceOperation(
                 self.api_client,
