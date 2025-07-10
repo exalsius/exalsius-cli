@@ -26,7 +26,7 @@ class ClustersDisplayManager(BaseDisplayManager):
             header_style="bold",
             border_style="custom",
         )
-        table.add_column("ID")
+        table.add_column("ID", no_wrap=True)
         table.add_column("Name")
         table.add_column("Status")
         table.add_column("Created At")
