@@ -45,7 +45,10 @@ def list_clusters(
 
 @app.command("get", help="Get a cluster")
 def get_cluster(
-    cluster_id: str = typer.Argument(help="The ID of the cluster to get"),
+    cluster_id: Optional[str] = typer.Argument(
+        None,
+        help="The ID of the cluster to get. If not provided, the default cluster will be used.",
+    ),
 ):
     """
     Get a cluster.
@@ -53,6 +56,16 @@ def get_cluster(
     console = Console(theme=custom_theme)
     service = ClustersService()
     display_manager = ClustersDisplayManager(console)
+
+    if not cluster_id:
+        default_cluster = config.active_cluster()
+        if not default_cluster:
+            display_manager.print_error(
+                "No cluster ID provided and no default cluster set."
+            )
+            raise typer.Exit(1)
+        cluster_id = default_cluster.id
+
     cluster_response, error = service.get_cluster(cluster_id)
     if error:
         display_manager.print_error(f"Failed to get cluster: {error}")
@@ -242,7 +255,10 @@ def add_node(
 
 @app.command("show-available-resources", help="Get the resources of a cluster")
 def get_cluster_resources(
-    cluster_id: str = typer.Argument(help="The ID of the cluster to get resources of"),
+    cluster_id: Optional[str] = typer.Argument(
+        None,
+        help="The ID of the cluster to get resources of. If not provided, the default cluster will be used.",
+    ),
 ):
     """
     Get the resources of a cluster.
@@ -250,6 +266,16 @@ def get_cluster_resources(
     console = Console(theme=custom_theme)
     service = ClustersService()
     display_manager = ClustersDisplayManager(console)
+
+    if not cluster_id:
+        default_cluster = config.active_cluster()
+        if not default_cluster:
+            display_manager.print_error(
+                "No cluster ID provided and no default cluster set."
+            )
+            raise typer.Exit(1)
+        cluster_id = default_cluster.id
+
     cluster_resources_response, error = service.get_cluster_resources(cluster_id)
     if error:
         display_manager.print_error(f"Failed to get cluster resources: {error}")
