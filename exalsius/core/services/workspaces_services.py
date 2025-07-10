@@ -41,10 +41,11 @@ class WorkspacesService(BaseService):
         gpu_count: int,
         owner: str,
         workspace_type: WorkspaceType,
+        jupyter_password: Optional[str] = None,
     ) -> Tuple[WorkspaceCreateResponse, Optional[str]]:
         if workspace_type == WorkspaceType.JUPYTER:
             operation = CreateWorkspaceJupyterOperation(
-                self.api_client, cluster_id, name, owner, gpu_count
+                self.api_client, cluster_id, name, owner, gpu_count, jupyter_password
             )
         elif workspace_type == WorkspaceType.POD:
             operation = CreateWorkspacePodOperation(

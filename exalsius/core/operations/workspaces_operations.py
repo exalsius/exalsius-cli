@@ -128,6 +128,7 @@ class CreateWorkspaceJupyterOperation(CreateWorkspaceOperation):
         name: str,
         owner: str,
         gpu_count: int,
+        jupyter_password: Optional[str] = None,
     ):
         template = WorkspaceTemplate(
             name="jupyter-notebook-template",
@@ -136,6 +137,8 @@ class CreateWorkspaceJupyterOperation(CreateWorkspaceOperation):
                 "deploymentImage": "tensorflow/tensorflow:2.18.0-gpu-jupyter",
             },
         )
+        if jupyter_password:
+            template.variables["notebookPassword"] = jupyter_password
         super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
 
 
