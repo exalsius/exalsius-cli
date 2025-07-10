@@ -6,6 +6,7 @@ from pydantic import PositiveInt
 from rich.console import Console
 
 from exalsius.cli import config
+from exalsius.core.models.workspaces import WorkspaceType
 from exalsius.core.services.workspaces_services import WorkspacesService
 from exalsius.display.workspaces_display import WorkspacesDisplayManager
 from exalsius.utils.theme import custom_theme
@@ -92,6 +93,12 @@ def add_workspace(
         "-g",
         help="The number of GPUs to add to the workspace",
     ),
+    workspace_type: WorkspaceType = typer.Option(
+        WorkspaceType.POD,
+        "--type",
+        "-t",
+        help='The type of the workspace to add. Can be "pod" or "jupyter". Default is "pod"',
+    ),
 ):
     console = Console(theme=custom_theme)
     service = WorkspacesService()
@@ -107,6 +114,7 @@ def add_workspace(
         name=name,
         gpu_count=gpu_count,
         owner=owner,
+        workspace_type=workspace_type,
     )
     if error:
         typer.echo(f"Error while creating workspace: {error}")

@@ -5,8 +5,10 @@ from exalsius_api_client.models.workspace_delete_response import WorkspaceDelete
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
+from exalsius.core.models.workspaces import WorkspaceType
 from exalsius.core.operations.workspaces_operations import (
-    CreateWorkspaceOperation,
+    CreateWorkspaceJupyterOperation,
+    CreateWorkspacePodOperation,
     DeleteWorkspaceOperation,
     GetWorkspaceOperation,
     ListWorkspacesOperation,
@@ -38,16 +40,17 @@ class WorkspacesService(BaseService):
         name: str,
         gpu_count: int,
         owner: str,
+        workspace_type: WorkspaceType,
     ) -> Tuple[WorkspaceCreateResponse, Optional[str]]:
-        return self.execute_operation(
-            CreateWorkspaceOperation(
-                self.api_client,
-                cluster_id,
-                name,
-                owner,
-                gpu_count,
+        if workspace_type == WorkspaceType.JUPYTER:
+            operation = CreateWorkspaceJupyterOperation(
+                self.api_client, cluster_id, name, owner, gpu_count
             )
-        )
+        elif workspace_type == WorkspaceType.POD:
+            operation = CreateWorkspacePodOperation(
+                self.api_client, cluster_id, name, owner, gpu_count
+            )
+        return self.execute_operation(operation)
 
     def delete_workspace(
         self, workspace_id: str
