@@ -26,15 +26,11 @@ class ClustersDisplayManager(BaseDisplayManager):
             header_style="bold",
             border_style="custom",
         )
-        table.add_column("ID")
+        table.add_column("ID", no_wrap=True)
         table.add_column("Name")
         table.add_column("Status")
         table.add_column("Created At")
         table.add_column("Updated At")
-        table.add_column("Control Plane Nodes")
-        table.add_column("Worker Nodes")
-        table.add_column("Costs per hour")
-        table.add_column("Current Costs")
         # TODO add services
 
         for cluster in cluster_list_response.clusters:
@@ -44,11 +40,6 @@ class ClustersDisplayManager(BaseDisplayManager):
                 str(cluster.cluster_status),
                 str(cluster.created_at),
                 str(cluster.updated_at),
-                str(cluster.control_plane_node_ids),
-                str(cluster.worker_node_ids),
-                str(cluster.costs_per_hour),
-                str(cluster.current_costs),
-                # TODO add services
             )
 
         self.console.print(table)
@@ -65,10 +56,6 @@ class ClustersDisplayManager(BaseDisplayManager):
         table.add_column("Status")
         table.add_column("Created At")
         table.add_column("Updated At")
-        table.add_column("Control Plane Nodes")
-        table.add_column("Worker Nodes")
-        table.add_column("Costs per hour")
-        table.add_column("Current Costs")
         # TODO add services
 
         cluster = cluster_response.cluster
@@ -78,11 +65,6 @@ class ClustersDisplayManager(BaseDisplayManager):
             str(cluster.cluster_status),
             str(cluster.created_at),
             str(cluster.updated_at),
-            str(cluster.control_plane_node_ids),
-            str(cluster.worker_node_ids),
-            str(cluster.costs_per_hour),
-            str(cluster.current_costs),
-            # TODO add services
         )
 
         self.console.print(table)
