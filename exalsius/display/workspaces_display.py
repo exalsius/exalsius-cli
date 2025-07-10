@@ -68,10 +68,8 @@ class WorkspacesDisplayManager(BaseDisplayManager):
             f"Workspace {workspace.name} ({workspace.id}) created successfully."
         )
 
-    def display_workspace_deleted(self, workspace_name: str, workspace_id: str):
-        self.console.print(
-            f"Workspace {workspace_name} ({workspace_id}) deleted successfully."
-        )
+    def display_workspace_deleted(self, workspace_id: str):
+        self.console.print(f"Workspace {workspace_id} deleted successfully.")
 
     def display_workspace_access_info(self, workspace: Workspace):
         if workspace.template.name.startswith("jupyter"):
