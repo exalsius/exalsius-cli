@@ -64,6 +64,7 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
         api_client: exalsius_api_client.api_client.ApiClient,
         cluster_id: str,
         name: str,
+        template: WorkspaceTemplate,
         owner: str,
         gpu_count: int,
     ):
@@ -71,11 +72,7 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
         self.cluster_id: str = cluster_id
         self.name: str = name
         self.owner: str = owner
-        self.workspace_template: WorkspaceTemplate = WorkspaceTemplate(
-            name="vscode-devcontainer-template",
-            description="string",
-            variables={},
-        )
+        self.template: WorkspaceTemplate = template
         self.resources: ResourcePool = ResourcePool(
             gpu_count=gpu_count,
             gpu_vendor="NVIDIA",
@@ -91,7 +88,7 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
             workspace_create_request: WorkspaceCreateRequest = WorkspaceCreateRequest(
                 cluster_id=self.cluster_id,
                 name=self.name,
-                template=self.workspace_template,
+                template=self.template,
                 resources=self.resources,
                 owner=self.owner,
             )
@@ -104,6 +101,42 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
             return None, str(error.detail)
         except Exception as e:
             return None, str(e)
+
+
+class CreateWorkspacePodOperation(CreateWorkspaceOperation):
+    def __init__(
+        self,
+        api_client: exalsius_api_client.api_client.ApiClient,
+        cluster_id: str,
+        name: str,
+        owner: str,
+        gpu_count: int,
+    ):
+        template = WorkspaceTemplate(
+            name="vscode-devcontainer-template",
+            description=f"{owner}'s amazing workspace",
+            variables={},
+        )
+        super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
+
+
+class CreateWorkspaceJupyterOperation(CreateWorkspaceOperation):
+    def __init__(
+        self,
+        api_client: exalsius_api_client.api_client.ApiClient,
+        cluster_id: str,
+        name: str,
+        owner: str,
+        gpu_count: int,
+    ):
+        template = WorkspaceTemplate(
+            name="jupyter-notebook-template",
+            description=f"{owner}'s amazing jupyter notebook workspace",
+            variables={
+                "deploymentImage": "tensorflow/tensorflow:2.18.0-gpu-jupyter",
+            },
+        )
+        super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
 
 
 class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
