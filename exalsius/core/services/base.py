@@ -6,6 +6,7 @@ import exalsius_api_client
 import typer
 from rich.console import Console
 
+from exalsius.cli import config as cli_config
 from exalsius.core.operations.base import BaseOperation
 
 
@@ -16,9 +17,15 @@ class BaseService(ABC):
         # Create configuration
         config = exalsius_api_client.Configuration(host=api_host)
 
-        # Set up basic authentication from environment variables if they exist
+        # Set up basic authentication from config file or environment variables
+        app_cfg = cli_config.load()
         username = os.getenv("EXALSIUS_USERNAME")
         password = os.getenv("EXALSIUS_PASSWORD")
+
+        if not username and app_cfg.credentials:
+            username = app_cfg.credentials.username
+        if not password and app_cfg.credentials:
+            password = app_cfg.credentials.password
 
         if username and password:
             config.username = username
