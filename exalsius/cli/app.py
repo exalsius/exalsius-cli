@@ -1,9 +1,22 @@
 import typer
 
 from exalsius import __version__
-from exalsius.cli.commands import clusters, management, nodes, offers, workspaces
+from exalsius.cli.commands import (
+    clusters,
+    login,
+    management,
+    nodes,
+    offers,
+    workspaces,
+)
 
 app = typer.Typer()
+
+app.add_typer(
+    login.app,
+    name="login",
+    help="Login with your Exalsius credentials",
+)
 
 app.add_typer(
     offers.app,

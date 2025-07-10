@@ -24,9 +24,17 @@ class ConfigDefaultCluster(BaseSettings):
     name: Optional[str] = Field(default=None, description="The name of the workspace")
 
 
+class Credentials(BaseSettings):
+    username: str = Field(..., description="The username for authentication")
+    password: str = Field(..., description="The password for authentication")
+
+
 class AppConfig(BaseSettings):
     default_cluster: Optional[ConfigDefaultCluster] = Field(
         default=None, description="The default cluster"
+    )
+    credentials: Optional[Credentials] = Field(
+        default=None, description="The user credentials"
     )
     profiles: dict[str, Any] = Field(
         default_factory=dict, description="Profile placeholder for future use"

@@ -23,7 +23,7 @@ from exalsius.core.operations.base import BaseOperation, ListOperation
 
 class ListClustersOperation(ListOperation[ClustersListResponse]):
     def __init__(
-        self, api_client: exalsius_api_client.ApiClient, status: Optional[str]
+        self, api_client: exalsius_api_client.ApiClient, status: Optional[str] = None
     ):
         self.api_client = api_client
         self.status = status
