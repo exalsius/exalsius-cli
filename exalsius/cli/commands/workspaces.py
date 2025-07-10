@@ -156,8 +156,9 @@ def delete_workspace(
     console = Console(theme=custom_theme)
     service = WorkspacesService()
     display_manager = WorkspacesDisplayManager(console)
-    workspace_response, error = service.delete_workspace(workspace_id)
+    workspace_delete_response, error = service.delete_workspace(workspace_id)
     if error:
         display_manager.print_error(f"Error: {error}")
         raise typer.Exit(1)
-    display_manager.display_workspace(workspace_response)
+
+    display_manager.display_workspace_deleted(workspace_delete_response.workspace_id)

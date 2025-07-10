@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
 
 from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
+from exalsius_api_client.models.workspace_delete_response import WorkspaceDeleteResponse
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
@@ -50,7 +51,7 @@ class WorkspacesService(BaseService):
 
     def delete_workspace(
         self, workspace_id: str
-    ) -> Tuple[WorkspaceResponse, Optional[str]]:
+    ) -> Tuple[WorkspaceDeleteResponse, Optional[str]]:
         return self.execute_operation(
             DeleteWorkspaceOperation(self.api_client, workspace_id)
         )
