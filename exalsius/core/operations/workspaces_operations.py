@@ -80,9 +80,9 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
             gpu_count=gpu_count,
             gpu_vendor="NVIDIA",
             gpu_type="NVIDIA-A100-80GB-PCIe",
-            cpu_cores=4,
-            memory_gb=16,
-            storage_gb=100,
+            cpu_cores=32,
+            memory_gb=128,
+            storage_gb=200,
         )
 
     def execute(self) -> Tuple[Optional[WorkspaceCreateResponse], Optional[str]]:
