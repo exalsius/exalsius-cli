@@ -73,6 +73,11 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
         self.name: str = name
         self.owner: str = owner
         self.template: WorkspaceTemplate = template
+        # TODO: These are hacky fixes that need to be fixed in the backend.
+        self.template.variables["deploymentName"] = name
+        self.template.variables["memoryGB"] = "128"
+        self.template.variables["podStorage"] = "200Gi"
+        self.template.variables["storageGB"] = "200"
         self.resources: ResourcePool = ResourcePool(
             gpu_count=gpu_count,
             gpu_vendor="NVIDIA",
@@ -92,6 +97,7 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
                 resources=self.resources,
                 owner=self.owner,
             )
+
             workspace_create_response: WorkspaceCreateResponse = (
                 api_instance.create_workspace(workspace_create_request)
             )
