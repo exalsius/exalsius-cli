@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional
@@ -7,16 +8,18 @@ from typing import Any, Optional
 import yaml
 from filelock import FileLock
 from pydantic import Field
+from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
 )
 
+logger = logging.getLogger("cli.config")
+
 CFG_DIR = Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "exalsius"
 CFG_FILE = CFG_DIR / "config.yaml"
-POINTER_FILE = CFG_DIR / "current_profile"
-LOCK_FILE = CFG_DIR / "config.lock"
+CONFIG_LOCK_FILE = CFG_DIR / "config.lock"
 
 
 class ConfigDefaultCluster(BaseSettings):
@@ -24,20 +27,9 @@ class ConfigDefaultCluster(BaseSettings):
     name: Optional[str] = Field(default=None, description="The name of the workspace")
 
 
-class Credentials(BaseSettings):
-    username: str = Field(..., description="The username for authentication")
-    password: str = Field(..., description="The password for authentication")
-
-
 class AppConfig(BaseSettings):
     default_cluster: Optional[ConfigDefaultCluster] = Field(
         default=None, description="The default cluster"
-    )
-    credentials: Optional[Credentials] = Field(
-        default=None, description="The user credentials"
-    )
-    profiles: dict[str, Any] = Field(
-        default_factory=dict, description="Profile placeholder for future use"
     )
 
     model_config = SettingsConfigDict(
@@ -56,36 +48,24 @@ class AppConfig(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
             init_settings,
-            ExalsiusYamlConfig(settings_cls),
             env_settings,
             dotenv_settings,
             file_secret_settings,
+            ExalsiusYamlConfig(settings_cls),
         )
 
 
 class ExalsiusYamlConfig(PydanticBaseSettingsSource):
-    def __init__(self, settings_cls: type[BaseSettings]):
+    def __call__(self) -> dict[str, Any]:
         """
-        Initializes the AwsYamlConfig source.
+        Returns the loaded configuration.
 
-        Args:
-            settings_cls: The Pydantic settings class this source is for.
-        """
-        super().__init__(settings_cls)
-        self.config = self._load_config()
-
-    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str] | None:
-        """
-        Retrieves a configuration value for a given field.
-
-        Args:
-            field: The field object from the Pydantic model.
-            field_name: The name of the field.
+        This method is called by Pydantic to get the configuration data from this source.
 
         Returns:
-            A tuple containing the value and the field name if found, otherwise None.
+            The dictionary of configuration data.
         """
-        return self.config.get(field_name), field_name
+        return self._load_config()
 
     def _load_config(self) -> dict[str, Any]:
         """
@@ -102,39 +82,28 @@ class ExalsiusYamlConfig(PydanticBaseSettingsSource):
         if not CFG_FILE.exists():
             return {}
 
-        with FileLock(LOCK_FILE):
+        with FileLock(CONFIG_LOCK_FILE):
             with CFG_FILE.open() as f:
                 return yaml.safe_load(f) or {}
 
-    def __call__(self) -> dict[str, Any]:
-        """
-        Returns the loaded configuration.
-
-        This method is called by Pydantic to get the configuration data from this source.
-
-        Returns:
-            The dictionary of configuration data.
-        """
-        return self.config
+    def get_field_value(
+        self, field: FieldInfo, field_name: str
+    ) -> tuple[Any, str, bool]:
+        return None, field_name, False
 
 
-def load() -> AppConfig:
-    return AppConfig()
+_APP_CONFIG: Optional[AppConfig] = None
 
 
-def save(cfg: AppConfig) -> None:
-    with FileLock(LOCK_FILE):
+def load_config(force_reload: bool = False) -> AppConfig:
+    """Loads the application configuration, implemented as a singleton."""
+    global _APP_CONFIG
+    if _APP_CONFIG is None or force_reload:
+        _APP_CONFIG = AppConfig()
+    return _APP_CONFIG
+
+
+def save_config(cfg: AppConfig) -> None:
+    with FileLock(CONFIG_LOCK_FILE):
         CFG_DIR.mkdir(parents=True, exist_ok=True)
-        CFG_FILE.write_text(
-            yaml.dump(cfg.model_dump(mode="json", exclude_defaults=True))
-        )
-
-
-def active_cluster(cli_arg_id: str | None = None) -> Optional[ConfigDefaultCluster]:
-    # 1. CLI flag has highest precedence
-    if cli_arg_id:
-        return ConfigDefaultCluster(id=cli_arg_id)
-
-    # 2. Config file / Env vars
-    cfg = load()
-    return cfg.default_cluster
+        CFG_FILE.write_text(yaml.dump(cfg.model_dump(mode="json")))

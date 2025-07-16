@@ -18,7 +18,7 @@ credentials_app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context = typer.Context):
+def main(ctx: typer.Context):
     """Manage SSH keys, cluster templates, and cloud credentials"""
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -27,7 +27,7 @@ def main(ctx: typer.Context = typer.Context):
 
 # SSH Key commands
 @ssh_key_app.callback(invoke_without_command=True)
-def ssh_key_callback(ctx: typer.Context = typer.Context):
+def ssh_key_callback(ctx: typer.Context):
     """Manage SSH keys in the management cluster"""
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -35,10 +35,10 @@ def ssh_key_callback(ctx: typer.Context = typer.Context):
 
 
 @ssh_key_app.command("list")
-def list_ssh_keys():
+def list_ssh_keys(ctx: typer.Context):
     """List all SSH keys in the management cluster."""
     console = Console(theme=custom_theme)
-    service = SSHKeyService()
+    service = SSHKeyService(ctx.obj.config)
     display_manager = SSHKeyDisplayManager(console)
     ssh_keys, error = service.list_ssh_keys()
     if error:
@@ -49,6 +49,7 @@ def list_ssh_keys():
 
 @ssh_key_app.command("add")
 def add_ssh_key(
+    ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name for the SSH key"),
     key_path: Path = typer.Option(
         ..., "--key-path", "-k", help="Path to the SSH private key file"
@@ -56,11 +57,14 @@ def add_ssh_key(
 ):
     """Add a new SSH key to the management cluster."""
     console = Console(theme=custom_theme)
-    service = SSHKeyService()
+    service = SSHKeyService(ctx.obj.config)
     display_manager = SSHKeyDisplayManager(console)
     ssh_key_create_response, error = service.add_ssh_key(name, key_path)
     if error:
         display_manager.print_error(f"Failed to add SSH key: {error}")
+        raise typer.Exit(1)
+    if not ssh_key_create_response:
+        display_manager.print_error("Failed to add SSH key.")
         raise typer.Exit(1)
     display_manager.print_success(
         f"Added SSH key '{ssh_key_create_response.ssh_key_id}' from {key_path}"
@@ -69,11 +73,12 @@ def add_ssh_key(
 
 @ssh_key_app.command("delete")
 def delete_ssh_key(
+    ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name of the SSH key to delete"),
 ):
     """Delete an SSH key from the management cluster."""
     console = Console(theme=custom_theme)
-    service = SSHKeyService()
+    service = SSHKeyService(ctx.obj.config)
     display_manager = SSHKeyDisplayManager(console)
     delete_success, error = service.delete_ssh_key(name)
     if not delete_success and error:
@@ -85,7 +90,7 @@ def delete_ssh_key(
 
 # Cluster Templates commands
 @cluster_templates_app.callback(invoke_without_command=True)
-def cluster_templates_callback(ctx: typer.Context = typer.Context):
+def cluster_templates_callback(ctx: typer.Context):
     """Manage cluster templates"""
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -93,10 +98,10 @@ def cluster_templates_callback(ctx: typer.Context = typer.Context):
 
 
 @cluster_templates_app.command("list")
-def list_cluster_templates():
+def list_cluster_templates(ctx: typer.Context):
     """List all available cluster templates."""
     console = Console(theme=custom_theme)
-    service = ClusterTemplateService()
+    service = ClusterTemplateService(ctx.obj.config)
     display_manager = ClusterTemplateDisplayManager(console)
     cluster_templates, error = service.list_cluster_templates()
     if error:
@@ -107,7 +112,7 @@ def list_cluster_templates():
 
 # Credentials commands
 @credentials_app.callback(invoke_without_command=True)
-def credentials_callback(ctx: typer.Context = typer.Context):
+def credentials_callback(ctx: typer.Context):
     """Manage cloud provider credentials"""
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
@@ -115,10 +120,10 @@ def credentials_callback(ctx: typer.Context = typer.Context):
 
 
 @credentials_app.command("list")
-def list_cloud_credentials():
+def list_cloud_credentials(ctx: typer.Context):
     """List all available cloud provider credentials."""
     console = Console(theme=custom_theme)
-    service = CloudCredentialsService()
+    service = CloudCredentialsService(ctx.obj.config)
     display_manager = CloudCredentialsDisplayManager(console)
     cloud_credentials, error = service.list_cloud_credentials()
     if error:

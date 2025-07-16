@@ -11,7 +11,7 @@ app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context = typer.Context):
+def main(ctx: typer.Context):
     """
     List and search foravailable GPU offers from cloud providers.
     """
@@ -30,6 +30,7 @@ def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
 
 @app.command("list")
 def list_offers(
+    ctx: typer.Context,
     gpu: Optional[str] = typer.Option(
         None, "--gpu", help="Filter GPUs by name, e.g. 'H100'"
     ),
@@ -39,7 +40,7 @@ def list_offers(
     region: Optional[str] = typer.Option(
         None, "--region", help="Filter by specific region"
     ),
-    clouds: Optional[List[str]] = typer.Option(
+    cloud_provider: Optional[str] = typer.Option(
         None,
         "--clouds",
         help="List of clouds to search (multiple flags allowed). If not provided, all enabled clouds will be searched.",
@@ -52,7 +53,7 @@ def list_offers(
     List available GPU offers from cloud providers.
     """
     console = Console(theme=custom_theme)
-    service = OffersService()
+    service = OffersService(ctx.obj.config)
     display_manager = OffersDisplayManager(console)
 
     with console.status(
@@ -64,8 +65,8 @@ def list_offers(
             gpu_type=gpu,
             quantity=quantity,
             region=region,
-            clouds=parse_clouds(clouds),
-            all_clouds=all_clouds,
+            cloud_provider=cloud_provider,
+            all_clouds=all_clouds or False,
         )
 
         if error:

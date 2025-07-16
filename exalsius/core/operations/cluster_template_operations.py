@@ -1,25 +1,35 @@
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
-import exalsius_api_client
-from exalsius_api_client import ManagementApi
-from exalsius_api_client.models.cluster_template import ClusterTemplate
+from exalsius_api_client.api.management_api import ManagementApi
+from exalsius_api_client.api_client import ApiClient
+from exalsius_api_client.exceptions import ApiException
 from exalsius_api_client.models.cluster_template_list_response import (
     ClusterTemplateListResponse,
 )
+from exalsius_api_client.models.error import Error as ExalsiusError
 
-from exalsius.core.operations.base import ListOperation
+from exalsius.core.operations.base import BaseOperation
 
 
-class ListClusterTemplatesOperation(ListOperation[ClusterTemplate]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient):
+class ListClusterTemplatesOperation(BaseOperation[ClusterTemplateListResponse]):
+    def __init__(self, api_client: ApiClient):
         self.api_client = api_client
 
-    def execute(self) -> Tuple[List[ClusterTemplate], Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterTemplateListResponse], Optional[str]]:
         api_instance = ManagementApi(self.api_client)
         try:
             cluster_templates_list_response: ClusterTemplateListResponse = (
                 api_instance.list_cluster_templates()
             )
+            return cluster_templates_list_response, None
+        except ApiException as e:
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
-        return cluster_templates_list_response.cluster_templates, None

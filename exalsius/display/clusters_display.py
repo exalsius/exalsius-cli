@@ -16,10 +16,6 @@ class ClustersDisplayManager(BaseDisplayManager):
         super().__init__(console)
 
     def display_clusters(self, cluster_list_response: ClustersListResponse):
-        if not cluster_list_response.clusters:
-            self.print_info("No clusters found. Please create a cluster.")
-            return
-
         table = Table(
             title="Clusters",
             show_header=True,
@@ -70,10 +66,12 @@ class ClustersDisplayManager(BaseDisplayManager):
         self.console.print(table)
 
     def display_delete_cluster_message(self, cluster_response: ClusterResponse):
-        all_nodes = (
-            cluster_response.cluster.control_plane_node_ids
-            + cluster_response.cluster.worker_node_ids
-        )
+        all_nodes: list[str] = []
+        if cluster_response.cluster.control_plane_node_ids:
+            all_nodes.extend(cluster_response.cluster.control_plane_node_ids)
+        if cluster_response.cluster.worker_node_ids:
+            all_nodes.extend(cluster_response.cluster.worker_node_ids)
+
         self.print_info(
             f"Cluster {cluster_response.cluster.id} will be deleted. This action is irreversible."
         )

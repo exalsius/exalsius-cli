@@ -10,7 +10,7 @@ from rich.table import Table
 from exalsius.display.base import BaseDisplayManager
 
 
-class NodeDisplayManager(BaseDisplayManager):
+class NodesDisplayManager(BaseDisplayManager):
     def __init__(self, console: Console):
         super().__init__(console)
 

@@ -1,65 +1,19 @@
+import logging
 import os
 from abc import ABC
+from multiprocessing import AuthenticationError
 from typing import Any, Optional, Tuple
 
-import exalsius_api_client
-import typer
-from rich.console import Console
+from exalsius_api_client.api_client import ApiClient
+from exalsius_api_client.configuration import Configuration
 
-from exalsius.cli import config as cli_config
+from exalsius.core.models.auth import Session
 from exalsius.core.operations.base import BaseOperation
+
+logger = logging.getLogger("core.services.base")
 
 
 class BaseService(ABC):
-    def __init__(self, host: Optional[str] = None):
-        api_host = host or os.getenv("EXALSIUS_API_HOST", "https://api.exalsius.ai")
-
-        # Create configuration
-        config = exalsius_api_client.Configuration(host=api_host)
-
-        # Set up basic authentication from config file or environment variables
-        app_cfg = cli_config.load()
-        username = os.getenv("EXALSIUS_USERNAME")
-        password = os.getenv("EXALSIUS_PASSWORD")
-
-        if not username and app_cfg.credentials:
-            username = app_cfg.credentials.username
-        if not password and app_cfg.credentials:
-            password = app_cfg.credentials.password
-
-        if username and password:
-            config.username = username
-            config.password = password
-
-        self.api_client = exalsius_api_client.ApiClient(configuration=config)
-
-        # Manually add basic auth header since the generated client doesn't include auth settings
-        if username and password:
-            auth_token = config.get_basic_auth_token()
-            if auth_token:
-                self.api_client.set_default_header("Authorization", auth_token)
-
-        self._test_connection()
-
-    def _test_connection(self) -> None:
-        """
-        Test the connection to the API server.
-
-        Raises:
-            ApiException: If the connection test fails
-        """
-        try:
-            # Use a simple API endpoint to test connection
-            # TODO: change this to a /health endpoint
-            api_instance = exalsius_api_client.ClustersApi(self.api_client)
-            api_instance.list_clusters()
-        except Exception as e:
-            console = Console()
-            console.print(
-                f"[red]Failed to connect to exalsius API server at {self.api_client.configuration.host}: {str(e)}[/red]"
-            )
-            raise typer.Exit(1)
-
     def execute_operation(self, operation: BaseOperation) -> Tuple[Any, Optional[str]]:
         """
         Execute an operation and handle common service-level concerns.
@@ -77,3 +31,33 @@ class BaseService(ABC):
             return operation.execute()
         except Exception as e:
             return None, f"Unexpected error during operation execution: {str(e)}"
+
+
+class BaseServiceWithAuth(BaseService):
+    def __init__(self, session: Session, host: Optional[str] = None):
+        api_host = host or os.getenv("EXALSIUS_API_HOST", "https://api.exalsius.ai")
+
+        # Create configuration
+        client_config = Configuration(host=api_host)
+
+        if (
+            not session.credentials
+            or not session.credentials.username
+            or not session.credentials.password
+        ):
+            raise AuthenticationError("No credentials found")
+
+        client_config.username = session.credentials.username
+        client_config.password = session.credentials.password
+
+        self.api_client = ApiClient(configuration=client_config)
+
+        # Manually add basic auth header since the generated client doesn't include auth settings
+        auth_token = client_config.get_basic_auth_token()
+        if auth_token:
+            self.api_client.set_default_header("Authorization", auth_token)
+
+        logger.debug(
+            f"Trying to connect to {self.api_client.configuration.host} with "
+            f"auth token {auth_token} (credentials: {session.credentials})"
+        )

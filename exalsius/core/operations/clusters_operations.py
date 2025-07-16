@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple
 
-import exalsius_api_client
 from exalsius_api_client.api.clusters_api import ClustersApi
+from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.exceptions import ApiException
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
@@ -18,17 +18,15 @@ from exalsius_api_client.models.cluster_services_response import ClusterServices
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 from exalsius_api_client.models.error import Error as ExalsiusError
 
-from exalsius.core.operations.base import BaseOperation, ListOperation
+from exalsius.core.operations.base import BaseOperation
 
 
-class ListClustersOperation(ListOperation[ClustersListResponse]):
-    def __init__(
-        self, api_client: exalsius_api_client.ApiClient, status: Optional[str] = None
-    ):
+class ListClustersOperation(BaseOperation[ClustersListResponse]):
+    def __init__(self, api_client: ApiClient, status: Optional[str] = None):
         self.api_client = api_client
         self.status = status
 
-    def execute(self) -> Tuple[List[ClustersListResponse], Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClustersListResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         try:
             clusters_list_response: ClustersListResponse = api_instance.list_clusters(
@@ -36,18 +34,24 @@ class ListClustersOperation(ListOperation[ClustersListResponse]):
             )
             return clusters_list_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class GetClusterOperation(BaseOperation[ClusterResponse]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+    def __init__(self, api_client: ApiClient, cluster_id: str):
         self.api_client = api_client
         self.cluster_id = cluster_id
 
-    def execute(self) -> Tuple[ClusterResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         try:
             cluster_response: ClusterResponse = api_instance.describe_cluster(
@@ -55,18 +59,24 @@ class GetClusterOperation(BaseOperation[ClusterResponse]):
             )
             return cluster_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class DeleteClusterOperation(BaseOperation[ClusterDeleteResponse]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+    def __init__(self, api_client: ApiClient, cluster_id: str):
         self.api_client = api_client
         self.cluster_id = cluster_id
 
-    def execute(self) -> Tuple[ClusterDeleteResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterDeleteResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         try:
             cluster_delete_response: ClusterDeleteResponse = (
@@ -74,21 +84,25 @@ class DeleteClusterOperation(BaseOperation[ClusterDeleteResponse]):
             )
             return cluster_delete_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class CreateClusterOperation(BaseOperation[ClusterCreateResponse]):
-    def __init__(
-        self, api_client: exalsius_api_client.ApiClient, name: str, k8s_version: str
-    ):
+    def __init__(self, api_client: ApiClient, name: str, k8s_version: str):
         self.api_client = api_client
         self.name = name
         self.k8s_version = k8s_version
 
-    def execute(self) -> Tuple[ClusterCreateResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterCreateResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         cluster_create_request = ClusterCreateRequest(
             name=self.name,
@@ -100,18 +114,24 @@ class CreateClusterOperation(BaseOperation[ClusterCreateResponse]):
             )
             return cluster_create_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class DeployClusterOperation(BaseOperation[ClusterDeployResponse]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+    def __init__(self, api_client: ApiClient, cluster_id: str):
         self.api_client = api_client
         self.cluster_id = cluster_id
 
-    def execute(self) -> Tuple[ClusterDeployResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterDeployResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         try:
             cluster_deploy_response: ClusterDeployResponse = (
@@ -119,18 +139,24 @@ class DeployClusterOperation(BaseOperation[ClusterDeployResponse]):
             )
             return cluster_deploy_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class GetClusterServicesOperation(BaseOperation[ClusterServicesResponse]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+    def __init__(self, api_client: ApiClient, cluster_id: str):
         self.api_client = api_client
         self.cluster_id = cluster_id
 
-    def execute(self) -> Tuple[ClusterServicesResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterServicesResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         try:
             cluster_services_response: ClusterServicesResponse = (
@@ -138,18 +164,24 @@ class GetClusterServicesOperation(BaseOperation[ClusterServicesResponse]):
             )
             return cluster_services_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class GetClusterNodesOperation(BaseOperation[ClusterNodesResponse]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+    def __init__(self, api_client: ApiClient, cluster_id: str):
         self.api_client = api_client
         self.cluster_id = cluster_id
 
-    def execute(self) -> Tuple[ClusterNodesResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterNodesResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         try:
             cluster_nodes_response: ClusterNodesResponse = api_instance.get_nodes(
@@ -157,26 +189,37 @@ class GetClusterNodesOperation(BaseOperation[ClusterNodesResponse]):
             )
             return cluster_nodes_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class AddClusterNodeOperation(BaseOperation[ClusterNodesResponse]):
     def __init__(
-        self, api_client: exalsius_api_client.ApiClient, cluster_id: str, node_id: str
+        self,
+        api_client: ApiClient,
+        cluster_id: str,
+        node_ids: List[str],
+        node_role: str,
     ):
         self.api_client = api_client
         self.cluster_id = cluster_id
-        self.node_id = node_id
+        self.node_ids = node_ids
+        self.node_role = node_role
 
-    def execute(self) -> Tuple[ClusterResponse, Optional[str]]:
+    def execute(self) -> Tuple[Optional[ClusterNodesResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
         cluster_add_node_request = ClusterAddNodeRequest(
             nodes_to_add=[
                 ClusterNodeToAdd(
-                    node_id=self.node_id,
+                    node_id=node_id,
                     node_role=self.node_role,
                 )
                 for node_id in self.node_ids
@@ -188,14 +231,20 @@ class AddClusterNodeOperation(BaseOperation[ClusterNodesResponse]):
             )
             return cluster_nodes_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
 
 class GetClusterResourcesOperation(BaseOperation[ClusterResourcesListResponse]):
-    def __init__(self, api_client: exalsius_api_client.ApiClient, cluster_id: str):
+    def __init__(self, api_client: ApiClient, cluster_id: str):
         self.api_client = api_client
         self.cluster_id = cluster_id
 
@@ -207,7 +256,13 @@ class GetClusterResourcesOperation(BaseOperation[ClusterResourcesListResponse]):
             )
             return cluster_resources_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
