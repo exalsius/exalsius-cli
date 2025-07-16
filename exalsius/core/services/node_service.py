@@ -1,10 +1,8 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
-from exalsius_api_client.models.cloud_node import CloudNode
 from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
 from exalsius_api_client.models.node_import_response import NodeImportResponse
 from exalsius_api_client.models.node_response import NodeResponse
-from exalsius_api_client.models.self_managed_node import SelfManagedNode
 
 from exalsius.core.models.enums import CloudProvider, NodeType
 from exalsius.core.operations.node_operations import (
@@ -14,10 +12,10 @@ from exalsius.core.operations.node_operations import (
     ImportSSHNodeOperation,
     ListNodesOperation,
 )
-from exalsius.core.services.base import BaseService
+from exalsius.core.services.base import BaseServiceWithAuth
 
 
-class NodeService(BaseService):
+class NodeService(BaseServiceWithAuth):
     def list_nodes(
         self, node_type: Optional[NodeType], provider: Optional[CloudProvider]
     ) -> Tuple[List[NodeResponse], Optional[str]]:
@@ -29,9 +27,7 @@ class NodeService(BaseService):
             )
         )
 
-    def get_node(
-        self, node_id: str
-    ) -> Tuple[Union[CloudNode, SelfManagedNode], Optional[str]]:
+    def get_node(self, node_id: str) -> Tuple[Optional[NodeResponse], Optional[str]]:
         return self.execute_operation(
             GetNodeOperation(
                 self.api_client,
@@ -39,7 +35,9 @@ class NodeService(BaseService):
             )
         )
 
-    def delete_node(self, node_id: str) -> Tuple[NodeDeleteResponse, Optional[str]]:
+    def delete_node(
+        self, node_id: str
+    ) -> Tuple[Optional[NodeDeleteResponse], Optional[str]]:
         return self.execute_operation(
             DeleteNodeOperation(
                 self.api_client,
@@ -49,7 +47,7 @@ class NodeService(BaseService):
 
     def import_ssh(
         self, hostname: str, endpoint: str, username: str, ssh_key_id: str
-    ) -> Tuple[NodeImportResponse, Optional[str]]:
+    ) -> Tuple[Optional[NodeImportResponse], Optional[str]]:
         return self.execute_operation(
             ImportSSHNodeOperation(
                 self.api_client,
@@ -62,7 +60,7 @@ class NodeService(BaseService):
 
     def import_from_offer(
         self, hostname: str, offer_id: str, amount: int
-    ) -> Tuple[NodeImportResponse, Optional[str]]:
+    ) -> Tuple[Optional[NodeImportResponse], Optional[str]]:
         return self.execute_operation(
             ImportFromOfferOperation(
                 self.api_client,

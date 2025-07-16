@@ -20,13 +20,13 @@ from exalsius.core.operations.clusters_operations import (
     GetClusterServicesOperation,
     ListClustersOperation,
 )
-from exalsius.core.services.base import BaseService
+from exalsius.core.services.base import BaseServiceWithAuth
 
 
-class ClustersService(BaseService):
+class ClustersService(BaseServiceWithAuth):
     def list_clusters(
         self, status: Optional[str]
-    ) -> Tuple[List[ClustersListResponse], Optional[str]]:
+    ) -> Tuple[Optional[ClustersListResponse], Optional[str]]:
         return self.execute_operation(
             ListClustersOperation(
                 self.api_client,
@@ -34,7 +34,9 @@ class ClustersService(BaseService):
             )
         )
 
-    def get_cluster(self, cluster_id: str) -> Tuple[ClusterResponse, Optional[str]]:
+    def get_cluster(
+        self, cluster_id: str
+    ) -> Tuple[Optional[ClusterResponse], Optional[str]]:
         return self.execute_operation(
             GetClusterOperation(
                 self.api_client,
@@ -42,7 +44,9 @@ class ClustersService(BaseService):
             )
         )
 
-    def delete_cluster(self, cluster_id: str) -> Tuple[ClusterResponse, Optional[str]]:
+    def delete_cluster(
+        self, cluster_id: str
+    ) -> Tuple[Optional[ClusterResponse], Optional[str]]:
         return self.execute_operation(
             DeleteClusterOperation(
                 self.api_client,
@@ -52,7 +56,7 @@ class ClustersService(BaseService):
 
     def create_cluster(
         self, name: str, k8s_version: str
-    ) -> Tuple[ClusterCreateResponse, Optional[str]]:
+    ) -> Tuple[Optional[ClusterCreateResponse], Optional[str]]:
         return self.execute_operation(
             CreateClusterOperation(
                 self.api_client,
@@ -61,7 +65,9 @@ class ClustersService(BaseService):
             )
         )
 
-    def deploy_cluster(self, cluster_id: str) -> Tuple[ClusterResponse, Optional[str]]:
+    def deploy_cluster(
+        self, cluster_id: str
+    ) -> Tuple[Optional[ClusterResponse], Optional[str]]:
         return self.execute_operation(
             DeployClusterOperation(
                 self.api_client,
@@ -71,7 +77,7 @@ class ClustersService(BaseService):
 
     def get_cluster_services(
         self, cluster_id: str
-    ) -> Tuple[ClusterServicesResponse, Optional[str]]:
+    ) -> Tuple[Optional[ClusterServicesResponse], Optional[str]]:
         return self.execute_operation(
             GetClusterServicesOperation(
                 self.api_client,
@@ -81,7 +87,7 @@ class ClustersService(BaseService):
 
     def get_cluster_nodes(
         self, cluster_id: str
-    ) -> Tuple[ClusterNodesResponse, Optional[str]]:
+    ) -> Tuple[Optional[ClusterNodesResponse], Optional[str]]:
         return self.execute_operation(
             GetClusterNodesOperation(
                 self.api_client,
@@ -91,7 +97,7 @@ class ClustersService(BaseService):
 
     def add_cluster_node(
         self, cluster_id: str, node_ids: List[str], node_role: str
-    ) -> Tuple[ClusterNodesResponse, Optional[str]]:
+    ) -> Tuple[Optional[ClusterNodesResponse], Optional[str]]:
         return self.execute_operation(
             AddClusterNodeOperation(
                 self.api_client,

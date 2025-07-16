@@ -13,13 +13,13 @@ from exalsius.core.operations.workspaces_operations import (
     GetWorkspaceOperation,
     ListWorkspacesOperation,
 )
-from exalsius.core.services.base import BaseService
+from exalsius.core.services.base import BaseServiceWithAuth
 
 
-class WorkspacesService(BaseService):
+class WorkspacesService(BaseServiceWithAuth):
     def list_workspaces(
         self, cluster_id: str
-    ) -> Tuple[WorkspacesListResponse, Optional[str]]:
+    ) -> Tuple[Optional[WorkspacesListResponse], Optional[str]]:
         return self.execute_operation(
             ListWorkspacesOperation(
                 self.api_client,
@@ -29,7 +29,7 @@ class WorkspacesService(BaseService):
 
     def get_workspace(
         self, workspace_id: str
-    ) -> Tuple[WorkspaceResponse, Optional[str]]:
+    ) -> Tuple[Optional[WorkspaceResponse], Optional[str]]:
         return self.execute_operation(
             GetWorkspaceOperation(self.api_client, workspace_id)
         )
@@ -42,7 +42,7 @@ class WorkspacesService(BaseService):
         owner: str,
         workspace_type: WorkspaceType,
         jupyter_password: Optional[str] = None,
-    ) -> Tuple[WorkspaceCreateResponse, Optional[str]]:
+    ) -> Tuple[Optional[WorkspaceCreateResponse], Optional[str]]:
         if workspace_type == WorkspaceType.JUPYTER:
             operation = CreateWorkspaceJupyterOperation(
                 self.api_client, cluster_id, name, owner, gpu_count, jupyter_password
@@ -55,7 +55,7 @@ class WorkspacesService(BaseService):
 
     def delete_workspace(
         self, workspace_id: str
-    ) -> Tuple[WorkspaceDeleteResponse, Optional[str]]:
+    ) -> Tuple[Optional[WorkspaceDeleteResponse], Optional[str]]:
         return self.execute_operation(
             DeleteWorkspaceOperation(self.api_client, workspace_id)
         )
