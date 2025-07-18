@@ -170,6 +170,7 @@ class CreateWorkspaceLLMInferenceOperation(CreateWorkspaceOperation):
             template.variables["huggingFaceToken"] = huggingface_token
         super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
 
+
 class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
     def __init__(
         self, api_client: exalsius_api_client.api_client.ApiClient, workspace_id: str
