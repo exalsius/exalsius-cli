@@ -8,6 +8,7 @@ from exalsius_api_client.models.workspaces_list_response import WorkspacesListRe
 from exalsius.core.models.workspaces import WorkspaceType
 from exalsius.core.operations.workspaces_operations import (
     CreateWorkspaceJupyterOperation,
+    CreateWorkspaceLLMInferenceOperation,
     CreateWorkspacePodOperation,
     DeleteWorkspaceOperation,
     GetWorkspaceOperation,
@@ -42,6 +43,8 @@ class WorkspacesService(BaseService):
         owner: str,
         workspace_type: WorkspaceType,
         jupyter_password: Optional[str] = None,
+        huggingface_model: Optional[str] = None,
+        huggingface_token: Optional[str] = None,
     ) -> Tuple[WorkspaceCreateResponse, Optional[str]]:
         if workspace_type == WorkspaceType.JUPYTER:
             operation = CreateWorkspaceJupyterOperation(
@@ -50,6 +53,16 @@ class WorkspacesService(BaseService):
         elif workspace_type == WorkspaceType.POD:
             operation = CreateWorkspacePodOperation(
                 self.api_client, cluster_id, name, owner, gpu_count
+            )
+        elif workspace_type == WorkspaceType.LLM_INFERENCE:
+            operation = CreateWorkspaceLLMInferenceOperation(
+                self.api_client,
+                cluster_id,
+                name,
+                owner,
+                gpu_count,
+                huggingface_model,
+                huggingface_token,
             )
         return self.execute_operation(operation)
 

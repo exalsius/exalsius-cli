@@ -148,6 +148,28 @@ class CreateWorkspaceJupyterOperation(CreateWorkspaceOperation):
         super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
 
 
+class CreateWorkspaceLLMInferenceOperation(CreateWorkspaceOperation):
+    def __init__(
+        self,
+        api_client: exalsius_api_client.api_client.ApiClient,
+        cluster_id: str,
+        name: str,
+        owner: str,
+        gpu_count: int,
+        huggingface_model: Optional[str] = None,
+        huggingface_token: Optional[str] = None,
+    ):
+        template = WorkspaceTemplate(
+            name="ray-llm-service-template",
+            description=f"{owner}'s amazing workspace for a ray-based LLM inference service",
+            variables={},
+        )
+        if huggingface_model:
+            template.variables["llmModelName"] = huggingface_model
+        if huggingface_token:
+            template.variables["huggingFaceToken"] = huggingface_token
+        super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
+
 class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
     def __init__(
         self, api_client: exalsius_api_client.api_client.ApiClient, workspace_id: str

@@ -98,13 +98,25 @@ def add_workspace(
         WorkspaceType.POD,
         "--type",
         "-t",
-        help='The type of the workspace to add. Can be "pod" or "jupyter". Default is "pod"',
+        help='The type of the workspace to add. Can be "pod", "jupyter", or "llm_inference". Default is "pod"',
     ),
     jupyter_password: str = typer.Option(
         None,
         "--jupyter-password",
         "-p",
         help="The password for the Jupyter notebook",
+    ),
+    huggingface_model: str = typer.Option(
+        None,
+        "--huggingface-model",
+        "-m",
+        help="The HuggingFace-hosted LLM model to use for the workspace",
+    ),
+    huggingface_token: str = typer.Option(
+        None,
+        "--huggingface-token",
+        "-t",
+        help="The authentication token for working with HuggingFace-hosted LLM models that require authentication",
     ),
 ):
     console = Console(theme=custom_theme)
@@ -128,6 +140,8 @@ def add_workspace(
             owner=owner,
             workspace_type=workspace_type,
             jupyter_password=jupyter_password,
+            huggingface_model=huggingface_model,
+            huggingface_token=huggingface_token,
         )
         if error:
             display_manager.print_error(f"Error while creating workspace: {error}")
@@ -169,7 +183,7 @@ def add_workspace(
             time.sleep(polling_interval)
         else:
             display_manager.print_error(
-                "Workspace did not become active in time. Please check the status manually."
+                "Workspace did not become active in time. This might be normal for some workspace types. Please check the status manually."
             )
             raise typer.Exit(1)
 
