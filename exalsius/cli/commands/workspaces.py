@@ -133,6 +133,19 @@ def add_workspace(
         spinner="bouncingBall",
         spinner_style="custom",
     ):
+        # TODO: We generally need to improve the user feedback on what exactly happened / is happening.
+        # TODO: We also need to improve the error handling in general.
+
+        if workspace_type == WorkspaceType.LLM_INFERENCE:
+            if not huggingface_model:
+                display_manager.print_warning(
+                    "Workspace type is LLM inference, but no HuggingFace model was provided. Using the default model defined in the workspace template."
+                )
+            if not huggingface_token:
+                display_manager.print_warning(
+                    "Workspace type is LLM inference, but no HuggingFace token was provided. This might be a problem if the model requires authentication."
+                )
+
         workspace_create_response, error = service.create_workspace(
             cluster_id=active_cluster.id,
             name=name,
