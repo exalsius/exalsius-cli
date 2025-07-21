@@ -19,22 +19,7 @@ from exalsius.core.operations.base import BaseOperation
 logger = logging.getLogger("exalsius.auth")
 
 
-class BaseAuthOperation(BaseOperation):
-    def __init__(self, api_client: ApiClient):
-        self.api_client = api_client
-
-    def _test_connection(self) -> bool:
-        # TODO: It's a dummy call, change this to a /auth endpoint
-        api_instance = OffersApi(self.api_client)
-        try:
-            _ = api_instance.get_offers()
-        except Exception as e:
-            logger.debug(f"Failed to connect to the API: {e}")
-            return False
-        return True
-
-
-class ValidateSessionOperation(BaseAuthOperation):
+class ValidateSessionOperation(BaseOperation):
     def __init__(
         self, api_client: ApiClient, validate_session_request: ValidateSessionRequest
     ):
@@ -46,21 +31,27 @@ class ValidateSessionOperation(BaseAuthOperation):
             return ValidateSessionResponse(valid=False), None
         return ValidateSessionResponse(valid=True), None
 
+    def _test_connection(self) -> bool:
+        # TODO: It's a dummy call, change this to a /auth endpoint to validate the session token
+        api_instance = OffersApi(self.api_client)
+        try:
+            _ = api_instance.get_offers()
+        except Exception as e:
+            logger.debug(f"Failed to connect to the API: {e}")
+            return False
+        return True
 
-class AuthOperation(BaseAuthOperation):
+
+class AuthOperation(BaseOperation):
     def __init__(self, auth_request: AuthRequest):
         self.auth_request = auth_request
 
     def execute(self) -> Tuple[Optional[AuthResponse], Optional[str]]:
-        if not self._test_connection():
-            return None, "Failed to connect to the API"
-        else:
-            return (
-                AuthResponse(
-                    session=Session(credentials=self.auth_request.credentials)
-                ),
-                None,
-            )
+        # TODO: Implement real auth operation
+        return (
+            AuthResponse(session=Session(credentials=self.auth_request.credentials)),
+            None,
+        )
 
 
 class DeleteSessionOperation(BaseOperation):

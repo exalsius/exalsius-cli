@@ -3,21 +3,22 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
+from exalsius.cli import auth, utils
 from exalsius.core.services.offers_service import OffersService
 from exalsius.display.offers_display import OffersDisplayManager
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer()
+app = typer.Typer(context_settings={"allow_interspersed_args": True})
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
+def _root(
+    ctx: typer.Context,
+):
     """
-    List and search foravailable GPU offers from cloud providers.
+    List and manage GPU offers from cloud providers.
     """
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    utils.help_if_no_subcommand(ctx)
 
 
 def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
@@ -53,8 +54,15 @@ def list_offers(
     List available GPU offers from cloud providers.
     """
     console = Console(theme=custom_theme)
-    service = OffersService(ctx.obj.config)
     display_manager = OffersDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = OffersService(session)
 
     with console.status(
         "[bold custom]Fetching offers...[/bold custom]",
