@@ -3,21 +3,22 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
+from exalsius.cli import auth, utils
 from exalsius.core.services.offers_service import OffersService
 from exalsius.display.offers_display import OffersDisplayManager
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer()
+app = typer.Typer(context_settings={"allow_interspersed_args": True})
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context = typer.Context):
+def _root(
+    ctx: typer.Context,
+):
     """
-    List and search foravailable GPU offers from cloud providers.
+    List and manage GPU offers from cloud providers.
     """
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    utils.help_if_no_subcommand(ctx)
 
 
 def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
@@ -30,6 +31,7 @@ def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
 
 @app.command("list")
 def list_offers(
+    ctx: typer.Context,
     gpu: Optional[str] = typer.Option(
         None, "--gpu", help="Filter GPUs by name, e.g. 'H100'"
     ),
@@ -39,7 +41,7 @@ def list_offers(
     region: Optional[str] = typer.Option(
         None, "--region", help="Filter by specific region"
     ),
-    clouds: Optional[List[str]] = typer.Option(
+    cloud_provider: Optional[str] = typer.Option(
         None,
         "--clouds",
         help="List of clouds to search (multiple flags allowed). If not provided, all enabled clouds will be searched.",
@@ -52,8 +54,15 @@ def list_offers(
     List available GPU offers from cloud providers.
     """
     console = Console(theme=custom_theme)
-    service = OffersService()
     display_manager = OffersDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = OffersService(session)
 
     with console.status(
         "[bold custom]Fetching offers...[/bold custom]",
@@ -64,8 +73,8 @@ def list_offers(
             gpu_type=gpu,
             quantity=quantity,
             region=region,
-            clouds=parse_clouds(clouds),
-            all_clouds=all_clouds,
+            cloud_provider=cloud_provider,
+            all_clouds=all_clouds or False,
         )
 
         if error:

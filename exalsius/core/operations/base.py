@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
+from ast import List
 from typing import Generic, Optional, Tuple, TypeVar
 
-from pydantic import BaseModel
-
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T")
 
 
 class BaseOperation(ABC, Generic[T]):
@@ -15,15 +14,15 @@ class BaseOperation(ABC, Generic[T]):
         pass
 
 
-class ListOperation(BaseOperation[list[T]]):
+class ListOperation(BaseOperation[List]):
     """Base operation for listing resources."""
 
     @abstractmethod
-    def execute(self) -> Tuple[Optional[list[T]], Optional[str]]:
+    def execute(self) -> Tuple[Optional[List], Optional[str]]:
         pass
 
 
-class BooleanOperation(ABC):
+class BooleanOperation(BaseOperation[bool]):
     """Base operation for operations that return success/failure status."""
 
     @abstractmethod

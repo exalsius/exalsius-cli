@@ -13,10 +13,10 @@ from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
-from exalsius.core.operations.base import BaseOperation, ListOperation
+from exalsius.core.operations.base import BaseOperation
 
 
-class ListWorkspacesOperation(ListOperation[WorkspacesListResponse]):
+class ListWorkspacesOperation(BaseOperation[WorkspacesListResponse]):
     def __init__(
         self, api_client: exalsius_api_client.api_client.ApiClient, cluster_id: str
     ):
@@ -31,8 +31,14 @@ class ListWorkspacesOperation(ListOperation[WorkspacesListResponse]):
             )
             return workspaces_list_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, error.detail
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
@@ -52,8 +58,14 @@ class GetWorkspaceOperation(BaseOperation[WorkspaceResponse]):
             )
             return workspace_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, str(error.detail)
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
@@ -103,8 +115,14 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
             )
             return workspace_create_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, str(error.detail)
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)
 
@@ -186,7 +204,13 @@ class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
             )
             return workspace_delete_response, None
         except ApiException as e:
-            error = ExalsiusError.from_json(e.body).detail
-            return None, str(error.detail)
+            if e.body:
+                error = ExalsiusError.from_json(e.body)
+                if error:
+                    return None, str(error.detail)
+                else:
+                    return None, str(e)
+            else:
+                return None, str(e)
         except Exception as e:
             return None, str(e)

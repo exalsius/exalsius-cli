@@ -3,6 +3,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from exalsius.cli import auth, utils
+from exalsius.core.models.auth import Session
 from exalsius.core.services.cloud_credentials_service import CloudCredentialsService
 from exalsius.core.services.cluster_template_service import ClusterTemplateService
 from exalsius.core.services.ssh_key_service import SSHKeyService
@@ -18,28 +20,35 @@ credentials_app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context = typer.Context):
-    """Manage SSH keys, cluster templates, and cloud credentials"""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+def _root(
+    ctx: typer.Context,
+):
+    """
+    Manage SSH keys, cluster templates, and cloud credentials.
+    """
+    utils.help_if_no_subcommand(ctx)
 
 
 # SSH Key commands
 @ssh_key_app.callback(invoke_without_command=True)
-def ssh_key_callback(ctx: typer.Context = typer.Context):
+def ssh_key_callback(ctx: typer.Context):
     """Manage SSH keys in the management cluster"""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    utils.help_if_no_subcommand(ctx)
 
 
 @ssh_key_app.command("list")
-def list_ssh_keys():
+def list_ssh_keys(ctx: typer.Context):
     """List all SSH keys in the management cluster."""
     console = Console(theme=custom_theme)
-    service = SSHKeyService()
     display_manager = SSHKeyDisplayManager(console)
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = SSHKeyService(session)
+
     ssh_keys, error = service.list_ssh_keys()
     if error:
         display_manager.print_error(f"Failed to list SSH keys: {error}")
@@ -49,6 +58,7 @@ def list_ssh_keys():
 
 @ssh_key_app.command("add")
 def add_ssh_key(
+    ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name for the SSH key"),
     key_path: Path = typer.Option(
         ..., "--key-path", "-k", help="Path to the SSH private key file"
@@ -56,11 +66,22 @@ def add_ssh_key(
 ):
     """Add a new SSH key to the management cluster."""
     console = Console(theme=custom_theme)
-    service = SSHKeyService()
     display_manager = SSHKeyDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = SSHKeyService(session)
+
     ssh_key_create_response, error = service.add_ssh_key(name, key_path)
     if error:
         display_manager.print_error(f"Failed to add SSH key: {error}")
+        raise typer.Exit(1)
+    if not ssh_key_create_response:
+        display_manager.print_error("Failed to add SSH key.")
         raise typer.Exit(1)
     display_manager.print_success(
         f"Added SSH key '{ssh_key_create_response.ssh_key_id}' from {key_path}"
@@ -69,12 +90,21 @@ def add_ssh_key(
 
 @ssh_key_app.command("delete")
 def delete_ssh_key(
+    ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name of the SSH key to delete"),
 ):
     """Delete an SSH key from the management cluster."""
     console = Console(theme=custom_theme)
-    service = SSHKeyService()
     display_manager = SSHKeyDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = SSHKeyService(session)
+
     delete_success, error = service.delete_ssh_key(name)
     if not delete_success and error:
         display_manager.print_error(f"Failed to delete SSH key: {error}")
@@ -85,19 +115,25 @@ def delete_ssh_key(
 
 # Cluster Templates commands
 @cluster_templates_app.callback(invoke_without_command=True)
-def cluster_templates_callback(ctx: typer.Context = typer.Context):
+def cluster_templates_callback(ctx: typer.Context):
     """Manage cluster templates"""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    utils.help_if_no_subcommand(ctx)
 
 
 @cluster_templates_app.command("list")
-def list_cluster_templates():
+def list_cluster_templates(ctx: typer.Context):
     """List all available cluster templates."""
     console = Console(theme=custom_theme)
-    service = ClusterTemplateService()
     display_manager = ClusterTemplateDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = ClusterTemplateService(session)
+
     cluster_templates, error = service.list_cluster_templates()
     if error:
         display_manager.print_error(f"Failed to list cluster templates: {error}")
@@ -107,19 +143,25 @@ def list_cluster_templates():
 
 # Credentials commands
 @credentials_app.callback(invoke_without_command=True)
-def credentials_callback(ctx: typer.Context = typer.Context):
+def credentials_callback(ctx: typer.Context):
     """Manage cloud provider credentials"""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    utils.help_if_no_subcommand(ctx)
 
 
 @credentials_app.command("list")
-def list_cloud_credentials():
+def list_cloud_credentials(ctx: typer.Context):
     """List all available cloud provider credentials."""
     console = Console(theme=custom_theme)
-    service = CloudCredentialsService()
     display_manager = CloudCredentialsDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = CloudCredentialsService(session)
+
     cloud_credentials, error = service.list_cloud_credentials()
     if error:
         display_manager.print_error(f"Failed to list cloud credentials: {error}")

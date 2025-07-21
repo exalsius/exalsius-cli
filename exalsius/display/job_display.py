@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 import typer
 from rich.console import Console
@@ -69,7 +70,8 @@ class JobDisplayManager:
 
         if top_n:
             data_df = data_df.head(top_n)
-        data_df.insert(0, "id", range(1, 1 + len(data_df)))
+        # Fix: Convert range to a list so pandas can insert it as a column
+        data_df.insert(0, "id", np.arange(1, 1 + len(data_df)))
 
         table = display_rich_table(
             data_df,
