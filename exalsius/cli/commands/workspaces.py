@@ -98,13 +98,25 @@ def add_workspace(
         WorkspaceType.POD,
         "--type",
         "-t",
-        help='The type of the workspace to add. Can be "pod" or "jupyter". Default is "pod"',
+        help='The type of the workspace to add. Can be "pod", "jupyter", or "llm_inference". Default is "pod"',
     ),
     jupyter_password: str = typer.Option(
         None,
         "--jupyter-password",
         "-p",
         help="The password for the Jupyter notebook",
+    ),
+    huggingface_model: str = typer.Option(
+        None,
+        "--huggingface-model",
+        "-m",
+        help="The HuggingFace-hosted LLM model to use for the workspace",
+    ),
+    huggingface_token: str = typer.Option(
+        None,
+        "--huggingface-token",
+        "-t",
+        help="The authentication token for working with HuggingFace-hosted LLM models that require authentication",
     ),
 ):
     console = Console(theme=custom_theme)
@@ -121,6 +133,19 @@ def add_workspace(
         spinner="bouncingBall",
         spinner_style="custom",
     ):
+        # TODO: We generally need to improve the user feedback on what exactly happened / is happening.
+        # TODO: We also need to improve the error handling in general.
+
+        if workspace_type == WorkspaceType.LLM_INFERENCE:
+            if not huggingface_model:
+                display_manager.print_warning(
+                    "Workspace type is LLM inference, but no HuggingFace model was provided. Using the default model defined in the workspace template."
+                )
+            if not huggingface_token:
+                display_manager.print_warning(
+                    "Workspace type is LLM inference, but no HuggingFace token was provided. This might be a problem if the model requires authentication."
+                )
+
         workspace_create_response, error = service.create_workspace(
             cluster_id=active_cluster.id,
             name=name,
@@ -128,6 +153,8 @@ def add_workspace(
             owner=owner,
             workspace_type=workspace_type,
             jupyter_password=jupyter_password,
+            huggingface_model=huggingface_model,
+            huggingface_token=huggingface_token,
         )
         if error:
             display_manager.print_error(f"Error while creating workspace: {error}")
@@ -169,7 +196,7 @@ def add_workspace(
             time.sleep(polling_interval)
         else:
             display_manager.print_error(
-                "Workspace did not become active in time. Please check the status manually."
+                "Workspace did not become active in time. This might be normal for some workspace types. Please check the status manually."
             )
             raise typer.Exit(1)
 
