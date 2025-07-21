@@ -1,10 +1,12 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 from exalsius.cli import config as cli_config
 from exalsius.core.models.auth import Session
 
 
-class BaseState(BaseModel):
+class CLIState(BaseModel):
     """
     Base state object that holds shared configuration for the CLI application.
 
@@ -16,4 +18,6 @@ class BaseState(BaseModel):
         default_factory=cli_config.load_config,
         description="Application configuration loaded from config files and environment variables",
     )
-    session: Session = Field(..., description="The session for authentication")
+    session: Optional[Session] = Field(
+        default=None, description="The session for authentication"
+    )

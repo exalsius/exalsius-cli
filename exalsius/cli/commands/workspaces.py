@@ -7,8 +7,9 @@ from exalsius_api_client.models.workspace import Workspace
 from pydantic import PositiveInt
 from rich.console import Console
 
-from exalsius.cli import config as cli_config
-from exalsius.cli.state import BaseState
+from exalsius.cli import auth, config, utils
+from exalsius.cli.state import CLIState
+from exalsius.core.models.auth import Session
 from exalsius.core.models.workspaces import WorkspaceType
 from exalsius.core.services.workspaces_services import WorkspacesService
 from exalsius.display.workspaces_display import WorkspacesDisplayManager
@@ -27,16 +28,16 @@ def _root(
         typer.Option("--cluster", "-c", help="Override active cluster for this call."),
     ] = None,
 ):
-    """Manage workspaces"""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+    """
+    Manage workspaces.
+    """
+    utils.help_if_no_subcommand(ctx)
 
-    # Store the resolved active cluster in Typer's context so sub-commands can reuse it
-    state: BaseState = ctx.obj
     if cluster:
-        state.config.default_cluster = cli_config.ConfigDefaultCluster(id=cluster)
-    ctx.obj = state
+        state: CLIState = utils.get_cli_state(ctx)
+        state.config.default_cluster = config.ConfigDefaultCluster(
+            id=cluster, name=cluster
+        )
 
 
 @app.command("list")
@@ -44,10 +45,17 @@ def list_workspaces(
     ctx: typer.Context,
 ):
     console = Console(theme=custom_theme)
-    service = WorkspacesService(ctx.obj.config)
     display_manager = WorkspacesDisplayManager(console)
 
-    active_cluster = ctx.obj["active_cluster"]
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = WorkspacesService(session)
+
+    active_cluster = utils.get_cli_state(ctx).config.default_cluster
     if not active_cluster:
         display_manager.print_error(
             "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
@@ -75,8 +83,16 @@ def get_workspace(
     ),
 ):
     console = Console(theme=custom_theme)
-    service = WorkspacesService(ctx.obj.config)
     display_manager = WorkspacesDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = WorkspacesService(session)
+
     workspace, error = service.get_workspace(workspace_id)
     if error:
         display_manager.print_error(f"Error: {error}")
@@ -131,10 +147,17 @@ def add_workspace(
     ),
 ):
     console = Console(theme=custom_theme)
-    service = WorkspacesService(ctx.obj.config)
     display_manager = WorkspacesDisplayManager(console)
 
-    active_cluster = ctx.obj["active_cluster"]
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = WorkspacesService(session)
+
+    active_cluster = utils.get_cli_state(ctx).config.default_cluster
     if not active_cluster:
         typer.echo("No default cluster found")
         raise typer.Exit(1)
@@ -229,8 +252,15 @@ def show_workspace_access_info(
     ),
 ):
     console = Console(theme=custom_theme)
-    service = WorkspacesService(ctx.obj.config)
     display_manager = WorkspacesDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = WorkspacesService(session)
     workspace_response, error = service.get_workspace(workspace_id)
     if error:
         display_manager.print_error(f"Error: {error}")
@@ -250,8 +280,16 @@ def delete_workspace(
     ),
 ):
     console = Console(theme=custom_theme)
-    service = WorkspacesService(ctx.obj.config)
     display_manager = WorkspacesDisplayManager(console)
+
+    try:
+        session: Session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = WorkspacesService(session)
+
     workspace_delete_response, error = service.delete_workspace(workspace_id)
     if error:
         display_manager.print_error(f"Error: {error}")

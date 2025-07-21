@@ -1,6 +1,7 @@
 import typer
 from rich.console import Console
 
+from exalsius.cli import auth, utils
 from exalsius.core.models.enums import CloudProvider, NodeType
 from exalsius.core.services.node_service import NodeService
 from exalsius.display.nodes_display import NodesDisplayManager
@@ -10,11 +11,13 @@ app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    """Manage the node pool"""
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
+def _root(
+    ctx: typer.Context,
+):
+    """
+    Manage the node pool.
+    """
+    utils.help_if_no_subcommand(ctx)
 
 
 @app.command("list")
@@ -29,8 +32,15 @@ def list_nodes(
 ):
     """List all nodes in the node pool"""
     console = Console(theme=custom_theme)
-    service = NodeService(ctx.obj.config)
     display_manager = NodesDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = NodeService(session)
     nodes, error = service.list_nodes(node_type, provider)
     if error:
         display_manager.print_error(f"Failed to list nodes: {error}")
@@ -45,8 +55,16 @@ def get_node(
 ):
     """Get a node in the node pool"""
     console = Console(theme=custom_theme)
-    service = NodeService(ctx.obj.config)
     display_manager = NodesDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = NodeService(session)
+
     node, error = service.get_node(node_id)
     if error:
         display_manager.print_error(f"Failed to get node: {error}")
@@ -65,8 +83,15 @@ def delete_node(
 ):
     """Delete a node in the node pool"""
     console = Console(theme=custom_theme)
-    service = NodeService(ctx.obj.config)
     display_manager = NodesDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = NodeService(session)
     node_delete_response, error = service.delete_node(node_id)
     if error:
         display_manager.print_error(f"Failed to delete node: {error}")
@@ -84,8 +109,15 @@ def import_ssh(
 ):
     """Import a self-managed node into the node pool"""
     console = Console(theme=custom_theme)
-    service = NodeService(ctx.obj.config)
     display_manager = NodesDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = NodeService(session)
     node_import_response, error = service.import_ssh(
         hostname, endpoint, username, ssh_key_id
     )
@@ -109,8 +141,15 @@ def import_offer(
 ):
     """Import a node from an offer into the node pool"""
     console = Console(theme=custom_theme)
-    service = NodeService(ctx.obj.config)
     display_manager = NodesDisplayManager(console)
+
+    try:
+        session = auth.get_current_session_or_fail(ctx)
+    except auth.AuthenticationError as e:
+        typer.echo(e)
+        raise typer.Exit(1)
+
+    service = NodeService(session)
     node_import_response, error = service.import_from_offer(hostname, offer_id, amount)
     if error:
         display_manager.print_error(f"Failed to import offer: {error}")

@@ -1,22 +1,13 @@
 import typer
 from rich.console import Console
 
-from exalsius.core.models.auth import AuthRequest, Credentials, LogoutRequest
+from exalsius.cli import utils
+from exalsius.core.models.auth import AuthRequest, Credentials, LogoutRequest, Session
 from exalsius.core.services.auth_service import AuthService
 from exalsius.display.login_display import LoginDisplayManager
 from exalsius.utils.theme import custom_theme
 
 app = typer.Typer()
-
-
-@app.callback(invoke_without_command=True)
-def _root(ctx: typer.Context):
-    """
-    Login with your exalsius credentials.
-    """
-    if ctx.invoked_subcommand is None:
-        typer.echo(ctx.get_help())
-        raise typer.Exit()
 
 
 @app.command()
@@ -58,7 +49,7 @@ def logout(ctx: typer.Context):
     """
     Logout from the exalsius API.
     """
-    session = ctx.obj.session
+    session: Session = utils.get_current_session(ctx)
     console = Console(theme=custom_theme)
     display_manager = LoginDisplayManager(console)
 
