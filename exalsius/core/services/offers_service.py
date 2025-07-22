@@ -1,6 +1,6 @@
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
-from exalsius_api_client.models.offer import Offer
+from exalsius_api_client.models.offers_list_response import OffersListResponse
 
 from exalsius.core.operations.offers_operations import ListOffersOperation
 from exalsius.core.services.base import BaseServiceWithAuth
@@ -14,7 +14,7 @@ class OffersService(BaseServiceWithAuth):
         region: Optional[str] = None,
         cloud_provider: Optional[str] = None,
         all_clouds: bool = False,
-    ) -> Tuple[Optional[List[Offer]], Optional[str]]:
+    ) -> Tuple[Optional[OffersListResponse], Optional[str]]:
         return self.execute_operation(
             ListOffersOperation(
                 self.api_client,

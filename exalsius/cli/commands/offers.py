@@ -69,7 +69,7 @@ def list_offers(
         spinner="bouncingBall",
         spinner_style="custom",
     ):
-        offers, error = service.list_offers(
+        offers_response, error = service.list_offers(
             gpu_type=gpu,
             quantity=quantity,
             region=region,
@@ -81,8 +81,8 @@ def list_offers(
             display_manager.print_error(f"Failed to fetch offers: {error}")
             raise typer.Exit(1)
 
-        if not offers:
+        if not offers_response:
             display_manager.print_warning("No offers found matching your criteria.")
             return
 
-        display_manager.display_offers(offers)
+        display_manager.display_offers(offers_response.offers)
