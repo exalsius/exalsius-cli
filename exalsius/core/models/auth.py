@@ -70,14 +70,14 @@ class CredentialsSourceTagger(PydanticBaseSettingsSource):
 
 
 class Credentials(BaseSettings):
-    source: Optional[CredentialsSource] = Field(
-        default=None, description="The source of the credentials"
-    )
     username: Optional[str] = Field(
         default=None, description="The username for authentication"
     )
     password: Optional[str] = Field(
         default=None, description="The password for authentication"
+    )
+    source: Optional[CredentialsSource] = Field(
+        default=None, description="The source of the credentials"
     )
 
     def __repr_args__(self) -> list[tuple[str, Any]]:
@@ -153,9 +153,7 @@ class CredentialsFromCredentialEnv(PydanticBaseSettingsSource):
 
 # TODO: This will be replaced by a session token in the future
 class Session(BaseSettings):
-    credentials: Optional[Credentials] = Field(
-        default=None, description="The credentials for authentication"
-    )
+    credentials: Credentials = Field(description="The credentials for authentication")
 
 
 class AuthRequest(BaseModel):
@@ -182,20 +180,6 @@ class LogoutResponse(BaseModel):
     success: bool
 
 
-def authenticate(
-    username: Optional[str] = None, password: Optional[str] = None
-) -> Session:
-    if username and password:
-        return Session(credentials=Credentials(username=username, password=password))
-    else:
-        credentials: Credentials = Credentials()
-        if credentials.username and credentials.password:
-            logger.debug(f"Using credentials {credentials}")
-            return Session(credentials=credentials)
-        else:
-            raise ValueError("No credentials provided")
-
-
 def load_credentials() -> Credentials:
     credentials: Credentials = Credentials()
     if credentials.username and credentials.password:
@@ -208,7 +192,8 @@ def load_session() -> Optional[Session]:
     with FileLock(SESSION_LOCK_FILE):
         if not SESSION_FILE.exists():
             return None
-        return Session.model_validate_json(SESSION_FILE.read_text())
+        session: Session = Session.model_validate_json(SESSION_FILE.read_text())
+        session.credentials.source = CredentialsSource.SESSION
 
 
 def save_session(session: Session) -> None:

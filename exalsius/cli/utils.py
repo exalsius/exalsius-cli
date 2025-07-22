@@ -2,7 +2,7 @@ from typing import cast
 
 import typer
 
-from exalsius.cli.state import CLIState
+from exalsius.cli.state import AppState
 
 
 def help_if_no_subcommand(ctx: typer.Context) -> None:
@@ -11,8 +11,8 @@ def help_if_no_subcommand(ctx: typer.Context) -> None:
         raise typer.Exit()
 
 
-def get_cli_state(ctx: typer.Context) -> CLIState:
+def get_app_state_from_ctx(ctx: typer.Context) -> AppState:
     """
     Get the CLI state from the context.
     """
-    return cast(CLIState, ctx.obj)
+    return cast(AppState, ctx.obj)

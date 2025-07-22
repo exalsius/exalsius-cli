@@ -30,7 +30,7 @@ class BaseService(ABC):
         try:
             return operation.execute()
         except Exception as e:
-            return None, f"Unexpected error during operation execution: {str(e)}"
+            return None, f"Error during operation execution: {str(e)}"
 
 
 class BaseServiceWithAuth(BaseService):

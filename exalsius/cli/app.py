@@ -4,23 +4,22 @@ from typing import Optional
 import typer
 
 from exalsius import __version__
-from exalsius.cli import auth
 from exalsius.cli import config as cli_config
 from exalsius.cli.commands import (
     clusters,
-    login,
     management,
     nodes,
     offers,
     workspaces,
 )
 from exalsius.cli.logging import setup_logging
-from exalsius.cli.state import CLIState
+from exalsius.cli.state import AppState
+from exalsius.core.auth import cli as auth_cli
 
 app = typer.Typer(context_settings={"allow_interspersed_args": True})
 
 app.add_typer(
-    login.app,
+    auth_cli.app,
     name="login",
     help="Login with your Exalsius credentials",
 )
@@ -64,7 +63,7 @@ def _version_callback(value: bool) -> None:
 
 
 @app.callback(invoke_without_command=True)
-def _root(
+def __root(
     ctx: typer.Context,
     version: Optional[bool] = typer.Option(
         None,
@@ -84,19 +83,6 @@ def _root(
         "--log-file",
         help="Redirect logs to a file.",
     ),
-    username: Optional[str] = typer.Option(
-        None,
-        "--username",
-        "-u",
-        help="The username to use for authentication.",
-    ),
-    password: Optional[str] = typer.Option(
-        None,
-        "--password",
-        "-p",
-        help="The password to use for authentication.",
-        callback=auth.username_password_together_callback,
-    ),
 ):
     """
     exalsius CLI - A tool for distributed training and infrastructure management
@@ -107,18 +93,8 @@ def _root(
     config = cli_config.load_config()
     logging.debug(f"Loaded config: {config}")
 
-    # TODO: I dont like the whole authentication workflow
-    #       It's like this because login does not need a session but all other commands do
-    #       and typer does not support a grouping of commands by common arguments
-    #       Dependency injection might be a way to go but I dont know yet how to do it
-    try:
-        session = auth.get_session(username, password)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
     # Each command is responsible for checking the session for none
-    ctx.obj = CLIState(config=config, session=session)
+    ctx.obj = AppState(config=config)
     logging.debug(f"Using config: {ctx.obj.config}")
 
 

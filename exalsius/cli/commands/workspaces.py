@@ -8,7 +8,7 @@ from pydantic import PositiveInt
 from rich.console import Console
 
 from exalsius.cli import auth, config, utils
-from exalsius.cli.state import CLIState
+from exalsius.cli.state import AppState
 from exalsius.core.models.auth import Session
 from exalsius.core.models.workspaces import WorkspaceType
 from exalsius.core.services.workspaces_services import WorkspacesService
@@ -34,7 +34,7 @@ def _root(
     utils.help_if_no_subcommand(ctx)
 
     if cluster:
-        state: CLIState = utils.get_cli_state(ctx)
+        state: AppState = utils.get_cli_state(ctx)
         state.config.default_cluster = config.ConfigDefaultCluster(
             id=cluster, name=cluster
         )
