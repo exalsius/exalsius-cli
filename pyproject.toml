@@ -17,6 +17,7 @@ dependencies = [
     "termcolor>=2.4.0",
     "requests>=2.32.3",
     "auth0-python>=4.10.0",
+    "keyring>=25.6.0",
 ]
 
 [tool.setuptools.packages.find]

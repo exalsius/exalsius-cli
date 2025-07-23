@@ -44,6 +44,10 @@ class Auth0Config(BaseSettings):
         default="urn:ietf:params:oauth:grant-type:device_code",
         description="The grant type to use for device code authentication",
     )
+    token_expiry_buffer_minutes: int = Field(
+        default=7,
+        description="The buffer in minutes before the token expires. Default is 7 minutes.",
+    )
 
 
 class ConfigDefaultCluster(BaseSettings):

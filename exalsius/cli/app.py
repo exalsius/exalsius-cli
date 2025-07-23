@@ -5,6 +5,8 @@ import typer
 
 from exalsius import __version__
 from exalsius.cli import config as cli_config
+from exalsius.cli.auth.cli import login, logout
+from exalsius.cli.auth.service import Auth0Service
 from exalsius.cli.commands import (
     clusters,
     management,
@@ -14,15 +16,16 @@ from exalsius.cli.commands import (
 )
 from exalsius.cli.logging import setup_logging
 from exalsius.cli.state import AppState
-from exalsius.core.auth import cli as auth_cli
+
+NON_AUTH_COMMANDS = ["login", "logout"]
+
 
 app = typer.Typer(context_settings={"allow_interspersed_args": True})
 
-app.add_typer(
-    auth_cli.app,
-    name="login",
-    help="Login with your Exalsius credentials",
-)
+# We add the login and logout commands to the root app to
+# use them without a subcommand.
+app.command()(login)
+app.command()(logout)
 
 
 app.add_typer(
@@ -90,11 +93,22 @@ def __root(
     setup_logging(log_level, log_file)
     logging.debug(f"Set log level to {log_level}")
 
-    config = cli_config.load_config()
+    config: cli_config.AppConfig = cli_config.load_config()
     logging.debug(f"Loaded config: {config}")
 
+    access_token: Optional[str] = None
+    if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
+        auth_service = Auth0Service(config)
+        access_token, error = auth_service.acquire_access_token()
+        if error:
+            typer.echo(f"{error}. Run `exls login`")
+            raise typer.Exit(1)
+        if not access_token:
+            typer.echo("Authentication failed. Please log in again. Run `exls login`")
+            raise typer.Exit(1)
+
     # Each command is responsible for checking the session for none
-    ctx.obj = AppState(config=config)
+    ctx.obj = AppState(config=config, access_token=access_token)
     logging.debug(f"Using config: {ctx.obj.config}")
 
 
