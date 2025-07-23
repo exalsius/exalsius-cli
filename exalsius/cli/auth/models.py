@@ -74,3 +74,8 @@ class Auth0RefreshTokenRequest(BaseModel):
     client_id: str = Field(..., description="The client ID")
     domain: str = Field(..., description="The Auth0 domain")
     refresh_token: str = Field(..., description="The refresh token")
+
+
+class UnauthorizedError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)

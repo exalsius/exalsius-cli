@@ -4,7 +4,6 @@ import exalsius_api_client
 import exalsius_api_client.api_client
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.exceptions import ApiException
-from exalsius_api_client.models.error import Error as ExalsiusError
 from exalsius_api_client.models.resource_pool import ResourcePool
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
@@ -31,16 +30,9 @@ class ListWorkspacesOperation(BaseOperation[WorkspacesListResponse]):
             )
             return workspaces_list_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetWorkspaceOperation(BaseOperation[WorkspaceResponse]):
@@ -58,16 +50,9 @@ class GetWorkspaceOperation(BaseOperation[WorkspaceResponse]):
             )
             return workspace_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
@@ -115,16 +100,9 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
             )
             return workspace_create_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class CreateWorkspacePodOperation(CreateWorkspaceOperation):
@@ -204,13 +182,6 @@ class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
             )
             return workspace_delete_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"

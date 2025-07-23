@@ -4,7 +4,6 @@ from typing import Optional, Tuple
 from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.exceptions import ApiException
-from exalsius_api_client.models.error import Error as ExalsiusError
 from exalsius_api_client.models.ssh_key_create_request import SshKeyCreateRequest
 from exalsius_api_client.models.ssh_key_create_response import SshKeyCreateResponse
 from exalsius_api_client.models.ssh_keys_list_response import SshKeysListResponse
@@ -21,16 +20,9 @@ class ListSSHKeysOperation(BaseOperation[SshKeysListResponse]):
         try:
             ssh_keys_list_response: SshKeysListResponse = api_instance.list_ssh_keys()
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
         return ssh_keys_list_response, None
 
 
@@ -56,16 +48,9 @@ class AddSSHKeyOperation(BaseOperation[SshKeyCreateResponse]):
                 ssh_key_create_request
             )
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, f"Unexpected error: {str(e)}"
+            return None, f"unexpetced error: {str(e)}"
 
         return ssh_key_create_response, None
 
@@ -100,14 +85,7 @@ class DeleteSSHKeyOperation(BooleanOperation):
         try:
             _ = api_instance.delete_ssh_key(ssh_key_id)
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return False, str(error.detail)
-                else:
-                    return False, str(e)
-            else:
-                return False, str(e)
+            return False, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return False, f"Unexpected error: {str(e)}"
+            return False, f"unexpetced error: {str(e)}"
         return True, None

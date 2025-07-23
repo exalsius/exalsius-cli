@@ -3,8 +3,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from exalsius.cli import auth, utils
-from exalsius.core.models.auth import Session
+from exalsius.cli import utils
 from exalsius.core.services.cloud_credentials_service import CloudCredentialsService
 from exalsius.core.services.cluster_template_service import ClusterTemplateService
 from exalsius.core.services.ssh_key_service import SSHKeyService
@@ -41,13 +40,9 @@ def list_ssh_keys(ctx: typer.Context):
     """List all SSH keys in the management cluster."""
     console = Console(theme=custom_theme)
     display_manager = SSHKeyDisplayManager(console)
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
 
-    service = SSHKeyService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = SSHKeyService(access_token)
 
     ssh_keys, error = service.list_ssh_keys()
     if error:
@@ -68,13 +63,8 @@ def add_ssh_key(
     console = Console(theme=custom_theme)
     display_manager = SSHKeyDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = SSHKeyService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = SSHKeyService(access_token)
 
     ssh_key_create_response, error = service.add_ssh_key(name, key_path)
     if error:
@@ -97,13 +87,8 @@ def delete_ssh_key(
     console = Console(theme=custom_theme)
     display_manager = SSHKeyDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = SSHKeyService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = SSHKeyService(access_token)
 
     delete_success, error = service.delete_ssh_key(name)
     if not delete_success and error:
@@ -126,13 +111,8 @@ def list_cluster_templates(ctx: typer.Context):
     console = Console(theme=custom_theme)
     display_manager = ClusterTemplateDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClusterTemplateService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClusterTemplateService(access_token)
 
     cluster_templates, error = service.list_cluster_templates()
     if error:
@@ -154,13 +134,8 @@ def list_cloud_credentials(ctx: typer.Context):
     console = Console(theme=custom_theme)
     display_manager = CloudCredentialsDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = CloudCredentialsService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = CloudCredentialsService(access_token)
 
     cloud_credentials, error = service.list_cloud_credentials()
     if error:
