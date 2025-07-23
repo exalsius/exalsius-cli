@@ -374,7 +374,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "auth0-python", specifier = ">=4.10.0" },
-    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.9.1" },
+    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.13.0" },
     { name = "filelock", specifier = ">=3.17.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "keyring", specifier = ">=25.6.0" },
@@ -400,8 +400,8 @@ dev = [
 
 [[package]]
 name = "exalsius-api-client"
-version = "1.9.0"
-source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.9.1#64ff92ca5d78565c9c28cc18663726191bac336d" }
+version = "1.12.0"
+source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.13.0#4fb55ebc6dc285dd17219f2b5bb517d723642cfb" }
 dependencies = [
     { name = "pydantic" },
     { name = "python-dateutil" },
