@@ -4,6 +4,11 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class UnauthorizedError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 class Auth0FetchDeviceCodeRequest(BaseModel):
     domain: str = Field(..., description="The Auth0 domain")
     client_id: str = Field(..., description="The Auth0 client ID")
@@ -76,6 +81,12 @@ class Auth0RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(..., description="The refresh token")
 
 
-class UnauthorizedError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
+class Auth0RevokeTokenRequest(BaseModel):
+    client_id: str = Field(..., description="The client ID")
+    domain: str = Field(..., description="The Auth0 domain")
+    token: str = Field(..., description="The token")
+    token_type_hint: str = Field(..., description="The token type hint")
+
+
+class ClearTokenFromKeyringRequest(BaseModel):
+    client_id: str = Field(..., description="The client ID")

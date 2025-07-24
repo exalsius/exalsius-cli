@@ -10,8 +10,10 @@ from exalsius.cli.auth.models import (
     Auth0FetchDeviceCodeResponse,
     Auth0PollForAuthenticationRequest,
     Auth0RefreshTokenRequest,
+    Auth0RevokeTokenRequest,
     Auth0ValidateTokenRequest,
     Auth0ValidateTokenResponse,
+    ClearTokenFromKeyringRequest,
     LoadTokenFromKeyringRequest,
     LoadTokenFromKeyringResponse,
     StoreTokenOnKeyringRequest,
@@ -20,7 +22,9 @@ from exalsius.cli.auth.operations import (
     Auth0FetchDeviceCodeOperation,
     Auth0PollForAuthenticationOperation,
     Auth0RefreshTokenOperation,
+    Auth0RevokeTokenOperation,
     Auth0ValidateTokenOperation,
+    ClearTokenFromKeyringOperation,
     LoadTokenFromKeyringOperation,
     StoreTokenOnKeyringOperation,
 )
@@ -123,7 +127,7 @@ class Auth0Service(BaseService):
         if error:
             return None, f"error loading token from keyring: {error}"
         if not resp:
-            return None, "no token found in keyring"
+            return None, None
         return resp, None
 
     def refresh_access_token(
@@ -140,9 +144,13 @@ class Auth0Service(BaseService):
     def acquire_access_token(self) -> Tuple[Optional[str], Optional[str]]:
         load_resp, error = self.load_access_token_from_keyring()
         if error:
-            return None, f"could not get token from keyring: {error}"
-        if not load_resp:
-            return None, "no token found in keyring. Please log in."
+            return None, f"error loading access token from keyring: {error}"
+        if (
+            not load_resp
+        ):  # There is no access token in the keyring. The user is not logged in.
+            if error:
+                return None, f"error loading access token from keyring: {error}"
+            return None, "You are not logged in. Please log in first"
 
         if load_resp.expiry and datetime.now() >= (
             load_resp.expiry
@@ -174,3 +182,29 @@ class Auth0Service(BaseService):
             return refresh_resp.access_token, None
 
         return load_resp.access_token, None
+
+    def logout(self) -> Tuple[bool, Optional[str]]:
+        load_resp, error = self.load_access_token_from_keyring()
+        if error:
+            return False, f"could not load access token from keyring: {error}"
+        if (
+            not load_resp
+        ):  # There is no access token in the keyring. The user is not logged in.
+            return True, "you are not logged in"
+
+        req = Auth0RevokeTokenRequest(
+            client_id=self.config.client_id,
+            domain=self.config.domain,
+            token=load_resp.access_token,
+            token_type_hint="access_token",
+        )
+        _, error = self.execute_operation(Auth0RevokeTokenOperation(request=req))
+        if error:
+            return False, f"failed to revoke token: {error}"
+
+        req = ClearTokenFromKeyringRequest(client_id=self.config.client_id)
+        _, error = self.execute_operation(ClearTokenFromKeyringOperation(request=req))
+        if error:
+            return False, f"failed to clear token from keyring: {error}"
+
+        return True, None
