@@ -1,5 +1,6 @@
 from typing import Optional
 
+import qrcode
 from rich.console import Console
 
 from exalsius.display.base import BaseDisplayManager
@@ -9,14 +10,32 @@ class AuthDisplayManager(BaseDisplayManager):
     def __init__(self, console: Console):
         super().__init__(console)
 
+    def _generate_qr_code(self, uri: str) -> qrcode.QRCode:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.ERROR_CORRECT_L,
+            box_size=2,
+            border=1,
+        )
+        qr.add_data(uri)
+        qr.make(fit=True)
+        return qr
+
     def display_device_code_polling_started(
         self, verification_uri_complete: str, user_code: str
     ):
-        self.print_info("Open the following URL:")
+        qr = self._generate_qr_code(verification_uri_complete)
+
+        self.print_info("Scan this QR code with your smartphone to complete login:")
+        self.print_info("")
+        qr.print_ascii(invert=True)
+        self.print_info("")
+        self.print_info("")
+        self.print_info("Or open the following URL:")
         self.print_info("")
         self.print_info(verification_uri_complete)
         self.print_info("")
-        self.print_info("and please verify that the displayed code matches this one:")
+        self.print_info("Please verify that the displayed code matches this one:")
         self.print_info("")
         self.print_info(user_code)
         self.print_info("")
