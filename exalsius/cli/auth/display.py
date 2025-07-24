@@ -12,12 +12,29 @@ class AuthDisplayManager(BaseDisplayManager):
     def display_device_code_polling_started(
         self, verification_uri_complete: str, user_code: str
     ):
-        self.print_info(
-            f"Open the following URL in your browser: {verification_uri_complete}"
-        )
-        self.print_info(
-            f"and verify that the displayed code matches this one '{user_code}'"
-        )
+        self.print_info("Open the following URL:")
+        self.print_info("")
+        self.print_info(verification_uri_complete)
+        self.print_info("")
+        self.print_info("and please verify that the displayed code matches this one:")
+        self.print_info("")
+        self.print_info(user_code)
+        self.print_info("")
+        self.print_info("Waiting for verification...")
+        self.print_info("Press Ctrl+C to cancel")
+
+    def display_device_code_polling_started_via_browser(
+        self, verification_uri_complete: str, user_code: str
+    ):
+        self.print_info("Your browser should have been opened.")
+        self.print_info("Please verify that the displayed code matches this one:")
+        self.print_info("")
+        self.print_info(user_code)
+        self.print_info("")
+        self.print_info("If the browser is not opened, please go to this URL to login:")
+        self.print_info("")
+        self.print_info(verification_uri_complete)
+        self.print_info("")
         self.print_info("Waiting for verification...")
         self.print_info("Press Ctrl+C to cancel")
 

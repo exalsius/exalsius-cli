@@ -32,10 +32,24 @@ def login(
 
     # Display the device code to the user. We need to wait for the user to use the url to authenticate.
     # We will poll for the authentication response.
-    display_manager.display_device_code_polling_started(
-        verification_uri_complete=resp.verification_uri_complete,
-        user_code=resp.user_code,
-    )
+    if utils.is_interactive():
+        if auth_service.open_browser_for_device_code_authentication(
+            uri=resp.verification_uri_complete
+        ):
+            display_manager.display_device_code_polling_started_via_browser(
+                verification_uri_complete=resp.verification_uri_complete,
+                user_code=resp.user_code,
+            )
+        else:
+            display_manager.display_device_code_polling_started(
+                verification_uri_complete=resp.verification_uri_complete,
+                user_code=resp.user_code,
+            )
+    else:
+        display_manager.display_device_code_polling_started(
+            verification_uri_complete=resp.verification_uri_complete,
+            user_code=resp.user_code,
+        )
 
     # Poll for the authentication response.
     try:

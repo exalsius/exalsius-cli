@@ -1,3 +1,4 @@
+import sys
 from typing import cast
 
 import typer
@@ -29,3 +30,8 @@ def get_access_token_from_ctx(ctx: typer.Context) -> str:
             "No access token found in context. Please log in again."
         )
     return app_state.access_token
+
+
+def is_interactive() -> bool:
+    """Check if running in interactive environment (e.g., not CI/CD)."""
+    return sys.stdout.isatty()
