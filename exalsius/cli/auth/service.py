@@ -1,4 +1,8 @@
+import logging
+import subprocess
+import sys
 import time
+import webbrowser
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
@@ -30,6 +34,39 @@ from exalsius.cli.auth.operations import (
 )
 from exalsius.cli.config import AppConfig, Auth0Config
 from exalsius.core.services.base import BaseService
+
+
+# This is needed to prevent output messages to stdout and stderr when the browser is opened.
+class _SilentBrowser(webbrowser.BackgroundBrowser):
+    def open(self, url, new=0, autoraise=True):
+        return (
+            subprocess.Popen(
+                [self.name, url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            is not None
+        )
+
+
+# This is needed to prevent output messages to stdout and stderr when the browser is opened.
+def _register_silent_browser() -> bool:
+    try:
+        if sys.platform == "darwin":  # macOS
+            webbrowser.register("silent", None, _SilentBrowser("open"), preferred=True)
+        elif sys.platform == "win32":  # Windows
+            webbrowser.register("silent", None, _SilentBrowser("start"), preferred=True)
+        elif sys.platform.startswith("linux"):  # Linux
+            webbrowser.register(
+                "silent", None, _SilentBrowser("xdg-open"), preferred=True
+            )
+        else:
+            logging.debug("Unsupported platform. Could not register silent browser.")
+            return False
+    except Exception as e:
+        logging.debug(f"Could not register silent browser: {e}")
+        return False
+    return True
 
 
 class Auth0Service(BaseService):
@@ -208,3 +245,23 @@ class Auth0Service(BaseService):
             return False, f"failed to clear token from keyring: {error}"
 
         return True, None
+
+    def __open_browser(
+        self,
+        browser: webbrowser.BaseBrowser,
+        url: str,
+    ) -> bool:
+        try:
+            is_browser_opened = browser.open(url)
+            if not is_browser_opened:
+                return False
+        except Exception as e:
+            logging.debug(f"Could not open browser: {e}")
+            return False
+        return True
+
+    def open_browser_for_device_code_authentication(self, uri: str) -> bool:
+        if _register_silent_browser():
+            return self.__open_browser(webbrowser.get("silent"), uri)
+
+        return self.__open_browser(webbrowser.get(), uri)
