@@ -32,3 +32,9 @@ class AuthDisplayManager(BaseDisplayManager):
             f"You are successfully logged in as '{email or sub or 'unknown'}'"
         )
         self.print_success("Let's start setting up your workspaces!")
+
+    def display_logout_success(self):
+        self.print_success("Logged out successfully.")
+
+    def display_not_logged_in(self):
+        self.print_info("You are not logged in.")

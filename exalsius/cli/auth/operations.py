@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, Dict, Optional, Tuple
@@ -16,8 +17,10 @@ from exalsius.cli.auth.models import (
     Auth0FetchDeviceCodeResponse,
     Auth0PollForAuthenticationRequest,
     Auth0RefreshTokenRequest,
+    Auth0RevokeTokenRequest,
     Auth0ValidateTokenRequest,
     Auth0ValidateTokenResponse,
+    ClearTokenFromKeyringRequest,
     LoadTokenFromKeyringRequest,
     LoadTokenFromKeyringResponse,
     StoreTokenOnKeyringRequest,
@@ -155,7 +158,7 @@ class LoadTokenFromKeyringOperation(BaseOperation):
                     None,
                 )
             else:
-                return None, "No token found in keyring"
+                return None, None
         except Exception as e:
             return None, f"Failed to load token from keyring: {e}"
 
@@ -164,15 +167,58 @@ class Auth0RefreshTokenOperation(BaseOperation):
     def __init__(self, request: Auth0RefreshTokenRequest):
         self.request = request
 
+    def _get_payload(self) -> Dict[str, str]:
+        return {
+            "grant_type": "refresh_token",
+            "client_id": self.request.client_id,
+            "refresh_token": self.request.refresh_token,
+        }
+
     def execute(self) -> Tuple[Optional[Auth0AuthenticationResponse], Optional[str]]:
         response = requests.post(
             f"https://{self.request.domain}/oauth/token",
-            data={
-                "grant_type": "refresh_token",
-                "client_id": self.request.client_id,
-                "refresh_token": self.request.refresh_token,
-            },
+            data=self._get_payload(),
         )
         response.raise_for_status()
         data = response.json()
         return Auth0AuthenticationResponse(**data), None
+
+
+class Auth0RevokeTokenOperation(BooleanOperation):
+    def __init__(self, request: Auth0RevokeTokenRequest):
+        self.request = request
+
+    def _get_payload(self) -> Dict[str, str]:
+        return {
+            "client_id": self.request.client_id,
+            "token": self.request.token,
+            "token_type_hint": self.request.token_type_hint,
+        }
+
+    def execute(self) -> Tuple[bool, Optional[str]]:
+        payload = self._get_payload()
+        response = requests.post(
+            f"https://{self.request.domain}/oauth/revoke", data=payload
+        )
+        response.raise_for_status()
+        return True, None
+
+
+class ClearTokenFromKeyringOperation(BooleanOperation):
+    def __init__(self, request: ClearTokenFromKeyringRequest):
+        self.request = request
+
+    def _delete_token(self, token_type: KeyringKeys) -> None:
+        try:
+            keyring.delete_password(
+                KeyringKeys.SERVICE_KEY,
+                f"{self.request.client_id}_{token_type}",
+            )
+        except Exception as e:
+            logging.warning(f"Failed to delete token {token_type} from keyring: {e}")
+
+    def execute(self) -> Tuple[bool, Optional[str]]:
+        self._delete_token(KeyringKeys.ACCESS_TOKEN_KEY)
+        self._delete_token(KeyringKeys.EXPIRY_KEY)
+        self._delete_token(KeyringKeys.REFRESH_TOKEN_KEY)
+        return True, None

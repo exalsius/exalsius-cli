@@ -101,10 +101,16 @@ def __root(
         auth_service = Auth0Service(config)
         access_token, error = auth_service.acquire_access_token()
         if error:
-            typer.echo(f"{error}. Run `exls login`")
+            typer.echo(f"{error}. Login command:")
+            typer.echo("")
+            typer.echo("exls login")
+            typer.echo("")
             raise typer.Exit(1)
         if not access_token:
-            typer.echo("Authentication failed. Please log in again. Run `exls login`")
+            typer.echo("Authentication failed. Please log in again. Login command:")
+            typer.echo("")
+            typer.echo("exls login")
+            typer.echo("")
             raise typer.Exit(1)
 
     # Each command is responsible for checking the session for none

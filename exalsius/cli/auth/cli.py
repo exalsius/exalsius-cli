@@ -84,4 +84,23 @@ def logout(ctx: typer.Context):
     """
     Logout from the exalsius API.
     """
-    pass
+    app_state: AppState = utils.get_app_state_from_ctx(ctx)
+
+    console: Console = Console(theme=custom_theme)
+    display_manager: AuthDisplayManager = AuthDisplayManager(console)
+
+    auth_service: Auth0Service = Auth0Service(config=app_state.config)
+
+    success, error = auth_service.logout()
+    # This is hacky doe to the current interface to the auth service.
+    # We will fix this in the future.
+    if success and error:
+        display_manager.display_not_logged_in()
+        raise typer.Exit(0)
+    if not success:
+        display_manager.display_authentication_error(
+            "unexpected error. Failed to logout."
+        )
+        raise typer.Exit(1)
+
+    display_manager.display_logout_success()
