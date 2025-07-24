@@ -98,12 +98,6 @@ def add_workspace(
     name: str = typer.Argument(
         help="The name of the workspace to add",
     ),
-    owner: str = typer.Option(
-        "exalsius",
-        "--owner",
-        "-o",
-        help="The owner of the workspace to add",
-    ),
     gpu_count: PositiveInt = typer.Option(
         1,
         "--gpu-count",
@@ -131,7 +125,7 @@ def add_workspace(
     huggingface_token: str = typer.Option(
         None,
         "--huggingface-token",
-        "-t",
+        "-h",
         help="The authentication token for working with HuggingFace-hosted LLM models that require authentication",
     ),
 ):
@@ -168,7 +162,6 @@ def add_workspace(
             cluster_id=active_cluster.id,
             name=name,
             gpu_count=gpu_count,
-            owner=owner,
             workspace_type=workspace_type,
             jupyter_password=jupyter_password,
             huggingface_model=huggingface_model,
