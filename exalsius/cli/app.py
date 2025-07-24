@@ -20,7 +20,7 @@ from exalsius.cli.state import AppState
 NON_AUTH_COMMANDS = ["login", "logout"]
 
 
-app = typer.Typer(context_settings={"allow_interspersed_args": True})
+app = typer.Typer()
 
 # We add the login and logout commands to the root app to
 # use them without a subcommand.
