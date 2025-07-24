@@ -4,7 +4,6 @@ from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.exceptions import ApiException
 from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
-from exalsius_api_client.models.error import Error as ExalsiusError
 
 from exalsius.core.operations.base import BaseOperation
 
@@ -21,13 +20,6 @@ class ListCloudCredentialsOperation(BaseOperation[CredentialsListResponse]):
             )
             return credentials_list_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"

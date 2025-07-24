@@ -3,8 +3,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
-from exalsius.cli import auth, config, utils
-from exalsius.core.models.auth import Session
+from exalsius.cli import config, utils
 from exalsius.core.services.clusters_service import ClustersService
 from exalsius.core.services.node_service import NodeService
 from exalsius.display.clusters_display import ClustersDisplayManager
@@ -39,13 +38,8 @@ def list_clusters(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
 
     clusters_list_response, error = service.list_clusters(status)
     if error:
@@ -71,16 +65,11 @@ def get_cluster(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
 
     if not cluster_id:
-        cfg: config.AppConfig = utils.get_cli_state(ctx).config
+        cfg: config.AppConfig = utils.get_app_state_from_ctx(ctx).config
         if not cfg.default_cluster:
             display_manager.print_error(
                 "No cluster ID provided and no default cluster set."
@@ -109,13 +98,8 @@ def delete_cluster(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
 
     cluster_response, error = service.get_cluster(cluster_id)
     if error:
@@ -156,13 +140,8 @@ def create_cluster(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
     cluster_create_response, error = service.create_cluster(name, k8s_version)
     if error:
         display_manager.print_error(f"Failed to create cluster: {error}")
@@ -189,13 +168,8 @@ def deploy_cluster(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
     cluster_response, error = service.get_cluster(cluster_id)
     if error:
         display_manager.print_error(f"Failed to get cluster: {error}")
@@ -232,13 +206,8 @@ def list_services(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
     cluster_services_response, error = service.get_cluster_services(cluster_id)
     if error:
         display_manager.print_error(f"Failed to get cluster services: {error}")
@@ -264,8 +233,8 @@ def list_nodes(
     List all nodes of a cluster.
     """
     console = Console(theme=custom_theme)
-    session: Session = auth.get_current_session_or_fail(ctx)
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
     display_manager = ClustersDisplayManager(console)
     cluster_nodes_response, error = service.get_cluster_nodes(cluster_id)
     if error:
@@ -305,14 +274,9 @@ def add_node(
     console = Console(theme=custom_theme)
     display_manager_clusters = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
-    node_service = NodeService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
+    node_service = NodeService(access_token)
     display_manager_nodes = NodesDisplayManager(console)
 
     for node_id in node_ids:
@@ -360,15 +324,10 @@ def get_cluster_resources(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
 
-    service = ClustersService(session)
-
-    cfg: config.AppConfig = utils.get_cli_state(ctx).config
+    cfg: config.AppConfig = utils.get_app_state_from_ctx(ctx).config
     if not cluster_id:
         if not cfg.default_cluster:
             display_manager.print_error(
@@ -398,13 +357,8 @@ def set_default_cluster(
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = ClustersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = ClustersService(access_token)
 
     cluster_response, error = service.get_cluster(cluster_id)
     if error:
@@ -432,7 +386,7 @@ def get_default_cluster(ctx: typer.Context):
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
-    cfg: config.AppConfig = utils.get_cli_state(ctx).config
+    cfg: config.AppConfig = utils.get_app_state_from_ctx(ctx).config
     cluster_id = cfg.default_cluster
     if not cluster_id:
         display_manager.print_info("No default cluster set.")

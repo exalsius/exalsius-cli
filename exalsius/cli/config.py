@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import yaml
 from filelock import FileLock
@@ -22,6 +22,34 @@ CFG_FILE = CFG_DIR / "config.yaml"
 CONFIG_LOCK_FILE = CFG_DIR / "config.lock"
 
 
+class Auth0Config(BaseSettings):
+    domain: str = Field(
+        default="exalsius.eu.auth0.com",
+        description="The Auth0 domain",
+    )
+    client_id: str = Field(
+        default="kSbRc9MOnuMKMVLzhZYBo3xkTtk2KK7B", description="The Auth0 client ID"
+    )
+    audience: str = Field(
+        default="https://api.exalsius.ai", description="The Auth0 audience"
+    )
+    scope: List[str] = Field(
+        default=["openid", "audience", "profile", "email", "offline_access"],
+        description="The Auth0 scope",
+    )
+    algorithms: List[str] = Field(
+        default=["RS256"], description="The algorithms to use for authentication"
+    )
+    device_code_grant_type: str = Field(
+        default="urn:ietf:params:oauth:grant-type:device_code",
+        description="The grant type to use for device code authentication",
+    )
+    token_expiry_buffer_minutes: int = Field(
+        default=7,
+        description="The buffer in minutes before the token expires. Default is 7 minutes.",
+    )
+
+
 class ConfigDefaultCluster(BaseSettings):
     id: str = Field(..., description="The ID of the workspace")
     name: Optional[str] = Field(default=None, description="The name of the workspace")
@@ -30,6 +58,9 @@ class ConfigDefaultCluster(BaseSettings):
 class AppConfig(BaseSettings):
     default_cluster: Optional[ConfigDefaultCluster] = Field(
         default=None, description="The default cluster"
+    )
+    auth0: Auth0Config = Field(
+        default=Auth0Config(), description="The Auth0 configuration"
     )
 
     model_config = SettingsConfigDict(

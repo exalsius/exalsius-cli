@@ -1,7 +1,7 @@
 import typer
 from rich.console import Console
 
-from exalsius.cli import auth, utils
+from exalsius.cli import utils
 from exalsius.core.models.enums import CloudProvider, NodeType
 from exalsius.core.services.node_service import NodeService
 from exalsius.display.nodes_display import NodesDisplayManager
@@ -34,13 +34,8 @@ def list_nodes(
     console = Console(theme=custom_theme)
     display_manager = NodesDisplayManager(console)
 
-    try:
-        session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = NodeService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = NodeService(access_token)
     nodes, error = service.list_nodes(node_type, provider)
     if error:
         display_manager.print_error(f"Failed to list nodes: {error}")
@@ -57,13 +52,8 @@ def get_node(
     console = Console(theme=custom_theme)
     display_manager = NodesDisplayManager(console)
 
-    try:
-        session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = NodeService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = NodeService(access_token)
 
     node, error = service.get_node(node_id)
     if error:
@@ -85,13 +75,8 @@ def delete_node(
     console = Console(theme=custom_theme)
     display_manager = NodesDisplayManager(console)
 
-    try:
-        session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = NodeService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = NodeService(access_token)
     node_delete_response, error = service.delete_node(node_id)
     if error:
         display_manager.print_error(f"Failed to delete node: {error}")
@@ -111,13 +96,8 @@ def import_ssh(
     console = Console(theme=custom_theme)
     display_manager = NodesDisplayManager(console)
 
-    try:
-        session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = NodeService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = NodeService(access_token)
     node_import_response, error = service.import_ssh(
         hostname, endpoint, username, ssh_key_id
     )
@@ -143,13 +123,8 @@ def import_offer(
     console = Console(theme=custom_theme)
     display_manager = NodesDisplayManager(console)
 
-    try:
-        session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = NodeService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = NodeService(access_token)
     node_import_response, error = service.import_from_offer(hostname, offer_id, amount)
     if error:
         display_manager.print_error(f"Failed to import offer: {error}")

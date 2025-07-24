@@ -7,7 +7,6 @@ from typing import Any, Optional, Tuple
 from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.configuration import Configuration
 
-from exalsius.core.models.auth import Session
 from exalsius.core.operations.base import BaseOperation
 
 logger = logging.getLogger("core.services.base")
@@ -30,34 +29,24 @@ class BaseService(ABC):
         try:
             return operation.execute()
         except Exception as e:
-            return None, f"Unexpected error during operation execution: {str(e)}"
+            return None, f"Error during operation execution: {str(e)}"
 
 
 class BaseServiceWithAuth(BaseService):
-    def __init__(self, session: Session, host: Optional[str] = None):
+    def __init__(self, access_token: str, host: Optional[str] = None):
         api_host = host or os.getenv("EXALSIUS_API_HOST", "https://api.exalsius.ai")
 
         # Create configuration
         client_config = Configuration(host=api_host)
 
-        if (
-            not session.credentials
-            or not session.credentials.username
-            or not session.credentials.password
-        ):
+        if not access_token:
             raise AuthenticationError("No credentials found")
-
-        client_config.username = session.credentials.username
-        client_config.password = session.credentials.password
 
         self.api_client = ApiClient(configuration=client_config)
 
-        # Manually add basic auth header since the generated client doesn't include auth settings
-        auth_token = client_config.get_basic_auth_token()
-        if auth_token:
-            self.api_client.set_default_header("Authorization", auth_token)
+        self.api_client.set_default_header("Authorization", f"Bearer {access_token}")
 
         logger.debug(
             f"Trying to connect to {self.api_client.configuration.host} with "
-            f"auth token {auth_token} (credentials: {session.credentials})"
+            f"auth token {access_token[:4]}..."
         )

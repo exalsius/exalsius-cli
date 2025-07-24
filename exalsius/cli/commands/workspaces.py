@@ -7,9 +7,8 @@ from exalsius_api_client.models.workspace import Workspace
 from pydantic import PositiveInt
 from rich.console import Console
 
-from exalsius.cli import auth, config, utils
-from exalsius.cli.state import CLIState
-from exalsius.core.models.auth import Session
+from exalsius.cli import config, utils
+from exalsius.cli.state import AppState
 from exalsius.core.models.workspaces import WorkspaceType
 from exalsius.core.services.workspaces_services import WorkspacesService
 from exalsius.display.workspaces_display import WorkspacesDisplayManager
@@ -34,7 +33,7 @@ def _root(
     utils.help_if_no_subcommand(ctx)
 
     if cluster:
-        state: CLIState = utils.get_cli_state(ctx)
+        state: AppState = utils.get_app_state_from_ctx(ctx)
         state.config.default_cluster = config.ConfigDefaultCluster(
             id=cluster, name=cluster
         )
@@ -47,15 +46,10 @@ def list_workspaces(
     console = Console(theme=custom_theme)
     display_manager = WorkspacesDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = WorkspacesService(access_token)
 
-    service = WorkspacesService(session)
-
-    active_cluster = utils.get_cli_state(ctx).config.default_cluster
+    active_cluster = utils.get_app_state_from_ctx(ctx).config.default_cluster
     if not active_cluster:
         display_manager.print_error(
             "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
@@ -85,13 +79,8 @@ def get_workspace(
     console = Console(theme=custom_theme)
     display_manager = WorkspacesDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = WorkspacesService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = WorkspacesService(access_token)
 
     workspace, error = service.get_workspace(workspace_id)
     if error:
@@ -108,12 +97,6 @@ def add_workspace(
     ctx: typer.Context,
     name: str = typer.Argument(
         help="The name of the workspace to add",
-    ),
-    owner: str = typer.Option(
-        "exalsius",
-        "--owner",
-        "-o",
-        help="The owner of the workspace to add",
     ),
     gpu_count: PositiveInt = typer.Option(
         1,
@@ -142,22 +125,17 @@ def add_workspace(
     huggingface_token: str = typer.Option(
         None,
         "--huggingface-token",
-        "-t",
+        "-h",
         help="The authentication token for working with HuggingFace-hosted LLM models that require authentication",
     ),
 ):
     console = Console(theme=custom_theme)
     display_manager = WorkspacesDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = WorkspacesService(access_token)
 
-    service = WorkspacesService(session)
-
-    active_cluster = utils.get_cli_state(ctx).config.default_cluster
+    active_cluster = utils.get_app_state_from_ctx(ctx).config.default_cluster
     if not active_cluster:
         typer.echo("No default cluster found")
         raise typer.Exit(1)
@@ -184,7 +162,6 @@ def add_workspace(
             cluster_id=active_cluster.id,
             name=name,
             gpu_count=gpu_count,
-            owner=owner,
             workspace_type=workspace_type,
             jupyter_password=jupyter_password,
             huggingface_model=huggingface_model,
@@ -254,13 +231,8 @@ def show_workspace_access_info(
     console = Console(theme=custom_theme)
     display_manager = WorkspacesDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = WorkspacesService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = WorkspacesService(access_token)
     workspace_response, error = service.get_workspace(workspace_id)
     if error:
         display_manager.print_error(f"Error: {error}")
@@ -282,13 +254,8 @@ def delete_workspace(
     console = Console(theme=custom_theme)
     display_manager = WorkspacesDisplayManager(console)
 
-    try:
-        session: Session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = WorkspacesService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = WorkspacesService(access_token)
 
     workspace_delete_response, error = service.delete_workspace(workspace_id)
     if error:

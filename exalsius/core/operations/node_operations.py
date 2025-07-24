@@ -4,7 +4,6 @@ from exalsius_api_client.api.nodes_api import NodesApi
 from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.exceptions import ApiException
 from exalsius_api_client.models.cloud_node import CloudNode
-from exalsius_api_client.models.error import Error as ExalsiusError
 from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
 from exalsius_api_client.models.node_import_response import NodeImportResponse
 from exalsius_api_client.models.node_import_ssh_request import NodeImportSshRequest
@@ -36,16 +35,9 @@ class ListNodesOperation(BaseOperation[NodesListResponse]):
             )
             return nodes_list_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetNodeOperation(BaseOperation[Union[CloudNode, SelfManagedNode]]):
@@ -63,16 +55,9 @@ class GetNodeOperation(BaseOperation[Union[CloudNode, SelfManagedNode]]):
             node_response: NodeResponse = api_instance.describe_node(self.node_id)
             return node_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class DeleteNodeOperation(BaseOperation[NodeDeleteResponse]):
@@ -92,16 +77,9 @@ class DeleteNodeOperation(BaseOperation[NodeDeleteResponse]):
             )
             return node_delete_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, f"Unexpected error: {str(e)}"
+            return None, f"unexpetced error: {str(e)}"
 
 
 class ImportSSHNodeOperation(BaseOperation[NodeResponse]):
@@ -133,16 +111,9 @@ class ImportSSHNodeOperation(BaseOperation[NodeResponse]):
             )
             return node_import_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class ImportFromOfferOperation(BaseOperation[NodeImportResponse]):
@@ -170,13 +141,6 @@ class ImportFromOfferOperation(BaseOperation[NodeImportResponse]):
             )
             return node_import_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"

@@ -16,7 +16,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.cluster_services_response import ClusterServicesResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
-from exalsius_api_client.models.error import Error as ExalsiusError
 
 from exalsius.core.operations.base import BaseOperation
 
@@ -34,16 +33,9 @@ class ListClustersOperation(BaseOperation[ClustersListResponse]):
             )
             return clusters_list_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetClusterOperation(BaseOperation[ClusterResponse]):
@@ -59,16 +51,9 @@ class GetClusterOperation(BaseOperation[ClusterResponse]):
             )
             return cluster_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class DeleteClusterOperation(BaseOperation[ClusterDeleteResponse]):
@@ -84,16 +69,9 @@ class DeleteClusterOperation(BaseOperation[ClusterDeleteResponse]):
             )
             return cluster_delete_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class CreateClusterOperation(BaseOperation[ClusterCreateResponse]):
@@ -104,8 +82,10 @@ class CreateClusterOperation(BaseOperation[ClusterCreateResponse]):
 
     def execute(self) -> Tuple[Optional[ClusterCreateResponse], Optional[str]]:
         api_instance = ClustersApi(self.api_client)
+        # TODO: Fix this once we have a proper API for creating clusters
         cluster_create_request = ClusterCreateRequest(
             name=self.name,
+            cluster_type="CLOUD",
             k8s_version=self.k8s_version,
         )
         try:
@@ -114,16 +94,9 @@ class CreateClusterOperation(BaseOperation[ClusterCreateResponse]):
             )
             return cluster_create_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class DeployClusterOperation(BaseOperation[ClusterDeployResponse]):
@@ -139,16 +112,9 @@ class DeployClusterOperation(BaseOperation[ClusterDeployResponse]):
             )
             return cluster_deploy_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetClusterServicesOperation(BaseOperation[ClusterServicesResponse]):
@@ -164,16 +130,9 @@ class GetClusterServicesOperation(BaseOperation[ClusterServicesResponse]):
             )
             return cluster_services_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetClusterNodesOperation(BaseOperation[ClusterNodesResponse]):
@@ -189,16 +148,9 @@ class GetClusterNodesOperation(BaseOperation[ClusterNodesResponse]):
             )
             return cluster_nodes_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class AddClusterNodeOperation(BaseOperation[ClusterNodesResponse]):
@@ -231,16 +183,9 @@ class AddClusterNodeOperation(BaseOperation[ClusterNodesResponse]):
             )
             return cluster_nodes_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetClusterResourcesOperation(BaseOperation[ClusterResourcesListResponse]):
@@ -256,13 +201,6 @@ class GetClusterResourcesOperation(BaseOperation[ClusterResourcesListResponse]):
             )
             return cluster_resources_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"

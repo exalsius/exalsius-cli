@@ -3,7 +3,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
-from exalsius.cli import auth, utils
+from exalsius.cli import utils
 from exalsius.core.services.offers_service import OffersService
 from exalsius.display.offers_display import OffersDisplayManager
 from exalsius.utils.theme import custom_theme
@@ -56,13 +56,8 @@ def list_offers(
     console = Console(theme=custom_theme)
     display_manager = OffersDisplayManager(console)
 
-    try:
-        session = auth.get_current_session_or_fail(ctx)
-    except auth.AuthenticationError as e:
-        typer.echo(e)
-        raise typer.Exit(1)
-
-    service = OffersService(session)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    service = OffersService(access_token)
 
     with console.status(
         "[bold custom]Fetching offers...[/bold custom]",

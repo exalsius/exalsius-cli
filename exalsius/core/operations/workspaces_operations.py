@@ -4,7 +4,6 @@ import exalsius_api_client
 import exalsius_api_client.api_client
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.exceptions import ApiException
-from exalsius_api_client.models.error import Error as ExalsiusError
 from exalsius_api_client.models.resource_pool import ResourcePool
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
@@ -31,16 +30,9 @@ class ListWorkspacesOperation(BaseOperation[WorkspacesListResponse]):
             )
             return workspaces_list_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class GetWorkspaceOperation(BaseOperation[WorkspaceResponse]):
@@ -58,16 +50,9 @@ class GetWorkspaceOperation(BaseOperation[WorkspaceResponse]):
             )
             return workspace_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
@@ -77,13 +62,11 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
         cluster_id: str,
         name: str,
         template: WorkspaceTemplate,
-        owner: str,
         gpu_count: int,
     ):
         self.api_client: exalsius_api_client.api_client.ApiClient = api_client
         self.cluster_id: str = cluster_id
         self.name: str = name
-        self.owner: str = owner
         self.template: WorkspaceTemplate = template
         # TODO: These are hacky fixes that need to be fixed in the backend.
         self.template.variables["deploymentName"] = name
@@ -107,7 +90,6 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
                 name=self.name,
                 template=self.template,
                 resources=self.resources,
-                owner=self.owner,
             )
 
             workspace_create_response: WorkspaceCreateResponse = (
@@ -115,16 +97,9 @@ class CreateWorkspaceOperation(BaseOperation[WorkspaceCreateResponse]):
             )
             return workspace_create_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
 
 
 class CreateWorkspacePodOperation(CreateWorkspaceOperation):
@@ -133,15 +108,14 @@ class CreateWorkspacePodOperation(CreateWorkspaceOperation):
         api_client: exalsius_api_client.api_client.ApiClient,
         cluster_id: str,
         name: str,
-        owner: str,
         gpu_count: int,
     ):
         template = WorkspaceTemplate(
             name="vscode-devcontainer-template",
-            description=f"{owner}'s amazing workspace",
+            description="An amazing workspace",
             variables={},
         )
-        super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
+        super().__init__(api_client, cluster_id, name, template, gpu_count)
 
 
 class CreateWorkspaceJupyterOperation(CreateWorkspaceOperation):
@@ -150,20 +124,19 @@ class CreateWorkspaceJupyterOperation(CreateWorkspaceOperation):
         api_client: exalsius_api_client.api_client.ApiClient,
         cluster_id: str,
         name: str,
-        owner: str,
         gpu_count: int,
         jupyter_password: Optional[str] = None,
     ):
         template = WorkspaceTemplate(
             name="jupyter-notebook-template",
-            description=f"{owner}'s amazing jupyter notebook workspace",
+            description="An amazing jupyter notebook workspace",
             variables={
                 "deploymentImage": "tensorflow/tensorflow:2.18.0-gpu-jupyter",
             },
         )
         if jupyter_password:
             template.variables["notebookPassword"] = jupyter_password
-        super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
+        super().__init__(api_client, cluster_id, name, template, gpu_count)
 
 
 class CreateWorkspaceLLMInferenceOperation(CreateWorkspaceOperation):
@@ -172,21 +145,20 @@ class CreateWorkspaceLLMInferenceOperation(CreateWorkspaceOperation):
         api_client: exalsius_api_client.api_client.ApiClient,
         cluster_id: str,
         name: str,
-        owner: str,
         gpu_count: int,
         huggingface_model: Optional[str] = None,
         huggingface_token: Optional[str] = None,
     ):
         template = WorkspaceTemplate(
             name="ray-llm-service-template",
-            description=f"{owner}'s amazing workspace for a ray-based LLM inference service",
+            description="An amazing workspace for a ray-based LLM inference service",
             variables={},
         )
         if huggingface_model:
             template.variables["llmModelName"] = huggingface_model
         if huggingface_token:
             template.variables["huggingFaceToken"] = huggingface_token
-        super().__init__(api_client, cluster_id, name, template, owner, gpu_count)
+        super().__init__(api_client, cluster_id, name, template, gpu_count)
 
 
 class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
@@ -204,13 +176,6 @@ class DeleteWorkspaceOperation(BaseOperation[WorkspaceDeleteResponse]):
             )
             return workspace_delete_response, None
         except ApiException as e:
-            if e.body:
-                error = ExalsiusError.from_json(e.body)
-                if error:
-                    return None, str(error.detail)
-                else:
-                    return None, str(e)
-            else:
-                return None, str(e)
+            return None, f"request failed with status code {e.status}: {str(e.body)}"
         except Exception as e:
-            return None, str(e)
+            return None, f"unexpetced error: {str(e)}"
