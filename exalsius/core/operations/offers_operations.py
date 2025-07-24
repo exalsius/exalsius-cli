@@ -35,7 +35,6 @@ class ListOffersOperation(BaseOperation[OffersListResponse]):
                 region=self.region,
                 gpu_count=self.quantity,
             )
-            print(offers_list_response)
             return offers_list_response, None
         except ApiException as e:
             return None, f"request failed with status code {e.status}: {str(e.body)}"
