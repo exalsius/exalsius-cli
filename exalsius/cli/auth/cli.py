@@ -86,7 +86,7 @@ def login(
         logger.warning("User cancelled authentication polling.")
         display_manager.display_device_code_polling_cancelled()
         raise typer.Exit(0)
-    logger.info("Authentication successful.")
+    logger.debug("Authentication successful.")
 
     # If the authentication is successful, validate the received ID token.
     logger.debug("Validating token.")
@@ -121,7 +121,7 @@ def login(
     logger.debug("Token stored successfully.")
 
     # Display the authentication success message to the user.
-    logger.info(f"Login successful for user {validate_resp.email}.")
+    logger.debug(f"Login successful for user {validate_resp.email}.")
     display_manager.display_authentication_success(
         validate_resp.email, validate_resp.sub
     )
@@ -148,7 +148,7 @@ def logout(ctx: typer.Context):
     # If the user is already logged out, it returns (True, "Some error message").
     # This checks for that specific case.
     if success and error:
-        logger.info("User was not logged in.")
+        logger.debug("User was not logged in.")
         display_manager.display_not_logged_in()
         raise typer.Exit(0)
     if not success:
@@ -158,5 +158,5 @@ def logout(ctx: typer.Context):
         )
         raise typer.Exit(1)
 
-    logger.info("Logout successful.")
+    logger.debug("Logout successful.")
     display_manager.display_logout_success()
