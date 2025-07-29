@@ -1,6 +1,6 @@
 [project]
 name = "exalsius"
-version = "0.2.0"
+version = "0.3.0"
 description = "The exalsius CLI"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
@@ -26,7 +26,7 @@ where = ["."]
 include = ["exalsius*"] 
 
 [project.scripts]
-exls = "exalsius.cli.app:app" 
+exls = "exalsius.app:app" 
 
 [build-system]
 requires = ["setuptools"]
