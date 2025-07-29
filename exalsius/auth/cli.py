@@ -4,7 +4,9 @@ import typer
 from rich.console import Console
 
 from exalsius.auth.display import AuthDisplayManager
+from exalsius.auth.models import NotLoggedInWarning
 from exalsius.auth.service import Auth0Service
+from exalsius.core.commons.models import ServiceError
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
@@ -33,14 +35,11 @@ def login(
 
     # Start the device code authentication flow. Get the device code.
     logger.debug("Fetching device code.")
-    resp, error = auth_service.fetch_device_code()
-    if error:
-        logger.error(f"Failed to fetch device code: {error}")
-        display_manager.display_authentication_error(error)
-        raise typer.Exit(1)
-    if resp is None:
-        logger.error("Failed to fetch device code: unexpected error.")
-        display_manager.display_authentication_error("Unexpected error.")
+    try:
+        resp = auth_service.fetch_device_code()
+    except ServiceError as e:
+        logger.error(f"Failed to fetch device code: {e.message}")
+        display_manager.display_authentication_error(e.message)
         raise typer.Exit(1)
 
     # Display the device code to the user and wait for them to authenticate.
@@ -73,15 +72,7 @@ def login(
     # Poll for the authentication response from the authentication server.
     logger.debug("Polling for authentication.")
     try:
-        auth_resp, error = auth_service.poll_for_authentication(resp.device_code)
-        if error:
-            logger.error(f"Authentication failed during polling: {error}")
-            display_manager.display_authentication_error(error)
-            raise typer.Exit(1)
-        if auth_resp is None:
-            logger.error("Authentication failed during polling: unexpected error.")
-            display_manager.display_authentication_error("Unexpected error.")
-            raise typer.Exit(1)
+        auth_resp = auth_service.poll_for_authentication(resp.device_code)
     except KeyboardInterrupt:
         logger.warning("User cancelled authentication polling.")
         display_manager.display_device_code_polling_cancelled()
@@ -90,34 +81,28 @@ def login(
 
     # If the authentication is successful, validate the received ID token.
     logger.debug("Validating token.")
-    validate_resp, error = auth_service.validate_token(auth_resp.id_token)
-    if error:
-        logger.error(f"Token validation failed: {error}")
-        display_manager.display_authentication_error(error)
+    try:
+        validate_resp = auth_service.validate_token(auth_resp.id_token)
+    except ServiceError as e:
+        logger.error(f"Token validation failed: {e.message}")
+        display_manager.display_authentication_error(e.message)
         raise typer.Exit(1)
-    if not validate_resp:
-        logger.error("Token validation failed: unexpected error.")
-        display_manager.display_authentication_error("Unexpected error.")
-        raise typer.Exit(1)
+
     logger.debug("Token is valid.")
 
     # Store the tokens on the system's keyring for future access.
     logger.debug("Storing token on keyring.")
-    success, error = auth_service.store_token_on_keyring(
-        token=auth_resp.access_token,
-        expires_in=auth_resp.expires_in,
-        refresh_token=auth_resp.refresh_token,
-    )
-    if error:
-        logger.error(f"Failed to store token on keyring: {error}")
-        display_manager.display_authentication_error(error)
-        raise typer.Exit(1)
-    if not success:
-        logger.error("Failed to store token on keyring: unexpected error.")
-        display_manager.display_authentication_error(
-            "unexpected error. Failed to store token on keyring."
+    try:
+        auth_service.store_token_on_keyring(
+            token=auth_resp.access_token,
+            expires_in=auth_resp.expires_in,
+            refresh_token=auth_resp.refresh_token,
         )
+    except ServiceError as e:
+        logger.error(f"Failed to store token on keyring: {e.message}")
+        display_manager.display_authentication_error(e.message)
         raise typer.Exit(1)
+
     logger.debug("Token stored successfully.")
 
     # Display the authentication success message to the user.
@@ -143,19 +128,14 @@ def logout(ctx: typer.Context):
     auth_service: Auth0Service = Auth0Service(config=app_state.config)
 
     logger.debug("Attempting to log out.")
-    success, error = auth_service.logout()
-    # The auth_service.logout() method has a specific return signature.
-    # If the user is already logged out, it returns (True, "Some error message").
-    # This checks for that specific case.
-    if success and error:
-        logger.debug("User was not logged in.")
+    try:
+        auth_service.logout()
+    except NotLoggedInWarning:
         display_manager.display_not_logged_in()
         raise typer.Exit(0)
-    if not success:
-        logger.error(f"Logout failed: {error}")
-        display_manager.display_authentication_error(
-            "unexpected error. Failed to logout."
-        )
+    except ServiceError as e:
+        logger.error(f"Failed to log out: {e.message}")
+        display_manager.display_authentication_error(e.message)
         raise typer.Exit(1)
 
     logger.debug("Logout successful.")

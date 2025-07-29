@@ -3,7 +3,7 @@ from typing import Optional
 import qrcode
 from rich.console import Console
 
-from exalsius.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplayManager
 
 
 class AuthDisplayManager(BaseDisplayManager):

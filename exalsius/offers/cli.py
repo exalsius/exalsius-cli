@@ -1,8 +1,10 @@
 from typing import List, Optional
 
 import typer
+from exalsius_api_client.models.offers_list_response import OffersListResponse
 from rich.console import Console
 
+from exalsius.config import AppConfig
 from exalsius.offers.display import OffersDisplayManager
 from exalsius.offers.service import OffersService
 from exalsius.utils import commons as utils
@@ -32,22 +34,20 @@ def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
 @app.command("list")
 def list_offers(
     ctx: typer.Context,
-    gpu: Optional[str] = typer.Option(
-        None, "--gpu", help="Filter GPUs by name, e.g. 'H100'"
+    gpu_type: Optional[str] = typer.Option(
+        "H100", "--gpu-type", help="Filter GPUs by name, e.g. 'H100'"
     ),
-    quantity: Optional[int] = typer.Option(
-        None, "--quantity", help="Minimum number of GPUs required"
-    ),
-    region: Optional[str] = typer.Option(
-        None, "--region", help="Filter by specific region"
+    gpu_vendor: Optional[str] = typer.Option(
+        "NVIDIA", "--gpu-vendor", help="Filter GPUs by vendor, e.g. 'NVIDIA'"
     ),
     cloud_provider: Optional[str] = typer.Option(
-        None,
-        "--clouds",
-        help="List of clouds to search (multiple flags allowed). If not provided, all enabled clouds will be searched.",
+        "AWS", "--cloud-provider", help="Filter offers by cloud provider"
     ),
-    all_clouds: Optional[bool] = typer.Option(
-        False, "--all-clouds", help="Search all public clouds"
+    price_min: Optional[float] = typer.Option(
+        None, "--price-min", help="Minimum price per hour"
+    ),
+    price_max: Optional[float] = typer.Option(
+        None, "--price-max", help="Maximum price per hour"
     ),
 ) -> None:
     """
@@ -57,27 +57,24 @@ def list_offers(
     display_manager = OffersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = OffersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = OffersService(config, access_token)
 
     with console.status(
         "[bold custom]Fetching offers...[/bold custom]",
         spinner="bouncingBall",
         spinner_style="custom",
     ):
-        offers_response, error = service.list_offers(
-            gpu_type=gpu,
-            quantity=quantity,
-            region=region,
-            cloud_provider=cloud_provider,
-            all_clouds=all_clouds or False,
-        )
-
-        if error:
-            display_manager.print_error(f"Failed to fetch offers: {error}")
+        try:
+            offers_response: OffersListResponse = service.list_offers(
+                gpu_type=gpu_type,
+                gpu_vendor=gpu_vendor,
+                cloud_provider=cloud_provider,
+                price_min=price_min,
+                price_max=price_max,
+            )
+        except Exception as e:
+            display_manager.print_error(f"Failed to fetch offers: {e}")
             raise typer.Exit(1)
 
-        if not offers_response:
-            display_manager.print_warning("No offers found matching your criteria.")
-            return
-
-        display_manager.display_offers(offers_response.offers)
+    display_manager.display_offers(offers_response.offers)

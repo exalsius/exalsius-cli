@@ -48,6 +48,18 @@ class Auth0Config(BaseSettings):
         default=7,
         description="The buffer in minutes before the token expires. Default is 7 minutes.",
     )
+    device_code_poll_interval_seconds: int = Field(
+        default=5,
+        description="The interval in seconds to poll for authentication",
+    )
+    device_code_poll_timeout_seconds: int = Field(
+        default=300,
+        description="The timeout in seconds to poll for authentication",
+    )
+    device_code_retry_limit: int = Field(
+        default=3,
+        description="The number of times to retry polling for authentication",
+    )
 
 
 class ConfigDefaultCluster(BaseSettings):
@@ -56,6 +68,10 @@ class ConfigDefaultCluster(BaseSettings):
 
 
 class AppConfig(BaseSettings):
+    backend_host: str = Field(
+        default="https://api.exalsius.ai",
+        description="The backend host",
+    )
     default_cluster: Optional[ConfigDefaultCluster] = Field(
         default=None, description="The default cluster"
     )

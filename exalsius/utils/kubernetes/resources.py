@@ -8,7 +8,7 @@ from exalsius.utils.kubernetes.client import (
 
 
 class ResourceManager(KubernetesClient, CustomObjectMixin):
-    """Manages Kubernetes resource operations."""
+    """Manages Kubernetes resource commands."""
 
     def get_cluster_nodes(self, cluster_name: str) -> List[dict]:
         """

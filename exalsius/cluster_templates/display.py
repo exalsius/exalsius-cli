@@ -4,7 +4,7 @@ from exalsius_api_client.models.cluster_template import ClusterTemplate
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplayManager
 
 
 class ClusterTemplatesDisplayManager(BaseDisplayManager):
@@ -12,10 +12,6 @@ class ClusterTemplatesDisplayManager(BaseDisplayManager):
         super().__init__(console)
 
     def display_cluster_templates(self, cluster_templates: List[ClusterTemplate]):
-        if not cluster_templates:
-            self.print_info("No cluster templates found")
-            return
-
         table = Table(
             title="Available Cluster Templates",
             show_header=True,

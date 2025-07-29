@@ -1,39 +1,44 @@
 import logging
 import subprocess
 import sys
-import time
 import webbrowser
 from datetime import datetime, timedelta
-from typing import Optional, Tuple
+from typing import Optional, TypeVar
 
-from requests import HTTPError
+from pydantic import BaseModel
 
+from exalsius.auth.commands import (
+    Auth0FetchDeviceCodeCommand,
+    Auth0PollForAuthenticationCommand,
+    Auth0RefreshTokenCommand,
+    Auth0RevokeTokenCommand,
+    Auth0ValidateTokenCommand,
+    ClearTokenFromKeyringCommand,
+    LoadTokenFromKeyringCommand,
+    StoreTokenOnKeyringCommand,
+)
 from exalsius.auth.models import (
-    Auth0AuthenticationResponse,
-    Auth0FetchDeviceCodeRequest,
-    Auth0FetchDeviceCodeResponse,
-    Auth0PollForAuthenticationRequest,
-    Auth0RefreshTokenRequest,
-    Auth0RevokeTokenRequest,
-    Auth0ValidateTokenRequest,
-    Auth0ValidateTokenResponse,
-    ClearTokenFromKeyringRequest,
-    LoadTokenFromKeyringRequest,
-    LoadTokenFromKeyringResponse,
-    StoreTokenOnKeyringRequest,
+    Auth0AuthenticationDTO,
+    Auth0DeviceCodeAuthenticationDTO,
+    Auth0FetchDeviceCodeRequestDTO,
+    Auth0PollForAuthenticationRequestDTO,
+    Auth0RefreshTokenRequestDTO,
+    Auth0RevokeTokenRequestDTO,
+    Auth0UserInfoDTO,
+    Auth0ValidateTokenRequestDTO,
+    AuthenticationError,
+    ClearTokenFromKeyringRequestDTO,
+    LoadedTokenDTO,
+    LoadTokenFromKeyringRequestDTO,
+    NotLoggedInWarning,
+    StoreTokenOnKeyringRequestDTO,
 )
-from exalsius.auth.operations import (
-    Auth0FetchDeviceCodeOperation,
-    Auth0PollForAuthenticationOperation,
-    Auth0RefreshTokenOperation,
-    Auth0RevokeTokenOperation,
-    Auth0ValidateTokenOperation,
-    ClearTokenFromKeyringOperation,
-    LoadTokenFromKeyringOperation,
-    StoreTokenOnKeyringOperation,
-)
-from exalsius.base.service import BaseService
 from exalsius.config import AppConfig, Auth0Config
+from exalsius.core.base.commands import BaseCommand
+from exalsius.core.base.service import BaseService
+from exalsius.core.commons.models import ServiceError
+
+T = TypeVar("T", bound=BaseModel)
 
 
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
@@ -71,180 +76,130 @@ def _register_silent_browser() -> bool:
 
 class Auth0Service(BaseService):
     def __init__(self, config: AppConfig):
-        super().__init__()
+        super().__init__(config)
         self.config: Auth0Config = config.auth0
+
+    def _execute_command(self, command: BaseCommand[T]) -> T:
+        try:
+            return command.execute()
+        except AuthenticationError as e:
+            raise ServiceError(str(e))
+        except Exception as e:
+            raise ServiceError(
+                f"unexpected error while executing command {command.__class__.__name__}: {str(e)}"
+            )
 
     def fetch_device_code(
         self,
-    ) -> Tuple[Optional[Auth0FetchDeviceCodeResponse], Optional[str]]:
-        req = Auth0FetchDeviceCodeRequest(
+    ) -> Auth0DeviceCodeAuthenticationDTO:
+        req = Auth0FetchDeviceCodeRequestDTO(
             domain=self.config.domain,
             client_id=self.config.client_id,
             audience=self.config.audience,
             scope=self.config.scope,
             algorithms=self.config.algorithms,
         )
-
-        resp, error = self.execute_operation(Auth0FetchDeviceCodeOperation(request=req))
-
-        return resp, error
+        return self._execute_command(Auth0FetchDeviceCodeCommand(request=req))
 
     def poll_for_authentication(
         self,
         device_code: str,
-        interval: int = 5,
-    ) -> Tuple[Optional[Auth0AuthenticationResponse], Optional[str]]:
-        req: Auth0PollForAuthenticationRequest = Auth0PollForAuthenticationRequest(
+    ) -> Auth0AuthenticationDTO:
+        req = Auth0PollForAuthenticationRequestDTO(
             domain=self.config.domain,
             client_id=self.config.client_id,
             device_code=device_code,
             grant_type=self.config.device_code_grant_type,
+            poll_interval_seconds=self.config.device_code_poll_interval_seconds,
+            poll_timeout_seconds=self.config.device_code_poll_timeout_seconds,
+            retry_limit=self.config.device_code_retry_limit,
         )
+        return self._execute_command(Auth0PollForAuthenticationCommand(request=req))
 
-        op: Auth0PollForAuthenticationOperation = Auth0PollForAuthenticationOperation(
-            request=req
-        )
-
-        while True:
-            time.sleep(interval)
-            try:
-                resp, error = op.execute()
-            except HTTPError as e:
-                if "error" in e.response.json():
-                    error = e.response.json()["error"]
-                    if error == "authorization_pending":
-                        continue
-                    elif error == "slow_down":
-                        interval += 1
-                        continue
-                if e.response.status_code == 403:
-                    return None, "login aborted by user."
-                return (
-                    None,
-                    f"{e.response.json()['error_description'] or e.response.json()}",
-                )
-
-            if resp and resp.access_token:
-                return resp, None
-
-    def validate_token(
-        self, id_token: str
-    ) -> Tuple[Optional[Auth0ValidateTokenResponse], Optional[str]]:
-        req = Auth0ValidateTokenRequest(
+    def validate_token(self, id_token: str) -> Auth0UserInfoDTO:
+        req = Auth0ValidateTokenRequestDTO(
             domain=self.config.domain,
             client_id=self.config.client_id,
             id_token=id_token,
         )
-
-        return self.execute_operation(Auth0ValidateTokenOperation(request=req))
+        return self._execute_command(Auth0ValidateTokenCommand(request=req))
 
     def store_token_on_keyring(
         self,
         token: str,
         expires_in: int,
         refresh_token: Optional[str] = None,
-    ) -> Tuple[bool, Optional[str]]:
-        req = StoreTokenOnKeyringRequest(
+    ) -> None:
+        req = StoreTokenOnKeyringRequestDTO(
             client_id=self.config.client_id,
             access_token=token,
             expires_in=expires_in,
             refresh_token=refresh_token,
         )
+        self._execute_command(StoreTokenOnKeyringCommand(request=req))
 
-        return self.execute_operation(StoreTokenOnKeyringOperation(request=req))
-
-    def load_access_token_from_keyring(
-        self,
-    ) -> Tuple[Optional[LoadTokenFromKeyringResponse], Optional[str]]:
-        req = LoadTokenFromKeyringRequest(
+    def load_access_token_from_keyring(self) -> LoadedTokenDTO:
+        req = LoadTokenFromKeyringRequestDTO(
             client_id=self.config.client_id,
         )
+        return self._execute_command(LoadTokenFromKeyringCommand(request=req))
 
-        resp, error = self.execute_operation(LoadTokenFromKeyringOperation(request=req))
-        if error:
-            return None, f"error loading token from keyring: {error}"
-        if not resp:
-            return None, None
-        return resp, None
-
-    def refresh_access_token(
-        self, refresh_token: str
-    ) -> Tuple[Optional[Auth0AuthenticationResponse], Optional[str]]:
-        req = Auth0RefreshTokenRequest(
+    def refresh_access_token(self, refresh_token: str) -> Auth0AuthenticationDTO:
+        req = Auth0RefreshTokenRequestDTO(
             domain=self.config.domain,
             client_id=self.config.client_id,
             refresh_token=refresh_token,
         )
+        return self._execute_command(Auth0RefreshTokenCommand(request=req))
 
-        return self.execute_operation(Auth0RefreshTokenOperation(request=req))
-
-    def acquire_access_token(self) -> Tuple[Optional[str], Optional[str]]:
-        load_resp, error = self.load_access_token_from_keyring()
-        if error:
-            return None, f"error loading access token from keyring: {error}"
-        if (
-            not load_resp
-        ):  # There is no access token in the keyring. The user is not logged in.
-            if error:
-                return None, f"error loading access token from keyring: {error}"
-            return None, "You are not logged in. Please log in first"
+    def acquire_access_token(self) -> str:
+        try:
+            load_resp = self.load_access_token_from_keyring()
+        except ServiceError:
+            raise ServiceError("You are not logged in. Please log in first.")
 
         if load_resp.expiry and datetime.now() >= (
             load_resp.expiry
             - timedelta(minutes=self.config.token_expiry_buffer_minutes)
         ):
             if not load_resp.refresh_token:
-                return (
-                    None,
-                    "Session is expired. Please log in again.",
+                raise ServiceError("Session is expired. Please log in again.")
+
+            try:
+                refresh_resp = self.refresh_access_token(load_resp.refresh_token)
+            except ServiceError as e:
+                raise ServiceError(
+                    f"failed to refresh access token: {e}. Please log in again."
                 )
 
-            refresh_resp, error = self.refresh_access_token(load_resp.refresh_token)
-            if error:
-                return (
-                    None,
-                    f"failed to refresh access token: {error}. Please log in again.",
-                )
-            if not refresh_resp:
-                return None, "failed to refresh access token. Please log in again."
-
-            _, error = self.store_token_on_keyring(
+            self.store_token_on_keyring(
                 token=refresh_resp.access_token,
                 expires_in=refresh_resp.expires_in,
                 refresh_token=refresh_resp.refresh_token,
             )
-            if error:
-                pass  # TODO: log error
+            return refresh_resp.access_token
+        return load_resp.access_token
 
-            return refresh_resp.access_token, None
+    def logout(self) -> None:
+        try:
+            load_resp = self.load_access_token_from_keyring()
+        except ServiceError:
+            logging.debug("You are not logged in.")
+            raise NotLoggedInWarning("You are not logged in.")
 
-        return load_resp.access_token, None
-
-    def logout(self) -> Tuple[bool, Optional[str]]:
-        load_resp, error = self.load_access_token_from_keyring()
-        if error:
-            return False, f"could not load access token from keyring: {error}"
-        if (
-            not load_resp
-        ):  # There is no access token in the keyring. The user is not logged in.
-            return True, "you are not logged in"
-
-        req = Auth0RevokeTokenRequest(
+        req = Auth0RevokeTokenRequestDTO(
             client_id=self.config.client_id,
             domain=self.config.domain,
             token=load_resp.access_token,
             token_type_hint="access_token",
         )
-        _, error = self.execute_operation(Auth0RevokeTokenOperation(request=req))
-        if error:
-            return False, f"failed to revoke token: {error}"
+        try:
+            self._execute_command(Auth0RevokeTokenCommand(request=req))
+        except ServiceError as e:
+            logging.warning(f"failed to revoke token: {e}, ignoring.")
 
-        req = ClearTokenFromKeyringRequest(client_id=self.config.client_id)
-        _, error = self.execute_operation(ClearTokenFromKeyringOperation(request=req))
-        if error:
-            return False, f"failed to clear token from keyring: {error}"
-
-        return True, None
+        req = ClearTokenFromKeyringRequestDTO(client_id=self.config.client_id)
+        self._execute_command(ClearTokenFromKeyringCommand(request=req))
 
     def __open_browser(
         self,

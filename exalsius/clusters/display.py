@@ -11,7 +11,7 @@ from exalsius_api_client.models.credentials import Credentials
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplayManager
 
 
 class ClustersDisplayManager(BaseDisplayManager):

@@ -8,6 +8,7 @@ from exalsius import config as cli_config
 from exalsius import nodes, offers, workspaces
 from exalsius.auth.cli import login, logout
 from exalsius.auth.service import Auth0Service
+from exalsius.core.commons.models import ServiceError
 from exalsius.logging import setup_logging
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
@@ -90,15 +91,16 @@ def __root(
     access_token: Optional[str] = None
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
         auth_service = Auth0Service(config)
-        access_token, error = auth_service.acquire_access_token()
-        if error:
-            typer.echo(f"{error}. Login command:")
+        try:
+            access_token = auth_service.acquire_access_token()
+        except ServiceError as e:
+            typer.echo(f"Authentication failed: {e.message}")
+            typer.echo("Please log in again. Login command:")
             typer.echo("")
             typer.echo("exls login")
             typer.echo("")
-            raise typer.Exit(1)
         if not access_token:
-            typer.echo("Authentication failed. Please log in again. Login command:")
+            typer.echo("You are not logged in. Please log in. Login command:")
             typer.echo("")
             typer.echo("exls login")
             typer.echo("")

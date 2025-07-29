@@ -7,12 +7,12 @@ from exalsius_api_client.models.workspace import Workspace
 from pydantic import PositiveInt
 from rich.console import Console
 
-from exalsius import config
+from exalsius.config import AppConfig, ConfigDefaultCluster, save_config
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 from exalsius.workspaces.display import WorkspacesDisplayManager
-from exalsius.workspaces.models import WorkspaceType
+from exalsius.workspaces.models import ResourcePoolDTO, WorkspaceType
 from exalsius.workspaces.service import WorkspacesService
 
 logger = logging.getLogger("cli.workspaces")
@@ -35,9 +35,11 @@ def _root(
 
     if cluster:
         state: AppState = utils.get_app_state_from_ctx(ctx)
-        state.config.default_cluster = config.ConfigDefaultCluster(
-            id=cluster, name=cluster
+        state.config.default_cluster = ConfigDefaultCluster(
+            id=cluster,
+            name=cluster,
         )
+        save_config(state.config)
 
 
 @app.command("list")
@@ -48,7 +50,8 @@ def list_workspaces(
     display_manager = WorkspacesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = WorkspacesService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
 
     active_cluster = utils.get_config_from_ctx(ctx).default_cluster
     if not active_cluster:
@@ -58,10 +61,7 @@ def list_workspaces(
         )
         raise typer.Exit(1)
 
-    workspaces_response, error = service.list_workspaces(cluster_id=active_cluster.id)
-    if error:
-        display_manager.print_error(f"Error: {error}")
-        raise typer.Exit(1)
+    workspaces_response = service.list_workspaces(cluster_id=active_cluster.id)
 
     if not workspaces_response:
         display_manager.print_warning("No workspaces found")
@@ -81,12 +81,10 @@ def get_workspace(
     display_manager = WorkspacesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = WorkspacesService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
 
-    workspace, error = service.get_workspace(workspace_id)
-    if error:
-        display_manager.print_error(f"Error: {error}")
-        raise typer.Exit(1)
+    workspace = service.get_workspace(workspace_id)
     if not workspace:
         display_manager.print_error(f"Workspace with ID {workspace_id} not found")
         raise typer.Exit(1)
@@ -134,7 +132,8 @@ def add_workspace(
     display_manager = WorkspacesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = WorkspacesService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
 
     active_cluster = utils.get_config_from_ctx(ctx).default_cluster
     if not active_cluster:
@@ -159,36 +158,34 @@ def add_workspace(
                     "Workspace type is LLM inference, but no HuggingFace token was provided. This might be a problem if the model requires authentication."
                 )
 
-        workspace_create_response, error = service.create_workspace(
+        workspace_create_response = service.create_workspace(
             cluster_id=active_cluster.id,
             name=name,
-            gpu_count=gpu_count,
             workspace_type=workspace_type,
+            resources=ResourcePoolDTO(
+                gpu_count=gpu_count,
+                gpu_type=None,
+                cpu_cores=16,
+                memory_gb=32,
+                storage_gb=200,
+            ),
             jupyter_password=jupyter_password,
             huggingface_model=huggingface_model,
             huggingface_token=huggingface_token,
         )
-        if error:
-            display_manager.print_error(f"Error while creating workspace: {error}")
-            raise typer.Exit(1)
         if not workspace_create_response:
             display_manager.print_error("Workspace creation failed.")
             raise typer.Exit(1)
 
-        # TODO: add a timeout to the service and operation
+        # TODO: add a timeout to the service and commands
         timeout = 120  # 2 minutes
         polling_interval = 5  # 5 seconds
         start_time = time.time()
 
         while time.time() - start_time < timeout:
-            workspace_response, error = service.get_workspace(
+            workspace_response = service.get_workspace(
                 workspace_create_response.workspace_id
             )
-            if error:
-                display_manager.print_warning(
-                    f"Error while reading workspace status: {error}"
-                )
-                raise typer.Exit(1)
             if not workspace_response:
                 display_manager.print_error("Workspace not found.")
                 raise typer.Exit(1)
@@ -197,14 +194,9 @@ def add_workspace(
             if workspace.workspace_status == "RUNNING":
                 # TODO: This handles backend-side edge case where the status is running but the access info is not available yet.
                 time.sleep(polling_interval)
-                workspace_response, error = service.get_workspace(
+                workspace_response = service.get_workspace(
                     workspace_create_response.workspace_id
                 )
-                if error:
-                    display_manager.print_warning(
-                        f"Error while reading workspace status: {error}"
-                    )
-                    raise typer.Exit(1)
                 break
 
             if workspace.workspace_status == "FAILED":
@@ -233,11 +225,10 @@ def show_workspace_access_info(
     display_manager = WorkspacesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = WorkspacesService(access_token)
-    workspace_response, error = service.get_workspace(workspace_id)
-    if error:
-        display_manager.print_error(f"Error: {error}")
-        raise typer.Exit(1)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
+
+    workspace_response = service.get_workspace(workspace_id)
     if not workspace_response:
         display_manager.print_error(f"Workspace with ID {workspace_id} not found")
         raise typer.Exit(1)
@@ -256,12 +247,10 @@ def delete_workspace(
     display_manager = WorkspacesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = WorkspacesService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
 
-    workspace_delete_response, error = service.delete_workspace(workspace_id)
-    if error:
-        display_manager.print_error(f"Error: {error}")
-        raise typer.Exit(1)
+    workspace_delete_response = service.delete_workspace(workspace_id)
     if not workspace_delete_response:
         display_manager.print_error(f"Workspace with ID {workspace_id} not found")
         raise typer.Exit(1)

@@ -2,7 +2,7 @@ from exalsius_api_client.models.offer import Offer
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplayManager
 
 
 class OffersDisplayManager(BaseDisplayManager):

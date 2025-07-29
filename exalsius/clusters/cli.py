@@ -4,8 +4,10 @@ import typer
 from rich.console import Console
 
 from exalsius.clusters.display import ClustersDisplayManager
+from exalsius.clusters.models import ClusterType, NodesToAddDTO
 from exalsius.clusters.service import ClustersService
 from exalsius.config import AppConfig, ConfigDefaultCluster, save_config
+from exalsius.core.commons.models import ServiceError
 from exalsius.nodes.display import NodesDisplayManager
 from exalsius.nodes.service import NodeService
 from exalsius.utils import commons as utils
@@ -36,20 +38,21 @@ def list_clusters(
     """
     List all clusters.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    console: Console = Console(theme=custom_theme)
+    display_manager: ClustersDisplayManager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
 
-    clusters_list_response, error = service.list_clusters(status)
-    if error:
-        display_manager.print_error(f"Failed to list clusters: {error}")
+    service: ClustersService = ClustersService(config, access_token)
+
+    try:
+        clusters = service.list_clusters(status)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
-    if not clusters_list_response:
-        display_manager.print_info("No clusters found.")
-        raise typer.Exit()
-    display_manager.display_clusters(clusters_list_response)
+
+    display_manager.display_clusters(clusters)
 
 
 @app.command("get", help="Get a cluster")
@@ -67,10 +70,13 @@ def get_cluster(
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+
+    service = ClustersService(config, access_token)
 
     if not cluster_id:
         cfg: AppConfig = utils.get_config_from_ctx(ctx)
+        # TODO: Revisit this to improve the UX: start interative selection of cluster
         if not cfg.default_cluster:
             display_manager.print_error(
                 "No cluster ID provided and no default cluster set."
@@ -78,13 +84,12 @@ def get_cluster(
             raise typer.Exit(1)
         cluster_id = cfg.default_cluster.id
 
-    cluster_response, error = service.get_cluster(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to get cluster: {error}")
+    try:
+        cluster_response = service.get_cluster(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
-    if not cluster_response:
-        display_manager.print_error(f"Cluster with ID {cluster_id} not found.")
-        raise typer.Exit(1)
+
     display_manager.display_cluster(cluster_response)
 
 
@@ -100,15 +105,13 @@ def delete_cluster(
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = ClustersService(config, access_token)
 
-    cluster_response, error = service.get_cluster(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to get cluster: {error}")
-        raise typer.Exit(1)
-
-    if not cluster_response:
-        display_manager.print_error(f"Cluster with ID {cluster_id} not found.")
+    try:
+        cluster_response = service.get_cluster(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
 
     display_manager.display_cluster(cluster_response)
@@ -117,10 +120,12 @@ def delete_cluster(
         display_manager.display_delete_cluster_message(cluster_response)
         raise typer.Exit()
 
-    cluster_response, error = service.delete_cluster(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to delete cluster: {error}")
+    try:
+        cluster_response = service.delete_cluster(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
+
     display_manager.print_success(f"Cluster {cluster_id} deleted successfully.")
 
 
@@ -128,28 +133,32 @@ def delete_cluster(
 def create_cluster(
     ctx: typer.Context,
     name: str = typer.Argument(help="The name of the cluster"),
-    k8s_version: str = typer.Option(
-        "v1.28.1",
-        "--k8s-version",
-        help="The Kubernetes version to use for the cluster",
+    cluster_type: ClusterType = typer.Option(
+        ClusterType.CLOUD,
+        "--cluster-type",
+        help="The type of the cluster",
     ),
 ):
     """
     Create a cluster.
     """
     # TODO: add support for full ClusterCreateRequest object, either via file or cli flags
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    console: Console = Console(theme=custom_theme)
+    display_manager: ClustersDisplayManager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
-    cluster_create_response, error = service.create_cluster(name, k8s_version)
-    if error:
-        display_manager.print_error(f"Failed to create cluster: {error}")
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+
+    service: ClustersService = ClustersService(config, access_token)
+
+    try:
+        cluster_create_response = service.create_cluster(
+            name=name, cluster_type=cluster_type
+        )
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
-    if not cluster_create_response:
-        display_manager.print_error("Failed to create cluster.")
-        raise typer.Exit(1)
+
     display_manager.print_success(
         f"Cluster {cluster_create_response.cluster_id} created successfully."
     )
@@ -170,24 +179,27 @@ def deploy_cluster(
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
-    cluster_response, error = service.get_cluster(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to get cluster: {error}")
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
+
+    try:
+        cluster_response = service.get_cluster(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
-    if not cluster_response:
-        display_manager.print_error(f"Cluster with ID {cluster_id} not found.")
-        raise typer.Exit(1)
+
     display_manager.display_cluster(cluster_response)
 
     if not typer.confirm("Are you sure you want to deploy this cluster?"):
         display_manager.display_cluster(cluster_response)
         raise typer.Exit()
 
-    cluster_response, error = service.deploy_cluster(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to deploy cluster: {error}")
+    try:
+        cluster_response = service.deploy_cluster(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
+
     display_manager.print_success(
         f"Cluster {cluster_id} deployment started successfully."
     )
@@ -208,15 +220,14 @@ def list_services(
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
-    cluster_services_response, error = service.get_cluster_services(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to get cluster services: {error}")
-        raise typer.Exit(1)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
 
-    if not cluster_services_response:
-        display_manager.print_info("No services deployed to this cluster.")
-        raise typer.Exit()
+    try:
+        cluster_services_response = service.get_cluster_services(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
 
     if not cluster_services_response.services_deployments:
         display_manager.print_info("No services deployed to this cluster.")
@@ -234,24 +245,17 @@ def list_nodes(
     List all nodes of a cluster.
     """
     console = Console(theme=custom_theme)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
     display_manager = ClustersDisplayManager(console)
-    cluster_nodes_response, error = service.get_cluster_nodes(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to get cluster nodes: {error}")
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
+
+    try:
+        cluster_nodes_response = service.get_cluster_nodes(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
-
-    if not cluster_nodes_response:
-        display_manager.print_info("No nodes in this cluster.")
-        raise typer.Exit()
-
-    if (
-        not cluster_nodes_response.control_plane_node_ids
-        and not cluster_nodes_response.worker_node_ids
-    ):
-        display_manager.print_info("No nodes in this cluster.")
-        raise typer.Exit()
 
     display_manager.display_cluster_nodes(cluster_nodes_response)
 
@@ -276,19 +280,13 @@ def add_node(
     display_manager_clusters = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
-    node_service = NodeService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
+    node_service: NodeService = NodeService(config, access_token)
     display_manager_nodes = NodesDisplayManager(console)
 
     for node_id in node_ids:
-        node_response, node_error = node_service.get_node(node_id)
-        if node_error:
-            display_manager_nodes.print_error(f"Failed to get node: {node_error}")
-            raise typer.Exit(1)
-
-        if not node_response:
-            display_manager_nodes.print_error(f"Node with ID {node_id} not found.")
-            raise typer.Exit(1)
+        node_response = node_service.get_node(node_id)
 
         display_manager_nodes.display_node(node_response)
 
@@ -296,15 +294,18 @@ def add_node(
             display_manager_nodes.display_node(node_response)
             raise typer.Exit()
 
-    cluster_nodes_response, error = service.add_cluster_node(
-        cluster_id, node_ids, node_role
-    )
-    if error:
-        display_manager_clusters.print_error(f"Failed to add nodes to cluster: {error}")
+    try:
+        cluster_nodes_response = service.add_cluster_node(
+            cluster_id=cluster_id,
+            nodes_to_add=[
+                NodesToAddDTO(node_id=node_id, node_role=node_role)
+                for node_id in node_ids
+            ],
+        )
+    except ServiceError as e:
+        display_manager_clusters.print_error(e.message)
         raise typer.Exit(1)
-    if not cluster_nodes_response:
-        display_manager_clusters.print_error("Failed to add nodes to cluster.")
-        raise typer.Exit(1)
+
     display_manager_clusters.print_success(
         f"Nodes {node_ids} added to cluster {cluster_id} successfully."
     )
@@ -326,7 +327,8 @@ def get_cluster_resources(
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
 
     cfg: AppConfig = utils.get_config_from_ctx(ctx)
     if not cluster_id:
@@ -337,13 +339,12 @@ def get_cluster_resources(
             raise typer.Exit(1)
         cluster_id = cfg.default_cluster.id
 
-    cluster_resources_response, error = service.get_cluster_resources(cluster_id)
-    if error:
-        display_manager.print_error(f"Failed to get cluster resources: {error}")
+    try:
+        cluster_resources_response = service.get_cluster_resources(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
-    if not cluster_resources_response:
-        display_manager.print_info("No resources available for this cluster.")
-        raise typer.Exit()
+
     display_manager.display_cluster_resources(cluster_resources_response)
 
 
@@ -359,14 +360,13 @@ def set_default_cluster(
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
 
-    cluster_response, error = service.get_cluster(cluster_id)
-    if error:
-        display_manager.print_error(f"Error loading cluster: {error}")
-        raise typer.Exit(1)
-    if not cluster_response:
-        display_manager.print_error(f"Cluster with ID '{cluster_id}' not found.")
+    try:
+        cluster_response = service.get_cluster(cluster_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
 
     cfg: AppConfig = utils.get_config_from_ctx(ctx)
@@ -388,24 +388,30 @@ def get_default_cluster(ctx: typer.Context):
     display_manager = ClustersDisplayManager(console)
 
     cfg: AppConfig = utils.get_config_from_ctx(ctx)
-    cluster_id = cfg.default_cluster
-    if not cluster_id:
+    # TODO: This need to got into the service
+    if not cfg.default_cluster:
         display_manager.print_info("No default cluster set.")
-    else:
-        get_cluster(ctx, cluster_id.id)
+        raise typer.Exit()
+    get_cluster(ctx, cfg.default_cluster.id)
 
 
-@app.command("list")
+@app.command(
+    "list-cloud-credentials",
+    help="List all available cloud provider credentials for the current user",
+)
 def list_cloud_credentials(ctx: typer.Context):
     """List all available cloud provider credentials."""
     console = Console(theme=custom_theme)
     display_manager = ClustersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = ClustersService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
 
-    cloud_credentials, error = service.list_cloud_credentials()
-    if error:
-        display_manager.print_error(f"Failed to list cloud credentials: {error}")
+    try:
+        cloud_credentials = service.list_cloud_credentials()
+    except ServiceError as e:
+        display_manager.print_error(e.message)
         raise typer.Exit(1)
+
     display_manager.display_cloud_credentials(cloud_credentials)
