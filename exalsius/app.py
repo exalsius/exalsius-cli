@@ -10,6 +10,7 @@ from exalsius.auth.cli import login, logout
 from exalsius.auth.service import Auth0Service
 from exalsius.logging import setup_logging
 from exalsius.state import AppState
+from exalsius.utils import commons as utils
 
 NON_AUTH_COMMANDS = ["login", "logout"]
 
@@ -83,6 +84,8 @@ def __root(
 
     config: cli_config.AppConfig = cli_config.load_config()
     logging.debug(f"Loaded config: {config}")
+
+    utils.help_if_no_subcommand(ctx)
 
     access_token: Optional[str] = None
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
