@@ -97,7 +97,7 @@ def get_ddp_jobs() -> Tuple[Optional[list], Optional[str]]:
 
 
 def stream_pod_logs(
-    pod_name: str, namespace: str, container: str = None, color: str = "white"
+    pod_name: str, namespace: str, container: Optional[str] = None, color: str = "white"
 ):
     """
     Stream logs from a single pod using a Watch.
@@ -115,7 +115,7 @@ def stream_pod_logs(
             container=container,
             _preload_content=False,
         ):
-            console.print(f"{pod_name} : {log_line.rstrip()}", style=color)
+            console.print(f"{pod_name} : {log_line}", style=color)
     except Exception as e:
         console.print(f"Error streaming logs for pod {pod_name}: {e}", style="red")
 
