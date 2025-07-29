@@ -1,3 +1,3 @@
-from . import cli, display, models, operations, service
+from . import cli, commands, display, models, service
 
-__all__ = ["cli", "display", "operations", "service", "models"]
+__all__ = ["cli", "display", "commands", "service", "models"]

@@ -3,9 +3,9 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from exalsius.clusters.models import CloudProvider
+from exalsius.config import AppConfig
 from exalsius.nodes.display import NodesDisplayManager
-from exalsius.nodes.models import NodeType
+from exalsius.nodes.models import CloudProvider, NodeType
 from exalsius.nodes.service import NodeService
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
@@ -38,12 +38,11 @@ def list_nodes(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
-    nodes, error = service.list_nodes(node_type, provider)
-    if error:
-        display_manager.print_error(f"Failed to list nodes: {error}")
-        raise typer.Exit(1)
-    display_manager.display_nodes(nodes)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
+
+    nodes_response = service.list_nodes(node_type, provider)
+    display_manager.display_nodes(nodes_response.nodes)
 
 
 @app.command("get")
@@ -56,17 +55,16 @@ def get_node(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
 
-    node, error = service.get_node(node_id)
-    if error:
-        display_manager.print_error(f"Failed to get node: {error}")
+    try:
+        node_response = service.get_node(node_id)
+    except Exception as e:
+        display_manager.print_error(f"Failed to get node: {e}")
         raise typer.Exit(1)
-    if node:
-        display_manager.display_node(node)
-    else:
-        display_manager.print_error(f"Node {node_id} not found")
-        raise typer.Exit(1)
+
+    display_manager.display_node(node_response)
 
 
 @app.command("delete")
@@ -79,11 +77,10 @@ def delete_node(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
-    node_delete_response, error = service.delete_node(node_id)
-    if error:
-        display_manager.print_error(f"Failed to delete node: {error}")
-        raise typer.Exit(1)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
+
+    service.delete_node(node_id)
     display_manager.print_success(f"Node {node_id} deleted successfully")
 
 
@@ -100,16 +97,10 @@ def import_ssh(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
-    node_import_response, error = service.import_ssh(
-        hostname, endpoint, username, ssh_key_id
-    )
-    if error:
-        display_manager.print_error(f"Failed to import SSH key: {error}")
-        raise typer.Exit(1)
-    if not node_import_response:
-        display_manager.print_error("Failed to import SSH key")
-        raise typer.Exit(1)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
+
+    node_import_response = service.import_ssh(hostname, endpoint, username, ssh_key_id)
     display_manager.print_success(
         f"Nodes {node_import_response.node_ids} imported successfully"
     )
@@ -127,14 +118,10 @@ def import_offer(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
-    node_import_response, error = service.import_from_offer(hostname, offer_id, amount)
-    if error:
-        display_manager.print_error(f"Failed to import offer: {error}")
-        raise typer.Exit(1)
-    if not node_import_response:
-        display_manager.print_error("Failed to import offer")
-        raise typer.Exit(1)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
+
+    node_import_response = service.import_from_offer(hostname, offer_id, amount)
     display_manager.print_success(
         f"Nodes {node_import_response.node_ids} imported successfully"
     )
@@ -147,13 +134,11 @@ def list_ssh_keys(ctx: typer.Context):
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
 
-    ssh_keys, error = service.list_ssh_keys()
-    if error:
-        display_manager.print_error(f"Failed to list SSH keys: {error}")
-        raise typer.Exit(1)
-    display_manager.display_ssh_keys(ssh_keys)
+    ssh_keys_response = service.list_ssh_keys()
+    display_manager.display_ssh_keys(ssh_keys_response.ssh_keys)
 
 
 @app.command("add")
@@ -169,15 +154,10 @@ def add_ssh_key(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
 
-    ssh_key_create_response, error = service.add_ssh_key(name, key_path)
-    if error:
-        display_manager.print_error(f"Failed to add SSH key: {error}")
-        raise typer.Exit(1)
-    if not ssh_key_create_response:
-        display_manager.print_error("Failed to add SSH key.")
-        raise typer.Exit(1)
+    ssh_key_create_response = service.add_ssh_key(name, key_path)
     display_manager.print_success(
         f"Added SSH key '{ssh_key_create_response.ssh_key_id}' from {key_path}"
     )
@@ -193,11 +173,9 @@ def delete_ssh_key(
     display_manager = NodesDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    service = NodeService(access_token)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = NodeService(config, access_token)
 
-    delete_success, error = service.delete_ssh_key(name)
-    if not delete_success and error:
-        display_manager.print_error(f"Failed to delete SSH key: {error}")
-        raise typer.Exit(1)
+    service.delete_ssh_key(name)
 
     display_manager.print_success(f"Deleted SSH key '{name}'")

@@ -4,11 +4,13 @@ from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cloud_node import CloudNode
 from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.self_managed_node import SelfManagedNode
-from exalsius_api_client.models.ssh_key import SshKey
+from exalsius_api_client.models.ssh_keys_list_response_ssh_keys_inner import (
+    SshKeysListResponseSshKeysInner,
+)
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplayManager
 
 
 class NodesDisplayManager(BaseDisplayManager):
@@ -148,7 +150,7 @@ class NodesDisplayManager(BaseDisplayManager):
             self._add_self_managed_node_row(table, node.actual_instance)
         self.console.print(table)
 
-    def display_ssh_keys(self, ssh_keys: List[SshKey]):
+    def display_ssh_keys(self, ssh_keys: List[SshKeysListResponseSshKeysInner]):
         if not ssh_keys:
             self.print_info("No SSH keys found")
             return

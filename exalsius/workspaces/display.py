@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.json import JSON
 from rich.table import Table
 
-from exalsius.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplayManager
 
 
 class WorkspacesDisplayManager(BaseDisplayManager):
@@ -72,12 +72,9 @@ class WorkspacesDisplayManager(BaseDisplayManager):
         self.console.print(f"Workspace {workspace_id} deleted successfully.")
 
     def display_workspace_access_info(self, workspace: Workspace):
-        if workspace.template.name.startswith("jupyter"):
-            self.console.print(
-                f"Access to your workspace {workspace.name} via JupyterLab: "
-            )
-            self.console.print(f"  {workspace.access_information}")
-        else:
-            self.console.print(
-                f"Use your kubeconfig to access your workspace {workspace.name}"
-            )
+        if workspace.access_information:
+            self.console.print(f"Access to your workspace {workspace.name} via: ")
+            for access_info in workspace.access_information:
+                self.console.print(
+                    f"  {access_info.access_protocol}://{access_info.external_ip}:{access_info.port_number}"
+                )

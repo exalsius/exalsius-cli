@@ -3,8 +3,8 @@ from typing import cast
 
 import typer
 
-from exalsius.auth.models import UnauthorizedError
 from exalsius.config import AppConfig
+from exalsius.core.commons.models import UnauthorizedError
 from exalsius.state import AppState
 
 

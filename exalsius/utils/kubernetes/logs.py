@@ -9,7 +9,7 @@ from .client import KubernetesClient
 
 
 class LogManager(KubernetesClient):
-    """Manages Kubernetes pod log operations."""
+    """Manages Kubernetes pod log commands."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

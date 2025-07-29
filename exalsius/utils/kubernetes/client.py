@@ -23,7 +23,7 @@ class KubeClientProtocol(Protocol):
 class KubernetesClient:
     """
     Base Kubernetes client class that handles connection and provides common functionality.
-    This class serves as a foundation for more specific Kubernetes operation classes.
+    This class serves as a foundation for more specific Kubernetes command classes.
     """
 
     def __init__(self, config_file: Optional[str] = None):
@@ -128,7 +128,7 @@ class KubernetesClient:
 
 class CustomObjectMixin:
     """
-    Mixin class providing common custom object operations.
+    Mixin class providing common custom object commands.
     To be used with KubernetesClient-based classes.
     """
 
