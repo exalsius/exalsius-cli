@@ -10,7 +10,7 @@ from exalsius.offers.service import OffersService
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer(context_settings={"allow_interspersed_args": True})
+app = typer.Typer()
 
 
 @app.callback(invoke_without_command=True)
@@ -35,13 +35,13 @@ def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
 def list_offers(
     ctx: typer.Context,
     gpu_type: Optional[str] = typer.Option(
-        "H100", "--gpu-type", help="Filter GPUs by name, e.g. 'H100'"
+        None, "--gpu-type", help="Filter GPUs by name, e.g. 'H100'"
     ),
     gpu_vendor: Optional[str] = typer.Option(
-        "NVIDIA", "--gpu-vendor", help="Filter GPUs by vendor, e.g. 'NVIDIA'"
+        None, "--gpu-vendor", help="Filter GPUs by vendor, e.g. 'NVIDIA'"
     ),
     cloud_provider: Optional[str] = typer.Option(
-        "AWS", "--cloud-provider", help="Filter offers by cloud provider"
+        None, "--cloud-provider", help="Filter offers by cloud provider"
     ),
     price_min: Optional[float] = typer.Option(
         None, "--price-min", help="Minimum price per hour"
