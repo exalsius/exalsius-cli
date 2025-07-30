@@ -1,11 +1,10 @@
 import logging
 import subprocess
 import sys
+import traceback
 import webbrowser
 from datetime import datetime, timedelta
-from typing import Optional, TypeVar
-
-from pydantic import BaseModel
+from typing import Optional
 
 from exalsius.auth.commands import (
     Auth0FetchDeviceCodeCommand,
@@ -35,10 +34,8 @@ from exalsius.auth.models import (
 )
 from exalsius.config import AppConfig, Auth0Config
 from exalsius.core.base.commands import BaseCommand
-from exalsius.core.base.service import BaseService
-from exalsius.core.commons.models import ServiceError
-
-T = TypeVar("T", bound=BaseModel)
+from exalsius.core.base.service import BaseService, T
+from exalsius.core.commons.models import ServiceError, ServiceWarning
 
 
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
@@ -84,9 +81,12 @@ class Auth0Service(BaseService):
             return command.execute()
         except AuthenticationError as e:
             raise ServiceError(str(e))
+        except Warning as w:
+            raise ServiceWarning(str(w))
         except Exception as e:
             raise ServiceError(
                 f"unexpected error while executing command {command.__class__.__name__}: {str(e)}"
+                f"\nStacktrace:\n{traceback.format_exc()}"
             )
 
     def fetch_device_code(

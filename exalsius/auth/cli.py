@@ -6,7 +6,7 @@ from rich.console import Console
 from exalsius.auth.display import AuthDisplayManager
 from exalsius.auth.models import NotLoggedInWarning
 from exalsius.auth.service import Auth0Service
-from exalsius.core.commons.models import ServiceError
+from exalsius.core.commons.models import ServiceError, ServiceWarning
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
@@ -133,6 +133,9 @@ def logout(ctx: typer.Context):
     except NotLoggedInWarning:
         display_manager.display_not_logged_in()
         raise typer.Exit(0)
+    except ServiceWarning as w:
+        # Warnings are logged but we expect the logout to have succeeded.
+        logger.debug(str(w))
     except ServiceError as e:
         logger.error(f"Failed to log out: {e.message}")
         display_manager.display_authentication_error(e.message)
