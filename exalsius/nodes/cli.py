@@ -41,7 +41,12 @@ def list_nodes(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = NodeService(config, access_token)
 
-    nodes_response = service.list_nodes(node_type, provider)
+    try:
+        nodes_response = service.list_nodes(node_type, provider)
+    except Exception as e:
+        display_manager.print_error(f"Failed to list nodes: {e}")
+        raise typer.Exit(1)
+
     display_manager.display_nodes(nodes_response.nodes)
 
 
@@ -80,7 +85,12 @@ def delete_node(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = NodeService(config, access_token)
 
-    service.delete_node(node_id)
+    try:
+        service.delete_node(node_id)
+    except Exception as e:
+        display_manager.print_error(f"Failed to delete node: {e}")
+        raise typer.Exit(1)
+
     display_manager.print_success(f"Node {node_id} deleted successfully")
 
 
@@ -100,7 +110,14 @@ def import_ssh(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = NodeService(config, access_token)
 
-    node_import_response = service.import_ssh(hostname, endpoint, username, ssh_key_id)
+    try:
+        node_import_response = service.import_ssh(
+            hostname, endpoint, username, ssh_key_id
+        )
+    except Exception as e:
+        display_manager.print_error(f"Failed to import node from SSH: {e}")
+        raise typer.Exit(1)
+
     display_manager.print_success(
         f"Nodes {node_import_response.node_ids} imported successfully"
     )
@@ -109,8 +126,8 @@ def import_ssh(
 @app.command("import-offer")
 def import_offer(
     ctx: typer.Context,
-    hostname: str = typer.Option(help="The hostname of the node to import"),
     offer_id: str = typer.Argument(help="The ID of the offer to import"),
+    hostname: str = typer.Option(help="The hostname of the node to import"),
     amount: int = typer.Option(help="The amount of nodes to import"),
 ):
     """Import a node from an offer into the node pool"""
@@ -121,13 +138,18 @@ def import_offer(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = NodeService(config, access_token)
 
-    node_import_response = service.import_from_offer(hostname, offer_id, amount)
+    try:
+        node_import_response = service.import_from_offer(hostname, offer_id, amount)
+    except Exception as e:
+        display_manager.print_error(f"Failed to import node from offer: {e}")
+        raise typer.Exit(1)
+
     display_manager.print_success(
         f"Nodes {node_import_response.node_ids} imported successfully"
     )
 
 
-@app.command("list")
+@app.command("list-ssh-keys")
 def list_ssh_keys(ctx: typer.Context):
     """List all SSH keys in the management cluster."""
     console = Console(theme=custom_theme)
@@ -135,13 +157,19 @@ def list_ssh_keys(ctx: typer.Context):
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
+
     service = NodeService(config, access_token)
 
-    ssh_keys_response = service.list_ssh_keys()
+    try:
+        ssh_keys_response = service.list_ssh_keys()
+    except Exception as e:
+        display_manager.print_error(f"Failed to list SSH keys: {e}")
+        raise typer.Exit(1)
+
     display_manager.display_ssh_keys(ssh_keys_response.ssh_keys)
 
 
-@app.command("add")
+@app.command("add-ssh-key")
 def add_ssh_key(
     ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name for the SSH key"),
@@ -155,18 +183,24 @@ def add_ssh_key(
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
+
     service = NodeService(config, access_token)
 
-    ssh_key_create_response = service.add_ssh_key(name, key_path)
+    try:
+        ssh_key_create_response = service.add_ssh_key(name, key_path)
+    except Exception as e:
+        display_manager.print_error(f"Failed to add SSH key: {e}")
+        raise typer.Exit(1)
+
     display_manager.print_success(
         f"Added SSH key '{ssh_key_create_response.ssh_key_id}' from {key_path}"
     )
 
 
-@app.command("delete")
+@app.command("delete-ssh-key")
 def delete_ssh_key(
     ctx: typer.Context,
-    name: str = typer.Option(..., "--name", "-n", help="Name of the SSH key to delete"),
+    id: str = typer.Argument(..., help="ID of the SSH key to delete"),
 ):
     """Delete an SSH key from the management cluster."""
     console = Console(theme=custom_theme)
@@ -176,6 +210,10 @@ def delete_ssh_key(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = NodeService(config, access_token)
 
-    service.delete_ssh_key(name)
+    try:
+        service.delete_ssh_key(id)
+    except Exception as e:
+        display_manager.print_error(f"Failed to delete SSH key: {e}")
+        raise typer.Exit(1)
 
-    display_manager.print_success(f"Deleted SSH key '{name}'")
+    display_manager.print_success(f"Deleted SSH key '{id}'")
