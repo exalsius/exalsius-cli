@@ -146,12 +146,12 @@ class NodeService(BaseServiceWithAuth):
             )
         )
 
-    def delete_ssh_key(self, name: str) -> SSHKeysDeleteResultDTO:
+    def delete_ssh_key(self, id: str) -> SSHKeysDeleteResultDTO:
         return self._execute_command(
             DeleteSSHKeyCommand(
                 SSHKeysDeleteRequestDTO(
                     api=self.management_api,
-                    name=name,
+                    id=id,
                 )
             )
         )

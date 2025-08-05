@@ -71,7 +71,7 @@ class SSHKeysAddRequestDTO(SSHKeysBaseRequestDTO):
 
 
 class SSHKeysDeleteRequestDTO(SSHKeysBaseRequestDTO):
-    name: str = Field(..., description="The name of the SSH key")
+    id: str = Field(..., description="The ID of the SSH key")
 
 
 class SSHKeysDeleteResultDTO(BaseModel):

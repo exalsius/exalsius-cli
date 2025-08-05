@@ -85,9 +85,9 @@ class ImportFromOfferCommand(BaseCommand[NodeImportResponse]):
 
     def execute(self) -> NodeImportResponse:
         return self.request.api.import_node_from_offer(
-            self.request.hostname,
-            self.request.offer_id,
-            self.request.amount,
+            offer_id=self.request.offer_id,
+            hostname=self.request.hostname,
+            amount=self.request.amount,
         )
 
 
@@ -119,5 +119,5 @@ class DeleteSSHKeyCommand(BaseCommand[SSHKeysDeleteResultDTO]):
         self.request: SSHKeysDeleteRequestDTO = request
 
     def execute(self) -> SSHKeysDeleteResultDTO:
-        self.request.api.delete_ssh_key(self.request.name)
+        self.request.api.delete_ssh_key(self.request.id)
         return SSHKeysDeleteResultDTO(success=True)
