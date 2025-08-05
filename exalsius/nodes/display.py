@@ -23,7 +23,7 @@ class NodesDisplayManager(BaseDisplayManager):
         )
 
     def _add_common_columns(self, table: Table):
-        table.add_column("ID", style="cyan")
+        table.add_column("ID", style="cyan", no_wrap=True)
         table.add_column("Type", style="green")
         table.add_column("Description", style="blue")
         table.add_column("Location", style="green")
