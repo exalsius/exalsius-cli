@@ -27,6 +27,7 @@ class OffersDisplayManager(BaseDisplayManager):
             border_style="custom",
         )
 
+        table.add_column("ID", style="cyan")
         table.add_column("GPU", style="cyan")
         table.add_column("QTY", style="green")
         table.add_column("CLOUD", style="magenta")
@@ -39,6 +40,7 @@ class OffersDisplayManager(BaseDisplayManager):
 
         for offer in offers:
             table.add_row(
+                str(offer.id),
                 str(offer.gpu_type),
                 str(offer.gpu_count),
                 str(offer.cloud_provider),
