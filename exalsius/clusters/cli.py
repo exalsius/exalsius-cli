@@ -8,8 +8,6 @@ from exalsius.clusters.models import ClusterType, NodesToAddDTO
 from exalsius.clusters.service import ClustersService
 from exalsius.config import AppConfig, ConfigDefaultCluster, save_config
 from exalsius.core.commons.models import ServiceError
-from exalsius.nodes.display import NodesDisplayManager
-from exalsius.nodes.service import NodeService
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
@@ -268,9 +266,18 @@ def add_node(
         help="The IDs of the nodes to add to the cluster"
     ),
     node_role: str = typer.Option(
-        "worker",
+        "WORKER",
         "--node-role",
-        help="The role of the nodes to add to the cluster. Can be `worker` or `control-plane`, defaults to `control plane`",
+        help="The role of the nodes to add to the cluster. Can be `WORKER` or `CONTROL_PLANE`, defaults to `WORKER`",
+        case_sensitive=True,
+        show_choices=True,
+        rich_help_panel="Node Role",
+        prompt=False,
+        callback=lambda v: (
+            v
+            if v in ("WORKER", "CONTROL_PLANE")
+            else typer.BadParameter("node_role must be 'WORKER' or 'CONTROL_PLANE'")
+        ),
     ),
 ):
     """
@@ -282,17 +289,8 @@ def add_node(
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ClustersService = ClustersService(config, access_token)
-    node_service: NodeService = NodeService(config, access_token)
-    display_manager_nodes = NodesDisplayManager(console)
 
-    for node_id in node_ids:
-        node_response = node_service.get_node(node_id)
-
-        display_manager_nodes.display_node(node_response)
-
-        if not typer.confirm("Are you sure you want to add this node to the cluster?"):
-            display_manager_nodes.display_node(node_response)
-            raise typer.Exit()
+    # TODO: Add validation for node_ids
 
     try:
         cluster_nodes_response = service.add_cluster_node(
