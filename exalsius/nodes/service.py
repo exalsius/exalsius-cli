@@ -1,3 +1,4 @@
+import base64
 import pathlib
 from typing import Optional
 
@@ -127,12 +128,15 @@ class NodeService(BaseServiceWithAuth):
                 f"SSH key file {key_path} does not exist or is not a file"
             )
 
+        with open(key_path, "rb") as key_file:
+            private_key = key_file.read()
+
         return self._execute_command(
             AddSSHKeyCommand(
                 SSHKeysAddRequestDTO(
                     api=self.management_api,
                     name=name,
-                    key_path=str(key_path),
+                    private_key_base64=base64.b64encode(private_key).decode(),
                 )
             )
         )

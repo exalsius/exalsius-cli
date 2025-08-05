@@ -67,7 +67,7 @@ class SSHKeysListRequestDTO(SSHKeysBaseRequestDTO):
 
 class SSHKeysAddRequestDTO(SSHKeysBaseRequestDTO):
     name: str = Field(..., description="The name of the SSH key")
-    key_path: str = Field(..., description="The path to the SSH key")
+    private_key_base64: str = Field(..., description="The base64 encoded private key")
 
 
 class SSHKeysDeleteRequestDTO(SSHKeysBaseRequestDTO):

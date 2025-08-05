@@ -1,5 +1,3 @@
-import base64
-
 from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
 from exalsius_api_client.models.node_import_response import NodeImportResponse
 from exalsius_api_client.models.node_import_ssh_request import NodeImportSshRequest
@@ -107,9 +105,7 @@ class AddSSHKeyCommand(BaseCommand[SshKeyCreateResponse]):
         return self.request.api.add_ssh_key(
             SshKeyCreateRequest(
                 name=self.request.name,
-                private_key_b64=base64.b64encode(
-                    self.request.key_path.encode()
-                ).decode(),
+                private_key_b64=self.request.private_key_base64,
             )
         )
 
