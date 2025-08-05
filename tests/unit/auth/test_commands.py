@@ -1,0 +1,409 @@
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
+import requests
+
+from exalsius.auth.commands import (
+    Auth0FetchDeviceCodeCommand,
+    Auth0PollForAuthenticationCommand,
+    Auth0RefreshTokenCommand,
+    Auth0RevokeTokenCommand,
+    Auth0ValidateTokenCommand,
+    ClearTokenFromKeyringCommand,
+    KeyringKeys,
+    LoadTokenFromKeyringCommand,
+    StoreTokenOnKeyringCommand,
+)
+from exalsius.auth.models import (
+    Auth0APIError,
+    Auth0AuthenticationDTO,
+    Auth0AuthenticationError,
+    Auth0DeviceCodeAuthenticationDTO,
+    Auth0FetchDeviceCodeRequestDTO,
+    Auth0PollForAuthenticationRequestDTO,
+    Auth0RefreshTokenRequestDTO,
+    Auth0RevokeTokenRequestDTO,
+    Auth0RevokeTokenStatusDTO,
+    Auth0UserInfoDTO,
+    Auth0ValidateTokenRequestDTO,
+    ClearTokenFromKeyringRequestDTO,
+    KeyringError,
+    LoadedTokenDTO,
+    LoadTokenFromKeyringRequestDTO,
+    StoreTokenOnKeyringRequestDTO,
+    TokenKeyringStorageStatusDTO,
+)
+
+
+@patch("exalsius.core.commons.commands.requests.post")
+class TestAuth0FetchDeviceCodeCommand:
+    def test_execute_success(self, mock_post):
+        request_dto = Auth0FetchDeviceCodeRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            audience="test_audience",
+            scope=["openid", "profile", "email"],
+            algorithms=["RS256"],
+        )
+        command = Auth0FetchDeviceCodeCommand(request_dto)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {
+            "device_code": "test_device_code",
+            "user_code": "test_user_code",
+            "verification_uri": "https://test.domain/activate",
+            "verification_uri_complete": "https://test.domain/activate?user_code=test_user_code",
+            "expires_in": 300,
+            "interval": 1,
+        }
+        mock_post.return_value = mock_response
+
+        result = command.execute()
+
+        mock_post.assert_called_once()
+        assert isinstance(result, Auth0DeviceCodeAuthenticationDTO)
+        assert result.device_code == "test_device_code"
+
+    def test_execute_http_error(self, mock_post):
+        request_dto = Auth0FetchDeviceCodeRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            audience="test_audience",
+            scope=["openid", "profile", "email"],
+            algorithms=["RS256"],
+        )
+        command = Auth0FetchDeviceCodeCommand(request_dto)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "error": "some_error",
+            "error_description": "some_description",
+        }
+        http_error = requests.HTTPError(response=mock_response)
+        mock_response.raise_for_status.side_effect = http_error
+        mock_post.return_value = mock_response
+
+        with pytest.raises(Auth0APIError) as excinfo:
+            command.execute()
+
+        assert excinfo.value.error == "some_error"
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.error_description == "some_description"
+
+
+@patch("exalsius.core.commons.commands.requests.post")
+@patch("exalsius.auth.commands.sleep")
+@patch("exalsius.auth.commands.time")
+class TestAuth0PollForAuthenticationCommand:
+    def test_execute_success_on_first_try(self, mock_time, mock_sleep, mock_post):
+        mock_time.side_effect = [1.0, 2.0, 3.0]
+
+        request_dto = Auth0PollForAuthenticationRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            device_code="test_device_code",
+            grant_type="urn:ietf:params:oauth:grant-type:device_code",
+        )
+        command = Auth0PollForAuthenticationCommand(request_dto)
+
+        mock_sleep.return_value = None
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {
+            "access_token": "test_access_token",
+            "id_token": "test_id_token",
+            "scope": "openid",
+            "expires_in": 86400,
+            "token_type": "Bearer",
+        }
+        mock_post.return_value = mock_response
+
+        result = command.execute()
+
+        assert isinstance(result, Auth0AuthenticationDTO)
+        assert result.access_token == "test_access_token"
+
+    def test_execute_success_after_retries_with_slow_down_error(
+        self, mock_time, mock_sleep, mock_post
+    ):
+        mock_time.side_effect = [1.0, 1.1, 1.2, 1.3, 1.4]
+
+        request_dto = Auth0PollForAuthenticationRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            device_code="test_device_code",
+            grant_type="urn:ietf:params:oauth:grant-type:device_code",
+            retry_limit=2,
+            poll_interval_seconds=1,
+            poll_timeout_seconds=1,
+        )
+        command = Auth0PollForAuthenticationCommand(request_dto)
+
+        mock_sleep.return_value = None
+        mock_response_slow_down = MagicMock()
+        mock_response_slow_down.headers = {"Content-Type": "application/json"}
+        mock_response_slow_down.status_code = 429
+        mock_response_slow_down.json.return_value = {
+            "error": "slow_down",
+            "error_description": "slow down",
+        }
+        http_error_slow_down = requests.HTTPError(response=mock_response_slow_down)
+        mock_response_slow_down.raise_for_status.side_effect = http_error_slow_down
+
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {
+            "access_token": "test_access_token",
+            "id_token": "test_id_token",
+            "scope": "openid",
+            "expires_in": 86400,
+            "token_type": "Bearer",
+        }
+
+        mock_post.side_effect = [mock_response_slow_down, mock_response]
+
+        result = command.execute()
+        assert result.access_token == "test_access_token"
+        assert mock_post.call_count == 2
+
+    def test_execute_fails_after_retries_with_user_abort_error(
+        self, mock_time, mock_sleep, mock_post
+    ):
+        mock_time.side_effect = [1.0, 1.1, 1.2, 1.3]
+
+        request_dto = Auth0PollForAuthenticationRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            device_code="test_device_code",
+            grant_type="urn:ietf:params:oauth:grant-type:device_code",
+            retry_limit=3,
+            poll_interval_seconds=1,
+            poll_timeout_seconds=1,
+        )
+        command = Auth0PollForAuthenticationCommand(request_dto)
+
+        mock_sleep.return_value = None
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.status_code = 403
+        mock_response.json.return_value = {
+            "error": "user abort error",
+            "error_description": "user aborted the authentication process",
+        }
+        http_error = requests.HTTPError(response=mock_response)
+        mock_response.raise_for_status.side_effect = http_error
+        mock_post.return_value = mock_response
+
+        with pytest.raises(Auth0AuthenticationError) as excinfo:
+            command.execute()
+        assert (
+            excinfo.value.message
+            == "failed to login. reason: user aborted the authentication process"
+        )
+        assert mock_post.call_count == 1
+
+    def test_execute_fails_after_retries_with_unknown_error(
+        self, mock_time, mock_sleep, mock_post
+    ):
+        mock_time.side_effect = [1.0, 1.1, 1.2, 1.3]
+
+        request_dto = Auth0PollForAuthenticationRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            device_code="test_device_code",
+            grant_type="urn:ietf:params:oauth:grant-type:device_code",
+            retry_limit=3,
+            poll_interval_seconds=1,
+            poll_timeout_seconds=1,
+        )
+        command = Auth0PollForAuthenticationCommand(request_dto)
+
+        mock_sleep.return_value = None
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.status_code = 500
+        mock_response.json.return_value = {
+            "error": "unknown error",
+            "error_description": "unknown error",
+        }
+        http_error = requests.HTTPError(response=mock_response)
+        mock_response.raise_for_status.side_effect = [
+            http_error,
+            http_error,
+            http_error,
+        ]
+        mock_post.return_value = mock_response
+
+        with pytest.raises(Auth0AuthenticationError):
+            command.execute()
+        assert mock_post.call_count == 3
+
+    def test_execute_fails_with_timeout_error(self, mock_time, mock_sleep, mock_post):
+        mock_time.side_effect = [1.0, 3.0]
+
+        request_dto = Auth0PollForAuthenticationRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            device_code="test_device_code",
+            grant_type="urn:ietf:params:oauth:grant-type:device_code",
+            retry_limit=3,
+            poll_interval_seconds=1,
+            poll_timeout_seconds=1,
+        )
+        command = Auth0PollForAuthenticationCommand(request_dto)
+
+        mock_sleep.return_value = None
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.status_code = 403
+        mock_response.json.return_value = {
+            "error": "authorization_pending",
+            "error_description": "authorization pending",
+        }
+        http_error = requests.HTTPError(response=mock_response)
+        mock_response.raise_for_status.side_effect = http_error
+        mock_post.return_value = mock_response
+
+        with pytest.raises(TimeoutError):
+            command.execute()
+        assert mock_post.call_count == 0
+
+
+@patch("exalsius.auth.commands.TokenVerifier")
+@patch("exalsius.auth.commands.AsymmetricSignatureVerifier")
+class TestAuth0ValidateTokenCommand:
+    def test_execute_success(self, mock_signature_verifier, mock_token_verifier):
+        request_dto = Auth0ValidateTokenRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            id_token="test_id_token",
+        )
+        command = Auth0ValidateTokenCommand(request_dto)
+        mock_tv_instance = mock_token_verifier.return_value
+        mock_tv_instance.verify.return_value = {
+            "email": "test@exalsius.com",
+            "sub": "123",
+        }
+
+        result = command.execute()
+
+        assert isinstance(result, Auth0UserInfoDTO)
+        assert result.email == "test@exalsius.com"
+
+
+@patch("exalsius.auth.commands.keyring")
+class TestStoreTokenOnKeyringCommand:
+    def test_execute_success(self, mock_keyring):
+        request = StoreTokenOnKeyringRequestDTO(
+            client_id="test_client_id",
+            access_token="test_token",
+            expires_in=3600,
+            refresh_token="test_refresh_token",
+        )
+        command = StoreTokenOnKeyringCommand(request)
+        result = command.execute()
+        assert isinstance(result, TokenKeyringStorageStatusDTO)
+        assert result.success is True
+        assert mock_keyring.set_password.call_count == 3
+
+    def test_execute_keyring_error(self, mock_keyring):
+        mock_keyring.set_password.side_effect = Exception("Keyring is locked")
+        request = StoreTokenOnKeyringRequestDTO(
+            client_id="test_client_id", access_token="test_token", expires_in=3600
+        )
+        command = StoreTokenOnKeyringCommand(request)
+        with pytest.raises(KeyringError):
+            command.execute()
+
+
+@patch("exalsius.auth.commands.keyring")
+class TestLoadTokenFromKeyringCommand:
+    def test_execute_success(self, mock_keyring):
+        expiry_time = datetime.now() + timedelta(hours=1)
+        mock_keyring.get_password.side_effect = [
+            "test_access_token",
+            expiry_time.isoformat(),
+            "test_refresh_token",
+        ]
+        request = LoadTokenFromKeyringRequestDTO(client_id="test_client_id")
+        command = LoadTokenFromKeyringCommand(request)
+        result = command.execute()
+        assert isinstance(result, LoadedTokenDTO)
+        assert result.access_token == "test_access_token"
+        assert result.expiry == expiry_time
+
+    def test_token_not_found(self, mock_keyring):
+        mock_keyring.get_password.return_value = None
+        request = LoadTokenFromKeyringRequestDTO(client_id="test_client_id")
+        command = LoadTokenFromKeyringCommand(request)
+        with pytest.raises(KeyringError):
+            command.execute()
+
+
+@patch("exalsius.core.commons.commands.requests.post")
+class TestAuth0RefreshTokenCommand:
+    def test_execute_success(self, mock_post):
+        request = Auth0RefreshTokenRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            refresh_token="test_refresh_token",
+        )
+        command = Auth0RefreshTokenCommand(request)
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {
+            "access_token": "new_access_token",
+            "id_token": "new_id_token",
+            "scope": "openid",
+            "expires_in": 3600,
+            "token_type": "Bearer",
+        }
+        mock_post.return_value = mock_response
+        result = command.execute()
+        assert isinstance(result, Auth0AuthenticationDTO)
+        assert result.access_token == "new_access_token"
+
+
+@patch("exalsius.core.commons.commands.requests.post")
+class TestAuth0RevokeTokenCommand:
+    def test_execute_success(self, mock_post):
+        request = Auth0RevokeTokenRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            token="test_token_to_revoke",
+            token_type_hint="access_token",
+        )
+        command = Auth0RevokeTokenCommand(request)
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {"success": True}
+        mock_post.return_value = mock_response
+        result = command.execute()
+        assert isinstance(result, Auth0RevokeTokenStatusDTO)
+        assert result.success
+
+
+@patch("exalsius.auth.commands.keyring")
+class TestClearTokenFromKeyringCommand:
+    def test_execute_success(self, mock_keyring):
+        request = ClearTokenFromKeyringRequestDTO(client_id="test_client_id")
+        command = ClearTokenFromKeyringCommand(request)
+        result = command.execute()
+
+        assert result.success is True
+        assert mock_keyring.delete_password.call_count == 3
+        mock_keyring.delete_password.assert_any_call(
+            KeyringKeys.SERVICE_KEY,
+            f"{request.client_id}_{KeyringKeys.ACCESS_TOKEN_KEY}",
+        )
+
+    def test_partial_success(self, mock_keyring):
+        mock_keyring.delete_password.side_effect = [None, Exception("Error"), None]
+        request = ClearTokenFromKeyringRequestDTO(client_id="test_client_id")
+        command = ClearTokenFromKeyringCommand(request)
+        result = command.execute()
+        assert result.success is False
