@@ -87,7 +87,7 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand[Auth0AuthenticationDT
         interval: int = self.request.poll_interval_seconds
         last_error: Optional[str] = None
         while True:
-            if retry_count > self.request.retry_limit:
+            if retry_count >= self.request.retry_limit:
                 raise Auth0AuthenticationError(
                     f"failed to authenticate after {self.request.retry_limit} retries. "
                     f"error: {last_error}"
@@ -135,6 +135,10 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand[Auth0AuthenticationDT
                         last_error = str(e.response.json())
                         retry_count += 1
                         continue
+                else:
+                    last_error = str(e.response.json())
+                    retry_count += 1
+                    continue
             except Exception:
                 retry_count += 1
                 continue
