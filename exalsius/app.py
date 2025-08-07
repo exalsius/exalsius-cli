@@ -5,7 +5,7 @@ import typer
 
 from exalsius import __version__, clusters
 from exalsius import config as cli_config
-from exalsius import nodes, offers, workspaces
+from exalsius import nodes, offers, services, workspaces
 from exalsius.auth.cli import login, logout
 from exalsius.auth.service import Auth0Service
 from exalsius.core.commons.models import ServiceError
@@ -45,7 +45,13 @@ app.add_typer(
 app.add_typer(
     workspaces.cli.app,
     name="workspaces",
-    help="Manage workspaces",
+    help="Manage workspaces of a cluster",
+)
+
+app.add_typer(
+    services.cli.app,
+    name="services",
+    help="Manage services of a cluster",
 )
 
 

@@ -7,7 +7,7 @@ from exalsius_api_client.models.workspace import Workspace
 from pydantic import PositiveInt
 from rich.console import Console
 
-from exalsius.config import AppConfig, ConfigDefaultCluster, save_config
+from exalsius.config import AppConfig, ConfigDefaultCluster
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
@@ -25,7 +25,7 @@ def _root(
     ctx: typer.Context,
     cluster: Annotated[
         str | None,
-        typer.Option("--cluster", "-c", help="Override active cluster for this call."),
+        typer.Option("--cluster", "-c", help="Cluster to use."),
     ] = None,
 ):
     """
@@ -39,7 +39,6 @@ def _root(
             id=cluster,
             name=cluster,
         )
-        save_config(state.config)
 
 
 @app.command("list")

@@ -1,26 +1,191 @@
-# @app.command("list-services", help="List all services of a cluster")
-# def list_services(
-#     ctx: typer.Context,
-#     cluster_id: str = typer.Argument(help="The ID of the cluster to list services of"),
-# ):
-#     """
-#     List all services of a cluster.
-#     """
-#     console = Console(theme=custom_theme)
-#     display_manager = ClustersDisplayManager(console)
+from typing import Annotated
 
-#     access_token: str = utils.get_access_token_from_ctx(ctx)
-#     config: AppConfig = utils.get_config_from_ctx(ctx)
-#     service: ClustersService = ClustersService(config, access_token)
+import typer
+from rich.console import Console
 
-#     try:
-#         cluster_services_response = service.get_cluster_services(cluster_id)
-#     except ServiceError as e:
-#         display_manager.print_error(e.message)
-#         raise typer.Exit(1)
+from exalsius.config import AppConfig, ConfigDefaultCluster
+from exalsius.core.commons.models import ServiceError
+from exalsius.services.display import ServicesDisplayManager
+from exalsius.services.models import ServiceTemplates
+from exalsius.services.service import ServicesService
+from exalsius.state import AppState
+from exalsius.utils import commons as utils
+from exalsius.utils.theme import custom_theme
 
-#     if not cluster_services_response.services_deployments:
-#         display_manager.print_info("No services deployed to this cluster.")
-#         raise typer.Exit()
+app = typer.Typer()
 
-#     display_manager.display_cluster_services(cluster_services_response)
+
+@app.callback(invoke_without_command=True)
+def _root(
+    ctx: typer.Context,
+    cluster: Annotated[
+        str | None,
+        typer.Option("--cluster", "-c", help="Cluster to use."),
+    ] = None,
+):
+    """
+    List and manage services of a cluster.
+    """
+    utils.help_if_no_subcommand(ctx)
+
+    if cluster:
+        state: AppState = utils.get_app_state_from_ctx(ctx)
+        state.config.default_cluster = ConfigDefaultCluster(
+            id=cluster,
+            name=cluster,
+        )
+
+
+@app.command("list", help="List all services of a cluster")
+def list_services(
+    ctx: typer.Context,
+):
+    """
+    List all services of a cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ServicesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ServicesService = ServicesService(config, access_token)
+
+    active_cluster = utils.get_config_from_ctx(ctx).default_cluster
+    if not active_cluster:
+        display_manager.print_error(
+            "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
+            "set a default cluster with `exalsius clusters set-default <cluster_id>`"
+        )
+        raise typer.Exit(1)
+
+    try:
+        services_response = service.list_services(active_cluster.id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
+
+    if not services_response.services:
+        display_manager.print_info("No services deployed to this cluster.")
+        raise typer.Exit()
+
+    display_manager.display_services(services_response)
+
+
+@app.command("get", help="Get a service of a cluster")
+def get_service(
+    ctx: typer.Context,
+    service_id: str = typer.Argument(help="The ID of the service to get"),
+):
+    """
+    Get a service of a cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ServicesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ServicesService = ServicesService(config, access_token)
+
+    try:
+        service_response = service.get_service(service_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
+
+    display_manager.display_service(service_response)
+
+
+@app.command("delete", help="Delete a service of a cluster")
+def delete_service(
+    ctx: typer.Context,
+    service_id: str = typer.Argument(help="The ID of the service to delete"),
+):
+    """
+    Delete a service of a cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ServicesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ServicesService = ServicesService(config, access_token)
+
+    try:
+        service_response = service.delete_service(service_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
+
+    display_manager.display_delete_service_message(service_response)
+
+
+@app.command("list-templates", help="List all service templates")
+def list_service_templates(
+    ctx: typer.Context,
+):
+    """
+    List all service templates.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ServicesDisplayManager(console)
+
+    display_manager.display_service_templates(
+        {f.value: f.create_service_template() for f in ServiceTemplates}
+    )
+
+
+@app.command("describe-template", help="Describe a service template")
+def describe_service_template(
+    ctx: typer.Context,
+    service_template: ServiceTemplates = typer.Argument(
+        help="The service template factory to use",
+    ),
+):
+    """
+    Describe a service template.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ServicesDisplayManager(console)
+
+    display_manager.describe_service_template(
+        service_template.create_service_template()
+    )
+
+
+@app.command("deploy", help="Deploy a service to a cluster")
+def deploy_service(
+    ctx: typer.Context,
+    name: str = typer.Option(help="The name of the service to deploy"),
+    service_template: ServiceTemplates = typer.Argument(
+        help="The service template factory to use",
+    ),
+):
+    """
+    Deploy a service to a cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ServicesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ServicesService = ServicesService(config, access_token)
+
+    active_cluster = utils.get_config_from_ctx(ctx).default_cluster
+    if not active_cluster:
+        display_manager.print_error(
+            "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
+            "set a default cluster with `exalsius clusters set-default <cluster_id>`"
+        )
+        raise typer.Exit(1)
+
+    try:
+        service_response = service.deploy_service(
+            cluster_id=active_cluster.id,
+            name=name,
+            service_template_factory=service_template,
+        )
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
+
+    display_manager.display_deploy_service_message(service_response)
