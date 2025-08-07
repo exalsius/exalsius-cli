@@ -6,7 +6,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
-from exalsius_api_client.models.cluster_services_response import ClusterServicesResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
 
@@ -19,7 +18,6 @@ from exalsius.clusters.models import (
     ClustersListRequestDTO,
     ClustersNodesRequestDTO,
     ClustersResourcesRequestDTO,
-    ClustersServicesRequestDTO,
     ListCloudCredentialsRequestDTO,
 )
 from exalsius.core.base.commands import BaseCommand
@@ -66,14 +64,6 @@ class DeployClusterCommand(BaseCommand[ClusterDeployResponse]):
 
     def execute(self) -> ClusterDeployResponse:
         return self.request.api.deploy_cluster(self.request.cluster_id)
-
-
-class GetClusterServicesCommand(BaseCommand[ClusterServicesResponse]):
-    def __init__(self, request: ClustersServicesRequestDTO):
-        self.request: ClustersServicesRequestDTO = request
-
-    def execute(self) -> ClusterServicesResponse:
-        return self.request.api.get_cluster_services(self.request.cluster_id)
 
 
 class GetClusterNodesCommand(BaseCommand[ClusterNodesResponse]):
