@@ -5,7 +5,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
-from exalsius_api_client.models.cluster_services_response import ClusterServicesResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 from exalsius_api_client.models.credentials import Credentials
 from rich.console import Console
@@ -81,26 +80,6 @@ class ClustersDisplayManager(BaseDisplayManager):
         self.print_info(
             f"The following nodes will be returned to the node pool: {all_nodes}"
         )
-
-    def display_cluster_services(
-        self, cluster_services_response: ClusterServicesResponse
-    ):
-        table = Table(
-            title="Cluster Service Deployments",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
-        )
-        table.add_column("Service Name")
-        table.add_column("Values")
-
-        for service_deployment in cluster_services_response.services_deployments:
-            table.add_row(
-                str(service_deployment.service_name),
-                str(service_deployment.values),
-            )
-
-        self.console.print(table)
 
     def display_cluster_nodes(self, cluster_nodes_response: ClusterNodesResponse):
         table = Table(
