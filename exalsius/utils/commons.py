@@ -46,6 +46,6 @@ def is_interactive() -> bool:
     return sys.stdout.isatty()
 
 
-def generate_random_name(prefix: str = "exalsius") -> str:
+def generate_random_name(prefix: str = "exalsius", slug_length: int = 2) -> str:
     """Generate a random name."""
-    return f"{prefix}-{generate_slug(2)}"
+    return f"{prefix}-{generate_slug(slug_length)}"
