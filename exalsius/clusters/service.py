@@ -1,12 +1,17 @@
 import datetime
+from pathlib import Path
 from typing import List, Optional
 
+import yaml
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.exceptions import ApiException
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
+from exalsius_api_client.models.cluster_kubeconfig_response import (
+    ClusterKubeconfigResponse,
+)
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
 from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
@@ -20,6 +25,7 @@ from exalsius.clusters.commands import (
     CreateClusterCommand,
     DeleteClusterCommand,
     DeployClusterCommand,
+    DownloadKubeConfigCommand,
     GetClusterCommand,
     GetClusterNodesCommand,
     GetClusterResourcesCommand,
@@ -31,6 +37,7 @@ from exalsius.clusters.models import (
     ClustersCreateRequestDTO,
     ClustersDeleteRequestDTO,
     ClustersDeployRequestDTO,
+    ClustersDownloadKubeConfigRequestDTO,
     ClustersGetRequestDTO,
     ClustersListRequestDTO,
     ClustersNodesRequestDTO,
@@ -38,12 +45,12 @@ from exalsius.clusters.models import (
     ClusterType,
     ListCloudCredentialsRequestDTO,
     NodesToAddDTO,
-    ServiceDeploymentDTO,
 )
 from exalsius.config import AppConfig
 from exalsius.core.base.commands import BaseCommand
 from exalsius.core.base.service import BaseServiceWithAuth, T
-from exalsius.core.commons.models import ServiceError
+from exalsius.core.commons.commands import SaveFileCommand
+from exalsius.core.commons.models import SaveFileRequestDTO, ServiceError
 
 
 class ClustersService(BaseServiceWithAuth):
@@ -105,7 +112,7 @@ class ClustersService(BaseServiceWithAuth):
         to_be_deleted_at: Optional[datetime.datetime] = None,
         control_plane_node_ids: Optional[List[str]] = None,
         worker_node_ids: Optional[List[str]] = None,
-        service_deployments: Optional[List[ServiceDeploymentDTO]] = None,
+        # service_deployments: Optional[List[ServiceDeploymentDTO]] = None,
     ) -> ClusterCreateResponse:
         return self.execute_command(
             CreateClusterCommand(
@@ -118,7 +125,7 @@ class ClustersService(BaseServiceWithAuth):
                     to_be_deleted_at=to_be_deleted_at,
                     control_plane_node_ids=control_plane_node_ids,
                     worker_node_ids=worker_node_ids,
-                    service_deployments=service_deployments,
+                    # service_deployments=service_deployments,
                 )
             )
         )
@@ -174,3 +181,51 @@ class ClustersService(BaseServiceWithAuth):
                 )
             )
         )
+
+    def import_kubeconfig(
+        self,
+        cluster_id: str,
+        kubeconfig_path: str = Path.home().joinpath(".kube", "config").as_posix(),
+    ) -> None:
+        kubeconfig_response: ClusterKubeconfigResponse = self.execute_command(
+            DownloadKubeConfigCommand(
+                ClustersDownloadKubeConfigRequestDTO(
+                    api=self.clusters_api,
+                    cluster_id=cluster_id,
+                )
+            )
+        )
+
+        # Check if the parent directory exists and create it if it doesn't
+        parent_dir = Path(kubeconfig_path).parent
+        try:
+            parent_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise ServiceError(
+                f"Failed to create the kubeconfig directory '{parent_dir}': {e}"
+            )
+
+        # Validate and pretty-print the kubeconfig YAML string from the response
+        try:
+            kubeconfig_content: str = kubeconfig_response.kubeconfig
+            # Validate YAML
+            kubeconfig_dict = yaml.safe_load(kubeconfig_content)
+            # Pretty-print YAML
+            kubeconfig_pretty = yaml.dump(
+                kubeconfig_dict, sort_keys=False, default_flow_style=False
+            )
+        except Exception as e:
+            raise ServiceError(
+                f"Failed to validate kubeconfig YAML string from response: {e}"
+            )
+
+        # Save the kubeconfig to the file
+        try:
+            SaveFileCommand(
+                SaveFileRequestDTO(
+                    file_path=kubeconfig_path,
+                    content=kubeconfig_pretty,
+                )
+            ).execute()
+        except Exception as e:
+            raise ServiceError(f"Failed to save kubeconfig to {kubeconfig_path}: {e}")

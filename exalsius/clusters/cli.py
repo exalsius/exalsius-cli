@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Optional
 
 import typer
@@ -385,3 +386,36 @@ def list_cloud_credentials(ctx: typer.Context):
         raise typer.Exit(1)
 
     display_manager.display_cloud_credentials(cloud_credentials)
+
+
+@app.command("import-kubeconfig", help="Import a kubeconfig file into a cluster")
+def import_kubeconfig(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to import the kubeconfig to"
+    ),
+    kubeconfig_path: str = typer.Option(
+        Path.home().joinpath(".kube", "config").as_posix(),
+        "--kubeconfig-path",
+        help="The path to the kubeconfig file to import",
+    ),
+):
+    """
+    Import a kubeconfig file into a cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ClustersDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
+
+    try:
+        service.import_kubeconfig(cluster_id, kubeconfig_path)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
+
+    display_manager.print_success(
+        f"Kubeconfig from cluster {cluster_id} successfully imported to {kubeconfig_path}."
+    )
