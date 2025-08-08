@@ -5,9 +5,6 @@ from exalsius_api_client.models.workspaces_list_response import WorkspacesListRe
 
 from exalsius.core.base.commands import BaseCommand
 from exalsius.workspaces.models import (
-    CreateJupyterWorkspaceRequestDTO,
-    CreateLLMInferenceWorkspaceRequestDTO,
-    CreatePodWorkspaceRequestDTO,
     CreateWorkspaceRequestDTO,
     DeleteWorkspaceRequestDTO,
     GetWorkspaceRequestDTO,
@@ -47,7 +44,7 @@ class CreateWorkspaceCommand(BaseCommand[WorkspaceCreateResponse]):
 class CreateWorkspacePodCommand(CreateWorkspaceCommand):
     def __init__(
         self,
-        request: CreatePodWorkspaceRequestDTO,
+        request: CreateWorkspaceRequestDTO,
     ):
         super().__init__(request)
 
@@ -55,7 +52,7 @@ class CreateWorkspacePodCommand(CreateWorkspaceCommand):
 class CreateWorkspaceJupyterCommand(CreateWorkspaceCommand):
     def __init__(
         self,
-        request: CreateJupyterWorkspaceRequestDTO,
+        request: CreateWorkspaceRequestDTO,
     ):
         super().__init__(request)
 
@@ -63,7 +60,7 @@ class CreateWorkspaceJupyterCommand(CreateWorkspaceCommand):
 class CreateWorkspaceLLMInferenceCommand(CreateWorkspaceCommand):
     def __init__(
         self,
-        request: CreateLLMInferenceWorkspaceRequestDTO,
+        request: CreateWorkspaceRequestDTO,
     ):
         super().__init__(request)
 

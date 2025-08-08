@@ -5,6 +5,7 @@ from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
 from exalsius_api_client.models.workspace_delete_response import WorkspaceDeleteResponse
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
+from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
 from exalsius.config import AppConfig
@@ -18,17 +19,12 @@ from exalsius.workspaces.commands import (
     ListWorkspacesCommand,
 )
 from exalsius.workspaces.models import (
-    CreateJupyterWorkspaceRequestDTO,
-    CreateLLMInferenceWorkspaceRequestDTO,
-    CreatePodWorkspaceRequestDTO,
+    CreateWorkspaceRequestDTO,
     DeleteWorkspaceRequestDTO,
     GetWorkspaceRequestDTO,
     ResourcePoolDTO,
-    WorkspaceJupyterTemplateDTO,
-    WorkspaceLLMInferenceTemplateDTO,
-    WorkspacePodTemplateDTO,
     WorkspacesListRequestDTO,
-    WorkspaceType,
+    WorkspaceTemplates,
 )
 
 
@@ -61,7 +57,7 @@ class WorkspacesService(BaseServiceWithAuth):
         self,
         cluster_id: str,
         name: str,
-        workspace_type: WorkspaceType,
+        workspace_type: WorkspaceTemplates,
         resources: ResourcePoolDTO,
         description: Optional[str] = None,
         to_be_deleted_at: Optional[datetime] = None,
@@ -69,49 +65,51 @@ class WorkspacesService(BaseServiceWithAuth):
         huggingface_model: str = "microsoft/phi-4",
         huggingface_token: Optional[str] = None,
     ) -> WorkspaceCreateResponse:
-        if workspace_type == WorkspaceType.JUPYTER:
+        workspace_template: WorkspaceTemplate = (
+            workspace_type.create_workspace_template()
+        )
+        if workspace_type == WorkspaceTemplates.JUPYTER:
+            if jupyter_password:
+                workspace_template.variables["notebookPassword"] = jupyter_password
+
             command = CreateWorkspaceJupyterCommand(
-                request=CreateJupyterWorkspaceRequestDTO(
+                request=CreateWorkspaceRequestDTO(
                     api=self.workspaces_api,
                     cluster_id=cluster_id,
                     name=name,
                     resources=resources,
                     description=description,
                     to_be_deleted_at=to_be_deleted_at,
-                    template=WorkspaceJupyterTemplateDTO(
-                        name=workspace_type.value,
-                        jupyter_password=jupyter_password,
-                    ),
+                    template=workspace_template,
                 )
             )
-        elif workspace_type == WorkspaceType.POD:
+        elif workspace_type == WorkspaceTemplates.POD:
             command = CreateWorkspacePodCommand(
-                request=CreatePodWorkspaceRequestDTO(
+                request=CreateWorkspaceRequestDTO(
                     api=self.workspaces_api,
                     cluster_id=cluster_id,
                     name=name,
                     resources=resources,
                     description=description,
                     to_be_deleted_at=to_be_deleted_at,
-                    template=WorkspacePodTemplateDTO(
-                        name=workspace_type.value,
-                    ),
+                    template=workspace_template,
                 )
             )
-        elif workspace_type == WorkspaceType.LLM_INFERENCE:
+        elif workspace_type == WorkspaceTemplates.LLM_INFERENCE:
+            if huggingface_model:
+                workspace_template.variables["llmModelName"] = huggingface_model
+            if huggingface_token:
+                workspace_template.variables["huggingFaceToken"] = huggingface_token
+
             command = CreateWorkspaceLLMInferenceCommand(
-                request=CreateLLMInferenceWorkspaceRequestDTO(
+                request=CreateWorkspaceRequestDTO(
                     api=self.workspaces_api,
                     cluster_id=cluster_id,
                     name=name,
                     resources=resources,
                     description=description,
                     to_be_deleted_at=to_be_deleted_at,
-                    template=WorkspaceLLMInferenceTemplateDTO(
-                        name=workspace_type.value,
-                        huggingface_model=huggingface_model,
-                        huggingface_token=huggingface_token,
-                    ),
+                    template=workspace_template,
                 )
             )
         return self.execute_command(command)
