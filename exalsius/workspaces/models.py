@@ -10,6 +10,7 @@ from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import BaseModel, Field
 
 from exalsius.core.base.models import BaseRequestDTO
+from exalsius.utils import commons
 
 
 class WorkspaceTemplates(str, enum.Enum):
@@ -101,7 +102,7 @@ class WorkspaceJupyterTemplateDTO(WorkspaceBaseTemplateDTO):
     def to_api_model(self) -> WorkspaceTemplate:
         template: WorkspaceTemplate = self.template_type.create_workspace_template()
         if self.jupyter_password is not None:
-            template.variables["jupyterPassword"] = self.jupyter_password
+            template.variables["notebookPassword"] = self.jupyter_password
         return template
 
 
@@ -159,11 +160,16 @@ class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
     )
 
     def to_api_model(self) -> WorkspaceCreateRequest:
+        template: WorkspaceTemplate = self.template.to_api_model()
+        template.variables["deploymentName"] = commons.generate_random_name(
+            prefix=self.name, slug_length=1
+        )
+
         return WorkspaceCreateRequest(
             cluster_id=self.cluster_id,
             name=self.name,
             resources=self.resources.to_api_model(),
-            template=self.template.to_api_model(),
+            template=template,
             description=self.description,
             to_be_deleted_at=self.to_be_deleted_at,
         )
