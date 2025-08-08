@@ -12,10 +12,53 @@ from pydantic import BaseModel, Field
 from exalsius.core.base.models import BaseRequestDTO
 
 
-class WorkspaceType(str, enum.Enum):
+class WorkspaceTemplates(str, enum.Enum):
     POD = "POD"
     JUPYTER = "JUPYTER"
     LLM_INFERENCE = "LLM_INFERENCE"
+
+    def create_workspace_template(self) -> WorkspaceTemplate:
+        match self:
+            case WorkspaceTemplates.POD:
+                return WorkspaceTemplate(
+                    name="vscode-devcontainer-template",
+                    variables={
+                        "deploymentName": "devcontainer",
+                        "deploymentNamespace": "default",
+                        "deploymentImage": "nvcr.io/nvidia/pytorch:25.01-py3",
+                        "podStorage": "20Gi",
+                        "podShmSize": "8Gi",
+                    },
+                )
+            case WorkspaceTemplates.JUPYTER:
+                return WorkspaceTemplate(
+                    name="jupyter-notebook-template",
+                    variables={
+                        "deploymentName": "my-notebook",
+                        "deploymentNamespace": "default",
+                        "deploymentImage": "tensorflow/tensorflow:2.18.0-gpu-jupyter",
+                        "enablePvcDeletion": "false",
+                        "notebookPassword": "mysecurepassword",
+                        "podStorage": "20Gi",
+                    },
+                )
+            case WorkspaceTemplates.LLM_INFERENCE:
+                return WorkspaceTemplate(
+                    name="ray-llm-service-template",
+                    variables={
+                        "deploymentName": "my-llm-service",
+                        "deploymentNamespace": "default",
+                        "deploymentImage": "rayproject/ray-ml:2.46.0.0e19ea",
+                        "numModelReplicas": "1",
+                        "runtimeEnvironmentPipPackages": "numpy==1.26.4,vllm>=0.9.0,ray==2.46.0",
+                        "llmModelName": "microsoft/phi-4",
+                        "tensorParallelSize": "1",
+                        "pipelineParallelSize": "1",
+                        "placementGroupStrategy": "PACK",
+                        "cpuPerActor": "8",
+                        "gpuPerActor": "1",
+                    },
+                )
 
 
 class WorkspacesBaseRequestDTO(BaseRequestDTO):
@@ -72,7 +115,7 @@ class WorkspaceLLMInferenceTemplateDTO(WorkspaceBaseTemplateDTO):
     def to_api_model(self) -> WorkspaceTemplate:
         variables = {"huggingfaceModel": self.huggingface_model}
         if self.huggingface_token is not None:
-            variables["huggingfaceToken"] = self.huggingface_token
+            variables["huggingFaceToken"] = self.huggingface_token
         return WorkspaceTemplate(
             name=self.name,
             variables=variables,
@@ -84,7 +127,7 @@ class ResourcePoolDTO(BaseModel):
     gpu_type: Optional[str] = Field(None, description="The type of the GPUs")
     cpu_cores: int = Field(16, description="The number of CPU cores")
     memory_gb: int = Field(32, description="The amount of memory in GB")
-    storage_gb: int = Field(200, description="The amount of storage in GB")
+    storage_gb: int = Field(50, description="The amount of storage in GB")
 
     def to_api_model(self) -> ResourcePool:
         return ResourcePool(
@@ -108,7 +151,7 @@ class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
     to_be_deleted_at: Optional[datetime.datetime] = Field(
         None, description="The date and time the workspace will be deleted"
     )
-    template: WorkspaceBaseTemplateDTO = Field(
+    template: WorkspaceTemplate = Field(
         ..., description="The template of the workspace"
     )
 
@@ -117,7 +160,7 @@ class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
             cluster_id=self.cluster_id,
             name=self.name,
             resources=self.resources.to_api_model(),
-            template=self.template.to_api_model(),
+            template=self.template,
             description=self.description,
             to_be_deleted_at=self.to_be_deleted_at,
         )

@@ -12,7 +12,10 @@ from exalsius.state import AppState
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 from exalsius.workspaces.display import WorkspacesDisplayManager
-from exalsius.workspaces.models import ResourcePoolDTO, WorkspaceType
+from exalsius.workspaces.models import (
+    ResourcePoolDTO,
+    WorkspaceTemplates,
+)
 from exalsius.workspaces.service import WorkspacesService
 
 logger = logging.getLogger("cli.workspaces")
@@ -44,6 +47,9 @@ def _root(
 @app.command("list")
 def list_workspaces(
     ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to list the workspaces for"
+    ),
 ):
     console = Console(theme=custom_theme)
     display_manager = WorkspacesDisplayManager(console)
@@ -52,15 +58,7 @@ def list_workspaces(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = WorkspacesService(config, access_token)
 
-    active_cluster = utils.get_config_from_ctx(ctx).default_cluster
-    if not active_cluster:
-        display_manager.print_error(
-            "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
-            "set a default cluster with `exalsius clusters set-default <cluster_id>`"
-        )
-        raise typer.Exit(1)
-
-    workspaces_response = service.list_workspaces(cluster_id=active_cluster.id)
+    workspaces_response = service.list_workspaces(cluster_id=cluster_id)
 
     if not workspaces_response:
         display_manager.print_warning("No workspaces found")
@@ -93,6 +91,9 @@ def get_workspace(
 @app.command("add")
 def add_workspace(
     ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to deploy the service to"
+    ),
     name: str = typer.Argument(
         help="The name of the workspace to add",
     ),
@@ -102,8 +103,8 @@ def add_workspace(
         "-g",
         help="The number of GPUs to add to the workspace",
     ),
-    workspace_type: WorkspaceType = typer.Option(
-        WorkspaceType.POD,
+    workspace_type: WorkspaceTemplates = typer.Option(
+        WorkspaceTemplates.POD,
         "--type",
         "-t",
         help='The type of the workspace to add. Can be "pod", "jupyter", or "llm_inference". Default is "pod"',
@@ -134,10 +135,15 @@ def add_workspace(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = WorkspacesService(config, access_token)
 
-    active_cluster = utils.get_config_from_ctx(ctx).default_cluster
-    if not active_cluster:
-        typer.echo("No default cluster found")
-        raise typer.Exit(1)
+    if not cluster_id:
+        active_cluster = utils.get_config_from_ctx(ctx).default_cluster
+        if not active_cluster:
+            display_manager.print_error(
+                "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
+                "set a default cluster with `exalsius clusters set-default <cluster_id>`"
+            )
+            raise typer.Exit(1)
+        cluster_id = active_cluster.id
 
     with console.status(
         "[bold custom]Creating workspace...[/bold custom]",
@@ -147,7 +153,7 @@ def add_workspace(
         # TODO: We generally need to improve the user feedback on what exactly happened / is happening.
         # TODO: We also need to improve the error handling in general.
 
-        if workspace_type == WorkspaceType.LLM_INFERENCE:
+        if workspace_type == WorkspaceTemplates.LLM_INFERENCE:
             if not huggingface_model:
                 display_manager.print_warning(
                     "Workspace type is LLM inference, but no HuggingFace model was provided. Using the default model defined in the workspace template."
@@ -158,7 +164,7 @@ def add_workspace(
                 )
 
         workspace_create_response = service.create_workspace(
-            cluster_id=active_cluster.id,
+            cluster_id=cluster_id,
             name=name,
             workspace_type=workspace_type,
             resources=ResourcePoolDTO(
@@ -166,7 +172,7 @@ def add_workspace(
                 gpu_type=None,
                 cpu_cores=16,
                 memory_gb=32,
-                storage_gb=200,
+                storage_gb=50,
             ),
             jupyter_password=jupyter_password,
             huggingface_model=huggingface_model,
