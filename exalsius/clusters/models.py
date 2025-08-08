@@ -7,7 +7,6 @@ from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
-from exalsius_api_client.models.service_deployment import ServiceDeployment
 from pydantic import BaseModel, Field
 
 from exalsius.core.base.models import BaseRequestDTO
@@ -68,23 +67,23 @@ class ClustersCreateRequestDTO(ClustersBaseRequestDTO):
     worker_node_ids: Optional[List[str]] = Field(
         default=None, description="The IDs of the worker nodes (optional)."
     )
-    service_deployments: Optional[List[ServiceDeploymentDTO]] = Field(
-        default=None, description="The services to deploy in the cluster (optional)."
-    )
+    # service_deployments: Optional[List[ServiceDeploymentDTO]] = Field(
+    #    default=None, description="The services to deploy in the cluster (optional)."
+    # )
 
     def to_api_model(self) -> ClusterCreateRequest:
-        if self.service_deployments is None:
-            # TODO: Check the behaviour if empty list is provided
-            service_deployments = None
-        else:
-            service_deployments = [
-                ServiceDeployment(
-                    service_id=service.service_id,
-                    service_name=service.service_name,
-                    values=service.values,
-                )
-                for service in self.service_deployments
-            ]
+        # if self.service_deployments is None:
+        #     # TODO: Check the behaviour if empty list is provided
+        #     service_deployments = None
+        # else:
+        #     service_deployments = [
+        #         ServiceDeployment(
+        #             service_id=service.service_id,
+        #             service_name=service.service_name,
+        #             values=service.values,
+        #         )
+        #         for service in self.service_deployments
+        #     ]
         return ClusterCreateRequest(
             name=self.name,
             cluster_type=self.cluster_type,
@@ -93,7 +92,7 @@ class ClustersCreateRequestDTO(ClustersBaseRequestDTO):
             to_be_deleted_at=self.to_be_deleted_at,
             control_plane_node_ids=self.control_plane_node_ids,
             worker_node_ids=self.worker_node_ids,
-            service_deployments=service_deployments,
+            # service_deployments=service_deployments,
         )
 
 
@@ -142,3 +141,9 @@ class ClustersAddNodeRequestDTO(ClustersBaseRequestDTO):
 
 class ListCloudCredentialsRequestDTO(BaseRequestDTO):
     api: ManagementApi = Field(..., description="The API client")
+
+
+class ClustersDownloadKubeConfigRequestDTO(ClustersBaseRequestDTO):
+    cluster_id: str = Field(
+        ..., description="The ID of the cluster to download the kube config for"
+    )

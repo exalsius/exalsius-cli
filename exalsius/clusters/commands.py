@@ -1,6 +1,9 @@
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
+from exalsius_api_client.models.cluster_kubeconfig_response import (
+    ClusterKubeconfigResponse,
+)
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
 from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
@@ -14,6 +17,7 @@ from exalsius.clusters.models import (
     ClustersCreateRequestDTO,
     ClustersDeleteRequestDTO,
     ClustersDeployRequestDTO,
+    ClustersDownloadKubeConfigRequestDTO,
     ClustersGetRequestDTO,
     ClustersListRequestDTO,
     ClustersNodesRequestDTO,
@@ -101,3 +105,11 @@ class ListCloudCredentialsCommand(BaseCommand[CredentialsListResponse]):
 
     def execute(self) -> CredentialsListResponse:
         return self.request.api.list_credentials()
+
+
+class DownloadKubeConfigCommand(BaseCommand[ClusterKubeconfigResponse]):
+    def __init__(self, request: ClustersDownloadKubeConfigRequestDTO):
+        self.request: ClustersDownloadKubeConfigRequestDTO = request
+
+    def execute(self) -> ClusterKubeconfigResponse:
+        return self.request.api.get_cluster_kubeconfig(self.request.cluster_id)

@@ -4,7 +4,11 @@ from typing import Any, Dict, Generic, Type
 import requests
 
 from exalsius.core.base.commands import BaseCommand, T
-from exalsius.core.commons.models import UnexpectedResponseWarning
+from exalsius.core.commons.models import (
+    SaveFileRequestDTO,
+    SaveFileResponseDTO,
+    UnexpectedResponseWarning,
+)
 
 
 class PostRequestCommand(BaseCommand[T], Generic[T]):
@@ -47,3 +51,14 @@ class PostRequestCommand(BaseCommand[T], Generic[T]):
             self._get_url(), data=self._get_payload()
         )
         response.raise_for_status()
+
+
+class SaveFileCommand(BaseCommand[SaveFileResponseDTO]):
+    def __init__(self, request: SaveFileRequestDTO):
+        self.request: SaveFileRequestDTO = request
+
+    def execute(self) -> SaveFileResponseDTO:
+        with open(self.request.file_path, "w") as file:
+            file.write(self.request.content)
+
+        return SaveFileResponseDTO(file_path=self.request.file_path)
