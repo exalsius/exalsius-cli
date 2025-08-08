@@ -75,14 +75,16 @@ class ServicesService(BaseServiceWithAuth):
     def deploy_service(
         self,
         cluster_id: str,
-        service_template_factory: ServiceTemplates,
+        name: str,
+        service_template: ServiceTemplates,
     ) -> ServiceCreateResponse:
         return self.execute_command(
             DeployServiceCommand(
-                ServicesDeployRequestDTO(
+                request=ServicesDeployRequestDTO(
                     api=self.services_api,
                     cluster_id=cluster_id,
-                    service_template_factory=service_template_factory,
+                    name=name,
+                    service_template=service_template,
                 )
             )
         )

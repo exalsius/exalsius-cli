@@ -1,6 +1,9 @@
 from enum import StrEnum
 
 from exalsius_api_client.api.services_api import ServicesApi
+from exalsius_api_client.models.service_deployment_create_request import (
+    ServiceDeploymentCreateRequest,
+)
 from exalsius_api_client.models.service_template import ServiceTemplate
 from pydantic import Field
 
@@ -8,11 +11,11 @@ from exalsius.core.base.models import BaseRequestDTO
 
 
 class ServiceTemplates(StrEnum):
-    NVIDIA_GPU_OPERATOR = "nvidia_gpu_operator"
+    NVIDIA_OPERATOR = "nvidia-operator"
 
     def create_service_template(self) -> ServiceTemplate:
         match self:
-            case ServiceTemplates.NVIDIA_GPU_OPERATOR:
+            case ServiceTemplates.NVIDIA_OPERATOR:
                 return ServiceTemplate(
                     name="gpu-operator-24-9-2",
                     description="nvidia gpu operator",
@@ -72,6 +75,17 @@ class ServicesDeleteRequestDTO(ServicesSingleServiceRequestDTO):
 
 class ServicesDeployRequestDTO(ServicesBaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster")
-    service_template_factory: ServiceTemplates = Field(
+    name: str = Field(..., description="The name of the service")
+    service_template: ServiceTemplates = Field(
         ..., description="The service template factory to use"
     )
+
+    def get_api_model(self) -> ServiceDeploymentCreateRequest:
+        service_template: ServiceTemplate = (
+            self.service_template.create_service_template()
+        )
+        return ServiceDeploymentCreateRequest(
+            cluster_id=self.cluster_id,
+            name=self.name,
+            template=service_template,
+        )

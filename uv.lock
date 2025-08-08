@@ -250,6 +250,15 @@ wheels = [
 ]
 
 [[package]]
+name = "coolname"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/c6/1eaa4495ff4640e80d9af64f540e427ba1596a20f735d4c4750fe0386d07/coolname-2.2.0.tar.gz", hash = "sha256:6c5d5731759104479e7ca195a9b64f7900ac5bead40183c09323c7d0be9e75c7", size = 59006 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1b/b1/5745d7523d8ce53b87779f46ef6cf5c5c342997939c2fe967e607b944e43/coolname-2.2.0-py2.py3-none-any.whl", hash = "sha256:4d1563186cfaf71b394d5df4c744f8c41303b6846413645e31d31915cdeb13e8", size = 37849 },
+]
+
+[[package]]
 name = "coverage"
 version = "7.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -347,6 +356,7 @@ version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "auth0-python" },
+    { name = "coolname" },
     { name = "exalsius-api-client" },
     { name = "filelock" },
     { name = "jinja2" },
@@ -376,6 +386,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "auth0-python", specifier = ">=4.10.0" },
+    { name = "coolname", specifier = ">=2.2.0" },
     { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.16.2" },
     { name = "filelock", specifier = ">=3.17.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
