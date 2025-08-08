@@ -156,7 +156,7 @@ def deploy_service(
         help="The service template factory to use",
     ),
     name: str = typer.Option(
-        utils.generate_random_name(prefix="exls-service-"),
+        utils.generate_random_name(prefix="exls-service"),
         "--name",
         "-n",
         help="The name of the service to deploy. If not provided, a random name will be generated.",
