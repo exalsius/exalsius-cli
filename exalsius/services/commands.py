@@ -1,10 +1,6 @@
 from exalsius_api_client.models.service_create_response import ServiceCreateResponse
 from exalsius_api_client.models.service_delete_response import ServiceDeleteResponse
-from exalsius_api_client.models.service_deployment_create_request import (
-    ServiceDeploymentCreateRequest,
-)
 from exalsius_api_client.models.service_response import ServiceResponse
-from exalsius_api_client.models.service_template import ServiceTemplate
 from exalsius_api_client.models.services_list_response import ServicesListResponse
 
 from exalsius.core.base.commands import BaseCommand
@@ -49,16 +45,6 @@ class DeployServiceCommand(BaseCommand[ServiceCreateResponse]):
         self.request: ServicesDeployRequestDTO = request
 
     def execute(self) -> ServiceCreateResponse:
-        service_template: ServiceTemplate = (
-            self.request.service_template_factory.create_service_template()
-        )
-
-        service_deployment_create_request = ServiceDeploymentCreateRequest(
-            cluster_id=self.request.cluster_id,
-            name=service_template.name,
-            template=service_template,
-        )
-
         return self.request.api.create_service_deployment(
-            service_deployment_create_request=service_deployment_create_request
+            service_deployment_create_request=self.request.get_api_model()
         )

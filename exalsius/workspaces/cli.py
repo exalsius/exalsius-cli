@@ -1,47 +1,39 @@
 import logging
-import time
-from typing import Annotated
 
 import typer
 from exalsius_api_client.models.workspace import Workspace
+from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
 from pydantic import PositiveInt
 from rich.console import Console
 
-from exalsius.config import AppConfig, ConfigDefaultCluster
-from exalsius.state import AppState
+from exalsius.config import AppConfig
+from exalsius.core.commons.models import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 from exalsius.workspaces.display import WorkspacesDisplayManager
 from exalsius.workspaces.models import (
     ResourcePoolDTO,
-    WorkspaceTemplates,
 )
 from exalsius.workspaces.service import WorkspacesService
 
 logger = logging.getLogger("cli.workspaces")
 
 app = typer.Typer()
+app_deploy = typer.Typer()
+app_jupyter = typer.Typer()
+app_llm_inference = typer.Typer()
+
+app.add_typer(app_deploy, name="deploy")
 
 
 @app.callback(invoke_without_command=True)
 def _root(
     ctx: typer.Context,
-    cluster: Annotated[
-        str | None,
-        typer.Option("--cluster", "-c", help="Cluster to use."),
-    ] = None,
 ):
     """
     Manage workspaces.
     """
     utils.help_if_no_subcommand(ctx)
-
-    if cluster:
-        state: AppState = utils.get_app_state_from_ctx(ctx)
-        state.config.default_cluster = ConfigDefaultCluster(
-            id=cluster,
-            name=cluster,
-        )
 
 
 @app.command("list")
@@ -88,14 +80,50 @@ def get_workspace(
     display_manager.display_workspace(workspace)
 
 
-@app.command("add")
-def add_workspace(
+def _poll_workspace_creation(
+    console: Console,
+    display_manager: WorkspacesDisplayManager,
+    service: WorkspacesService,
+    workspace_create_response: WorkspaceCreateResponse,
+) -> Workspace:
+    with console.status(
+        "[bold custom]Creating workspace...[/bold custom]",
+        spinner="bouncingBall",
+        spinner_style="custom",
+    ):
+        try:
+            workspace_response = service._poll_workspace_creation(
+                workspace_id=workspace_create_response.workspace_id
+            )
+        except TimeoutError:
+            display_manager.print_warning(
+                f"Workspace {workspace_create_response.workspace_id} did not become active in time. "
+                + "This might be normal for some workspace types. Please check the status manually "
+                + f"with `exls workspaces get {workspace_create_response.workspace_id}`."
+            )
+            raise typer.Exit(1)
+        except ServiceError as e:
+            display_manager.print_error(str(e))
+            raise typer.Exit(1)
+        except Exception as e:
+            display_manager.print_error(f"Unexpected error: {str(e)}")
+            raise typer.Exit(1)
+
+    return workspace_response.workspace
+
+
+@app_deploy.command("dev-pod")
+def deploy_pod_workspace(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
         help="The ID of the cluster to deploy the service to"
     ),
-    name: str = typer.Argument(
-        help="The name of the workspace to add",
+    name: str = typer.Option(
+        utils.generate_random_name(prefix="exls-dev-pod"),
+        "--name",
+        "-n",
+        help="The name of the workspace to add. If not provided, a random name will be generated.",
+        show_default=False,
     ),
     gpu_count: PositiveInt = typer.Option(
         1,
@@ -103,29 +131,23 @@ def add_workspace(
         "-g",
         help="The number of GPUs to add to the workspace",
     ),
-    workspace_type: WorkspaceTemplates = typer.Option(
-        WorkspaceTemplates.POD,
-        "--type",
-        "-t",
-        help='The type of the workspace to add. Can be "pod", "jupyter", or "llm_inference". Default is "pod"',
+    cpu_cores: PositiveInt = typer.Option(
+        16,
+        "--cpu-cores",
+        "-c",
+        help="The number of CPU cores to add to the workspace",
     ),
-    jupyter_password: str = typer.Option(
-        None,
-        "--jupyter-password",
-        "-p",
-        help="The password for the Jupyter notebook",
-    ),
-    huggingface_model: str = typer.Option(
-        None,
-        "--huggingface-model",
+    memory_gb: PositiveInt = typer.Option(
+        32,
+        "--memory-gb",
         "-m",
-        help="The HuggingFace-hosted LLM model to use for the workspace",
+        help="The amount of memory in GB to add to the workspace",
     ),
-    huggingface_token: str = typer.Option(
-        None,
-        "--huggingface-token",
-        "-h",
-        help="The authentication token for working with HuggingFace-hosted LLM models that require authentication",
+    storage_gb: PositiveInt = typer.Option(
+        50,
+        "--storage-gb",
+        "-s",
+        help="The amount of storage in GB to add to the workspace",
     ),
 ):
     console = Console(theme=custom_theme)
@@ -135,88 +157,197 @@ def add_workspace(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = WorkspacesService(config, access_token)
 
-    if not cluster_id:
-        active_cluster = utils.get_config_from_ctx(ctx).default_cluster
-        if not active_cluster:
-            display_manager.print_error(
-                "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
-                "set a default cluster with `exalsius clusters set-default <cluster_id>`"
-            )
-            raise typer.Exit(1)
-        cluster_id = active_cluster.id
+    resources = ResourcePoolDTO(
+        gpu_count=gpu_count,
+        gpu_type=None,
+        gpu_vendor=None,
+        cpu_cores=cpu_cores,
+        memory_gb=memory_gb,
+        storage_gb=storage_gb,
+    )
 
-    with console.status(
-        "[bold custom]Creating workspace...[/bold custom]",
-        spinner="bouncingBall",
-        spinner_style="custom",
-    ):
-        # TODO: We generally need to improve the user feedback on what exactly happened / is happening.
-        # TODO: We also need to improve the error handling in general.
+    workspace_create_response: WorkspaceCreateResponse = service.create_pod_workspace(
+        cluster_id=cluster_id,
+        name=name,
+        resources=resources,
+    )
 
-        if workspace_type == WorkspaceTemplates.LLM_INFERENCE:
-            if not huggingface_model:
-                display_manager.print_warning(
-                    "Workspace type is LLM inference, but no HuggingFace model was provided. Using the default model defined in the workspace template."
-                )
-            if not huggingface_token:
-                display_manager.print_warning(
-                    "Workspace type is LLM inference, but no HuggingFace token was provided. This might be a problem if the model requires authentication."
-                )
+    workspace: Workspace = _poll_workspace_creation(
+        console=console,
+        display_manager=display_manager,
+        service=service,
+        workspace_create_response=workspace_create_response,
+    )
 
-        workspace_create_response = service.create_workspace(
+    display_manager.display_workspace_created(workspace)
+    display_manager.display_workspace_access_info(workspace)
+
+
+@app_deploy.command("jupyter")
+def deploy_jupyter_workspace(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to deploy the service to"
+    ),
+    name: str = typer.Option(
+        utils.generate_random_name(prefix="exls-jupyter"),
+        "--name",
+        "-n",
+        help="The name of the workspace to add. If not provided, a random name will be generated.",
+        show_default=False,
+    ),
+    jupyter_password: str = typer.Option(
+        None,
+        "--jupyter-password",
+        "-p",
+        help="The password for the Jupyter notebook",
+    ),
+    gpu_count: PositiveInt = typer.Option(
+        1,
+        "--gpu-count",
+        "-g",
+        help="The number of GPUs to add to the workspace",
+    ),
+    cpu_cores: PositiveInt = typer.Option(
+        16,
+        "--cpu-cores",
+        "-c",
+        help="The number of CPU cores to add to the workspace",
+    ),
+    memory_gb: PositiveInt = typer.Option(
+        32,
+        "--memory-gb",
+        "-m",
+        help="The amount of memory in GB to add to the workspace",
+    ),
+    storage_gb: PositiveInt = typer.Option(
+        50,
+        "--storage-gb",
+        "-s",
+        help="The amount of storage in GB to add to the workspace",
+    ),
+):
+    console = Console(theme=custom_theme)
+    display_manager = WorkspacesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
+
+    resources = ResourcePoolDTO(
+        gpu_count=gpu_count,
+        gpu_type=None,
+        gpu_vendor=None,
+        cpu_cores=cpu_cores,
+        memory_gb=memory_gb,
+        storage_gb=storage_gb,
+    )
+
+    workspace_create_response: WorkspaceCreateResponse = (
+        service.create_jupyter_workspace(
             cluster_id=cluster_id,
             name=name,
-            workspace_type=workspace_type,
-            resources=ResourcePoolDTO(
-                gpu_count=gpu_count,
-                gpu_type=None,
-                cpu_cores=16,
-                memory_gb=32,
-                storage_gb=50,
-            ),
+            resources=resources,
             jupyter_password=jupyter_password,
+        )
+    )
+
+    workspace: Workspace = _poll_workspace_creation(
+        console=console,
+        display_manager=display_manager,
+        service=service,
+        workspace_create_response=workspace_create_response,
+    )
+
+    display_manager.display_workspace_created(workspace)
+    display_manager.display_workspace_access_info(workspace)
+
+
+@app_deploy.command("llm-inference")
+def deploy_llm_inference_workspace(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to deploy the service to"
+    ),
+    name: str = typer.Option(
+        utils.generate_random_name(prefix="exls-llm-inference"),
+        "--name",
+        "-n",
+        help="The name of the workspace to add. If not provided, a random name will be generated.",
+        show_default=False,
+    ),
+    huggingface_model: str = typer.Option(
+        None,
+        "--huggingface-model",
+        "-m",
+        help="The HuggingFace model to use",
+    ),
+    huggingface_token: str = typer.Option(
+        None,
+        "--huggingface-token",
+        "-t",
+        help="The HuggingFace token to use",
+    ),
+    gpu_count: PositiveInt = typer.Option(
+        1,
+        "--gpu-count",
+        "-g",
+        help="The number of GPUs to add to the workspace",
+    ),
+    cpu_cores: PositiveInt = typer.Option(
+        16,
+        "--cpu-cores",
+        "-c",
+        help="The number of CPU cores to add to the workspace",
+    ),
+    memory_gb: PositiveInt = typer.Option(
+        32,
+        "--memory-gb",
+        "-m",
+        help="The amount of memory in GB to add to the workspace",
+    ),
+    storage_gb: PositiveInt = typer.Option(
+        50,
+        "--storage-gb",
+        "-s",
+        help="The amount of storage in GB to add to the workspace",
+    ),
+):
+    console = Console(theme=custom_theme)
+    display_manager = WorkspacesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
+
+    resources = ResourcePoolDTO(
+        gpu_count=gpu_count,
+        gpu_type=None,
+        gpu_vendor=None,
+        cpu_cores=cpu_cores,
+        memory_gb=memory_gb,
+        storage_gb=storage_gb,
+    )
+
+    workspace_create_response: WorkspaceCreateResponse = (
+        service.create_llm_inference_workspace(
+            cluster_id=cluster_id,
+            name=name,
+            resources=resources,
             huggingface_model=huggingface_model,
             huggingface_token=huggingface_token,
         )
-        if not workspace_create_response:
-            display_manager.print_error("Workspace creation failed.")
-            raise typer.Exit(1)
+    )
 
-        # TODO: add a timeout to the service and commands
-        timeout = 120  # 2 minutes
-        polling_interval = 5  # 5 seconds
-        start_time = time.time()
+    workspace: Workspace = _poll_workspace_creation(
+        console=console,
+        display_manager=display_manager,
+        service=service,
+        workspace_create_response=workspace_create_response,
+    )
 
-        while time.time() - start_time < timeout:
-            workspace_response = service.get_workspace(
-                workspace_create_response.workspace_id
-            )
-            if not workspace_response:
-                display_manager.print_error("Workspace not found.")
-                raise typer.Exit(1)
-
-            workspace: Workspace = workspace_response.workspace
-            if workspace.workspace_status == "RUNNING":
-                # TODO: This handles backend-side edge case where the status is running but the access info is not available yet.
-                time.sleep(polling_interval)
-                workspace_response = service.get_workspace(
-                    workspace_create_response.workspace_id
-                )
-                break
-
-            if workspace.workspace_status == "FAILED":
-                display_manager.print_error("Workspace creation failed.")
-                raise typer.Exit(1)
-
-            time.sleep(polling_interval)
-        else:
-            display_manager.print_error(
-                "Workspace did not become active in time. This might be normal for some workspace types. Please check the status manually."
-            )
-            raise typer.Exit(1)
-
-        display_manager.display_workspace_created(workspace)
-        display_manager.display_workspace_access_info(workspace)
+    display_manager.display_workspace_created(workspace)
+    display_manager.display_workspace_access_info(workspace)
 
 
 @app.command("show-access-info")

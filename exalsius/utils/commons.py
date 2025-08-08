@@ -2,6 +2,7 @@ import sys
 from typing import cast
 
 import typer
+from coolname import generate_slug
 
 from exalsius.config import AppConfig
 from exalsius.core.commons.models import UnauthorizedError
@@ -43,3 +44,8 @@ def get_access_token_from_ctx(ctx: typer.Context) -> str:
 def is_interactive() -> bool:
     """Check if running in interactive environment (e.g., not CI/CD)."""
     return sys.stdout.isatty()
+
+
+def generate_random_name(prefix: str = "exalsius") -> str:
+    """Generate a random name."""
+    return f"{prefix}-{generate_slug(2)}"

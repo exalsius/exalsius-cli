@@ -40,6 +40,7 @@ def _root(
 @app.command("list", help="List all services of a cluster")
 def list_services(
     ctx: typer.Context,
+    cluster_id: str = typer.Argument(help="The ID of the cluster to list services of"),
 ):
     """
     List all services of a cluster.
@@ -51,16 +52,8 @@ def list_services(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ServicesService = ServicesService(config, access_token)
 
-    active_cluster = utils.get_config_from_ctx(ctx).default_cluster
-    if not active_cluster:
-        display_manager.print_error(
-            "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
-            "set a default cluster with `exalsius clusters set-default <cluster_id>`"
-        )
-        raise typer.Exit(1)
-
     try:
-        services_response = service.list_services(active_cluster.id)
+        services_response = service.list_services(cluster_id)
     except ServiceError as e:
         display_manager.print_error(e.message)
         raise typer.Exit(1)
@@ -162,6 +155,13 @@ def deploy_service(
     service_template: ServiceTemplates = typer.Argument(
         help="The service template factory to use",
     ),
+    name: str = typer.Option(
+        utils.generate_random_name(prefix="exls-service-"),
+        "--name",
+        "-n",
+        help="The name of the service to deploy. If not provided, a random name will be generated.",
+        show_default=False,
+    ),
 ):
     """
     Deploy a service to a cluster.
@@ -173,19 +173,11 @@ def deploy_service(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ServicesService = ServicesService(config, access_token)
 
-    if not cluster_id:
-        active_cluster = utils.get_config_from_ctx(ctx).default_cluster
-        if not active_cluster:
-            display_manager.print_error(
-                "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
-                "set a default cluster with `exalsius clusters set-default <cluster_id>`"
-            )
-            raise typer.Exit(1)
-
     try:
         service_response: ServiceCreateResponse = service.deploy_service(
-            cluster_id=cluster_id or active_cluster.id,
-            service_template_factory=service_template,
+            cluster_id=cluster_id,
+            name=name,
+            service_template=service_template,
         )
     except ServiceError as e:
         display_manager.print_error(e.message)

@@ -67,6 +67,17 @@ class ConfigDefaultCluster(BaseSettings):
     name: Optional[str] = Field(default=None, description="The name of the workspace")
 
 
+class ConfigWorkspaceCreationPolling(BaseSettings):
+    timeout_seconds: int = Field(
+        default=120,
+        description="The timeout in seconds to poll for workspace creation",
+    )
+    polling_interval_seconds: int = Field(
+        default=5,
+        description="The interval in seconds to poll for workspace creation",
+    )
+
+
 class AppConfig(BaseSettings):
     backend_host: str = Field(
         default="https://api.exalsius.ai",
@@ -77,6 +88,10 @@ class AppConfig(BaseSettings):
     )
     auth0: Auth0Config = Field(
         default=Auth0Config(), description="The Auth0 configuration"
+    )
+    workspace_creation_polling: ConfigWorkspaceCreationPolling = Field(
+        default=ConfigWorkspaceCreationPolling(),
+        description="The workspace creation polling configuration",
     )
 
     model_config = SettingsConfigDict(
