@@ -1,6 +1,7 @@
 from typing import Dict
 
 from exalsius_api_client.models.service import Service
+from exalsius_api_client.models.service_create_response import ServiceCreateResponse
 from exalsius_api_client.models.service_delete_response import ServiceDeleteResponse
 from exalsius_api_client.models.service_response import ServiceResponse
 from exalsius_api_client.models.service_template import ServiceTemplate
@@ -58,12 +59,12 @@ class ServicesDisplayManager(BaseDisplayManager):
     def display_delete_service_message(self, service_response: ServiceDeleteResponse):
         self.print_success(f"Service {service_response.service_deployment_id} deleted")
 
-    def display_deploy_service_message(self, service_response: ServiceResponse):
+    def display_deploy_service_message(self, service_response: ServiceCreateResponse):
         self.print_success(
-            f"Service {service_response.service_deployment.name} deployment started successfully."
+            f"Service {service_response.service_deployment_id} deployment started successfully."
         )
         self.print_info(
-            f"Please check the status with `exls services get {service_response.service_deployment.id}`"
+            f"Please check the status with `exls services get {service_response.service_deployment_id}`"
         )
 
     def display_service_templates(self, service_templates: Dict[str, ServiceTemplate]):

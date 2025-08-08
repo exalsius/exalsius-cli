@@ -1,5 +1,6 @@
 from exalsius_api_client.api.services_api import ServicesApi
 from exalsius_api_client.exceptions import ApiException
+from exalsius_api_client.models.service_create_response import ServiceCreateResponse
 from exalsius_api_client.models.service_delete_response import ServiceDeleteResponse
 from exalsius_api_client.models.service_response import ServiceResponse
 from exalsius_api_client.models.services_list_response import ServicesListResponse
@@ -74,15 +75,13 @@ class ServicesService(BaseServiceWithAuth):
     def deploy_service(
         self,
         cluster_id: str,
-        name: str,
         service_template_factory: ServiceTemplates,
-    ) -> ServiceResponse:
+    ) -> ServiceCreateResponse:
         return self.execute_command(
             DeployServiceCommand(
                 ServicesDeployRequestDTO(
                     api=self.services_api,
                     cluster_id=cluster_id,
-                    name=name,
                     service_template_factory=service_template_factory,
                 )
             )

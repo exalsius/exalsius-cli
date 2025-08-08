@@ -1,6 +1,7 @@
 from typing import Annotated
 
 import typer
+from exalsius_api_client.models.service_create_response import ServiceCreateResponse
 from rich.console import Console
 
 from exalsius.config import AppConfig, ConfigDefaultCluster
@@ -155,7 +156,9 @@ def describe_service_template(
 @app.command("deploy", help="Deploy a service to a cluster")
 def deploy_service(
     ctx: typer.Context,
-    name: str = typer.Option(help="The name of the service to deploy"),
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to deploy the service to"
+    ),
     service_template: ServiceTemplates = typer.Argument(
         help="The service template factory to use",
     ),
@@ -170,18 +173,18 @@ def deploy_service(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ServicesService = ServicesService(config, access_token)
 
-    active_cluster = utils.get_config_from_ctx(ctx).default_cluster
-    if not active_cluster:
-        display_manager.print_error(
-            "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
-            "set a default cluster with `exalsius clusters set-default <cluster_id>`"
-        )
-        raise typer.Exit(1)
+    if not cluster_id:
+        active_cluster = utils.get_config_from_ctx(ctx).default_cluster
+        if not active_cluster:
+            display_manager.print_error(
+                "Cluster not set. Please define a cluster with --cluster <cluster_id> or "
+                "set a default cluster with `exalsius clusters set-default <cluster_id>`"
+            )
+            raise typer.Exit(1)
 
     try:
-        service_response = service.deploy_service(
-            cluster_id=active_cluster.id,
-            name=name,
+        service_response: ServiceCreateResponse = service.deploy_service(
+            cluster_id=cluster_id or active_cluster.id,
             service_template_factory=service_template,
         )
     except ServiceError as e:
