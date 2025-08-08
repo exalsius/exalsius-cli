@@ -71,7 +71,6 @@ class ServicesDeleteRequestDTO(ServicesSingleServiceRequestDTO):
 
 
 class ServicesDeployRequestDTO(ServicesBaseRequestDTO):
-    name: str = Field(..., description="The name of the service")
     cluster_id: str = Field(..., description="The ID of the cluster")
     service_template_factory: ServiceTemplates = Field(
         ..., description="The service template factory to use"

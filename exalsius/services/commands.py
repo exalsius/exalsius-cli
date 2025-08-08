@@ -55,7 +55,7 @@ class DeployServiceCommand(BaseCommand[ServiceCreateResponse]):
 
         service_deployment_create_request = ServiceDeploymentCreateRequest(
             cluster_id=self.request.cluster_id,
-            name=self.request.name,
+            name=service_template.name,
             template=service_template,
         )
 
