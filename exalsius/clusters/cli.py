@@ -7,7 +7,7 @@ from rich.console import Console
 from exalsius.clusters.display import ClustersDisplayManager
 from exalsius.clusters.models import ClusterType, NodesToAddDTO
 from exalsius.clusters.service import ClustersService
-from exalsius.config import AppConfig, ConfigDefaultCluster, save_config
+from exalsius.config import AppConfig
 from exalsius.core.commons.models import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
@@ -57,10 +57,7 @@ def list_clusters(
 @app.command("get", help="Get a cluster")
 def get_cluster(
     ctx: typer.Context,
-    cluster_id: Optional[str] = typer.Argument(
-        None,
-        help="The ID of the cluster to get. If not provided, the default cluster will be used.",
-    ),
+    cluster_id: str = typer.Argument(..., help="The ID of the cluster to get"),
 ):
     """
     Get a cluster.
@@ -73,16 +70,7 @@ def get_cluster(
 
     service = ClustersService(config, access_token)
 
-    if not cluster_id:
-        cfg: AppConfig = utils.get_config_from_ctx(ctx)
-        # TODO: Revisit this to improve the UX: start interative selection of cluster
-        if not cfg.default_cluster:
-            display_manager.print_error(
-                "No cluster ID provided and no default cluster set."
-            )
-            raise typer.Exit(1)
-        cluster_id = cfg.default_cluster.id
-
+    # TODO: Revisit this to improve the UX: start interative selection of cluster
     try:
         cluster_response = service.get_cluster(cluster_id)
     except ServiceError as e:
@@ -137,6 +125,16 @@ def create_cluster(
         "--cluster-type",
         help="The type of the cluster",
     ),
+    no_gpu: bool = typer.Option(
+        False,
+        "--no-gpu-operator",
+        help="Do not add GPU operator to the cluster",
+    ),
+    diloco: bool = typer.Option(
+        False,
+        "--diloco",
+        help="Add the volcano workload type to the cluster to support Diloco workloads",
+    ),
 ):
     """
     Create a cluster.
@@ -152,7 +150,10 @@ def create_cluster(
 
     try:
         cluster_create_response = service.create_cluster(
-            name=name, cluster_type=cluster_type
+            name=name,
+            cluster_type=cluster_type,
+            no_gpu=no_gpu,
+            diloco=diloco,
         )
     except ServiceError as e:
         display_manager.print_error(e.message)
@@ -286,9 +287,9 @@ def add_node(
 @app.command("show-available-resources", help="Get the resources of a cluster")
 def get_cluster_resources(
     ctx: typer.Context,
-    cluster_id: Optional[str] = typer.Argument(
-        None,
-        help="The ID of the cluster to get resources of. If not provided, the default cluster will be used.",
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The ID of the cluster to get resources of",
     ),
 ):
     """
@@ -301,15 +302,6 @@ def get_cluster_resources(
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ClustersService = ClustersService(config, access_token)
 
-    cfg: AppConfig = utils.get_config_from_ctx(ctx)
-    if not cluster_id:
-        if not cfg.default_cluster:
-            display_manager.print_error(
-                "No cluster ID provided and no default cluster set."
-            )
-            raise typer.Exit(1)
-        cluster_id = cfg.default_cluster.id
-
     try:
         cluster_resources_response = service.get_cluster_resources(cluster_id)
     except ServiceError as e:
@@ -317,53 +309,6 @@ def get_cluster_resources(
         raise typer.Exit(1)
 
     display_manager.display_cluster_resources(cluster_resources_response)
-
-
-@app.command("set-default", help="Set a default cluster")
-def set_default_cluster(
-    ctx: typer.Context,
-    cluster_id: str = typer.Argument(help="The ID of the cluster to set as default"),
-):
-    """
-    Set a default cluster.
-    """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
-
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service: ClustersService = ClustersService(config, access_token)
-
-    try:
-        cluster_response = service.get_cluster(cluster_id)
-    except ServiceError as e:
-        display_manager.print_error(e.message)
-        raise typer.Exit(1)
-
-    cfg: AppConfig = utils.get_config_from_ctx(ctx)
-    cfg.default_cluster = ConfigDefaultCluster(
-        id=cluster_id, name=cluster_response.cluster.name
-    )
-    save_config(cfg)
-    display_manager.print_success(
-        f"Default cluster set to:\n{cfg.default_cluster.name} {cfg.default_cluster.id}"
-    )
-
-
-@app.command("get-default", help="Get the default cluster")
-def get_default_cluster(ctx: typer.Context):
-    """
-    Get the default cluster.
-    """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
-
-    cfg: AppConfig = utils.get_config_from_ctx(ctx)
-    # TODO: This need to got into the service
-    if not cfg.default_cluster:
-        display_manager.print_info("No default cluster set.")
-        raise typer.Exit()
-    get_cluster(ctx, cfg.default_cluster.id)
 
 
 @app.command(

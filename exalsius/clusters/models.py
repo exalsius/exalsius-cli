@@ -1,5 +1,5 @@
 import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Dict, List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
@@ -19,6 +19,19 @@ class ClusterType(str, Enum):
     DOCKER = "DOCKER"
 
 
+class ClusterLabels(StrEnum):
+    GPU_TYPE = "cluster.exalsius.ai/gpu-type"
+    WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
+
+
+class ClusterLabelValuesGPUType(StrEnum):
+    NVIDIA = "nvidia"
+
+
+class ClusterLabelValuesWorkloadType(StrEnum):
+    VOLCANO = "volcano"
+
+
 class ClustersBaseRequestDTO(BaseRequestDTO):
     api: ClustersApi = Field(..., description="The API client")
 
@@ -35,20 +48,14 @@ class ClustersDeleteRequestDTO(ClustersBaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster to delete")
 
 
-class ServiceDeploymentDTO(BaseModel):
-    service_id: int = Field(..., description="The ID of the service to deploy")
-    service_name: Optional[str] = Field(
-        default=None, description="The name of the service to deploy"
-    )
-    values: Optional[Dict[str, str]] = Field(
-        default=None, description="The values to set for the service"
-    )
-
-
 class ClustersCreateRequestDTO(ClustersBaseRequestDTO):
     name: str = Field(description="The name of the cluster")
     cluster_type: ClusterType = Field(
         description="The type of the cluster. - `CLOUD`: Cloud cluster, consisting of cloud instances - `REMOTE`: Remote cluster, consisting of self-managed nodes - `ADOPTED`: Adopted cluster, consisting of an already existing kubernetes cluster - `DOCKER`: Docker cluster, consisting of docker containers (for local testing and development) "
+    )
+    cluster_labels: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="The labels of the cluster control which services are deployed in the cluster.",
     )
     colony_id: Optional[str] = Field(
         default=None,
@@ -67,32 +74,17 @@ class ClustersCreateRequestDTO(ClustersBaseRequestDTO):
     worker_node_ids: Optional[List[str]] = Field(
         default=None, description="The IDs of the worker nodes (optional)."
     )
-    # service_deployments: Optional[List[ServiceDeploymentDTO]] = Field(
-    #    default=None, description="The services to deploy in the cluster (optional)."
-    # )
 
     def to_api_model(self) -> ClusterCreateRequest:
-        # if self.service_deployments is None:
-        #     # TODO: Check the behaviour if empty list is provided
-        #     service_deployments = None
-        # else:
-        #     service_deployments = [
-        #         ServiceDeployment(
-        #             service_id=service.service_id,
-        #             service_name=service.service_name,
-        #             values=service.values,
-        #         )
-        #         for service in self.service_deployments
-        #     ]
         return ClusterCreateRequest(
             name=self.name,
             cluster_type=self.cluster_type,
+            cluster_labels=self.cluster_labels,
             colony_id=self.colony_id,
             k8s_version=self.k8s_version,
             to_be_deleted_at=self.to_be_deleted_at,
             control_plane_node_ids=self.control_plane_node_ids,
             worker_node_ids=self.worker_node_ids,
-            # service_deployments=service_deployments,
         )
 
 

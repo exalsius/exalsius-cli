@@ -1,6 +1,6 @@
 import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 from exalsius_api_client.api.clusters_api import ClustersApi
@@ -33,6 +33,9 @@ from exalsius.clusters.commands import (
     ListClustersCommand,
 )
 from exalsius.clusters.models import (
+    ClusterLabels,
+    ClusterLabelValuesGPUType,
+    ClusterLabelValuesWorkloadType,
     ClustersAddNodeRequestDTO,
     ClustersCreateRequestDTO,
     ClustersDeleteRequestDTO,
@@ -107,6 +110,8 @@ class ClustersService(BaseServiceWithAuth):
         self,
         name: str,
         cluster_type: ClusterType,
+        no_gpu: bool,
+        diloco: bool,
         colony_id: Optional[str] = None,
         k8s_version: Optional[str] = None,
         to_be_deleted_at: Optional[datetime.datetime] = None,
@@ -114,18 +119,26 @@ class ClustersService(BaseServiceWithAuth):
         worker_node_ids: Optional[List[str]] = None,
         # service_deployments: Optional[List[ServiceDeploymentDTO]] = None,
     ) -> ClusterCreateResponse:
+        cluster_labels: Dict[str, str] = {}
+        if not no_gpu:
+            cluster_labels[ClusterLabels.GPU_TYPE] = ClusterLabelValuesGPUType.NVIDIA
+        if diloco:
+            cluster_labels[ClusterLabels.WORKLOAD_TYPE] = (
+                ClusterLabelValuesWorkloadType.VOLCANO
+            )
+
         return self.execute_command(
             CreateClusterCommand(
                 ClustersCreateRequestDTO(
                     api=self.clusters_api,
                     name=name,
                     cluster_type=cluster_type,
+                    cluster_labels=cluster_labels,
                     colony_id=colony_id,
                     k8s_version=k8s_version,
                     to_be_deleted_at=to_be_deleted_at,
                     control_plane_node_ids=control_plane_node_ids,
                     worker_node_ids=worker_node_ids,
-                    # service_deployments=service_deployments,
                 )
             )
         )
