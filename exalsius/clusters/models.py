@@ -22,6 +22,7 @@ class ClusterType(str, Enum):
 class ClusterLabels(StrEnum):
     GPU_TYPE = "cluster.exalsius.ai/gpu-type"
     WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
+    TELEMETRY_TYPE = "cluster.exalsius.ai/telemetry-enabled"
 
 
 class ClusterLabelValuesGPUType(StrEnum):
@@ -30,6 +31,11 @@ class ClusterLabelValuesGPUType(StrEnum):
 
 class ClusterLabelValuesWorkloadType(StrEnum):
     VOLCANO = "volcano"
+
+
+class ClusterLabelValuesTelemetryType(StrEnum):
+    ENABLED = "true"
+    DISABLED = "false"
 
 
 class ClustersBaseRequestDTO(BaseRequestDTO):

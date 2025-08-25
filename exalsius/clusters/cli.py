@@ -135,6 +135,11 @@ def create_cluster(
         "--diloco",
         help="Add the volcano workload type to the cluster to support Diloco workloads",
     ),
+    telemetry_enabled: bool = typer.Option(
+        False,
+        "--telemetry-enabled",
+        help="Enable telemetry for the cluster",
+    ),
 ):
     """
     Create a cluster.
@@ -154,6 +159,7 @@ def create_cluster(
             cluster_type=cluster_type,
             no_gpu=no_gpu,
             diloco=diloco,
+            telemetry_enabled=telemetry_enabled,
         )
     except ServiceError as e:
         display_manager.print_error(e.message)
