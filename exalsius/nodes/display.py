@@ -1,6 +1,5 @@
 from typing import List
 
-from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cloud_node import CloudNode
 from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.self_managed_node import SelfManagedNode
@@ -24,41 +23,16 @@ class NodesDisplayManager(BaseDisplayManager):
 
     def _add_common_columns(self, table: Table):
         table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("Hostname", style="green")
         table.add_column("Type", style="green")
         table.add_column("Description", style="blue")
-        table.add_column("Location", style="green")
-        table.add_column("GPU Count", style="blue")
-        table.add_column("GPU Vendor", style="green")
-        table.add_column("GPU Type", style="blue")
-        table.add_column("GPU Memory", style="red")
-        table.add_column("CPU Cores", style="green")
-        table.add_column("Memory", style="blue")
-        table.add_column("Storage", style="red")
         table.add_column("Import Time", style="green")
         table.add_column("Status", style="blue")
-
-    def _add_node_row(self, table: Table, node: BaseNode):
-        table.add_row(
-            str(node.id),
-            str(node.node_type),
-            str(node.description),
-            str(node.location),
-            str(node.gpu_count),
-            str(node.gpu_vendor),
-            str(node.gpu_type),
-            str(node.gpu_memory),
-            str(node.cpu_cores),
-            str(node.memory_gb),
-            str(node.storage_gb),
-            str(node.import_time),
-            str(node.node_status),
-        )
 
     def _add_cloud_node_specific_columns(self, table: Table):
         """Add columns specific to CloudNode type."""
         table.add_column("Provider", style="cyan")
         table.add_column("Instance Type", style="green")
-        table.add_column("Region", style="blue")
         table.add_column("Price", style="red")
 
     def _add_self_managed_node_specific_columns(self, table: Table):
@@ -71,21 +45,13 @@ class NodesDisplayManager(BaseDisplayManager):
         """Add a row with all CloudNode specific attributes."""
         table.add_row(
             str(node.id),
+            str(node.hostname),
             str(node.node_type),
             str(node.description),
-            str(node.location),
-            str(node.gpu_count),
-            str(node.gpu_vendor),
-            str(node.gpu_type),
-            str(node.gpu_memory),
-            str(node.cpu_cores),
-            str(node.memory_gb),
-            str(node.storage_gb),
             str(node.import_time),
             str(node.node_status),
             str(node.provider),
             str(node.instance_type),
-            str(node.region),
             str(node.price_per_hour),
         )
 
@@ -93,16 +59,9 @@ class NodesDisplayManager(BaseDisplayManager):
         """Add a row with all SelfManagedNode specific attributes."""
         table.add_row(
             str(node.id),
+            str(node.hostname),
             str(node.node_type),
             str(node.description),
-            str(node.location),
-            str(node.gpu_count),
-            str(node.gpu_vendor),
-            str(node.gpu_type),
-            str(node.gpu_memory),
-            str(node.cpu_cores),
-            str(node.memory_gb),
-            str(node.storage_gb),
             str(node.import_time),
             str(node.node_status),
             str(node.endpoint),
