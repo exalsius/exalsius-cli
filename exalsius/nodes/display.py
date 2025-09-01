@@ -22,24 +22,23 @@ class NodesDisplayManager(BaseDisplayManager):
         )
 
     def _add_common_columns(self, table: Table):
-        table.add_column("ID", style="cyan", no_wrap=True)
+        table.add_column("ID", style="blue", no_wrap=True)
         table.add_column("Hostname", style="green")
-        table.add_column("Type", style="green")
-        table.add_column("Description", style="blue")
+        table.add_column("Type", style="blue")
         table.add_column("Import Time", style="green")
         table.add_column("Status", style="blue")
 
     def _add_cloud_node_specific_columns(self, table: Table):
         """Add columns specific to CloudNode type."""
-        table.add_column("Provider", style="cyan")
-        table.add_column("Instance Type", style="green")
-        table.add_column("Price", style="red")
+        table.add_column("Provider", style="green")
+        table.add_column("Instance Type", style="blue")
+        table.add_column("Price", style="green")
 
     def _add_self_managed_node_specific_columns(self, table: Table):
         """Add columns specific to SelfManagedNode type."""
-        table.add_column("IP Address", style="cyan")
-        table.add_column("Username", style="green")
-        table.add_column("SSH Key Name", style="blue")
+        table.add_column("IP Address", style="green")
+        table.add_column("Username", style="blue")
+        table.add_column("SSH Key Name", style="green")
 
     def _add_cloud_node_row(self, table: Table, node: CloudNode):
         """Add a row with all CloudNode specific attributes."""
@@ -47,7 +46,6 @@ class NodesDisplayManager(BaseDisplayManager):
             str(node.id),
             str(node.hostname),
             str(node.node_type),
-            str(node.description),
             str(node.import_time),
             str(node.node_status),
             str(node.provider),
@@ -61,7 +59,6 @@ class NodesDisplayManager(BaseDisplayManager):
             str(node.id),
             str(node.hostname),
             str(node.node_type),
-            str(node.description),
             str(node.import_time),
             str(node.node_status),
             str(node.endpoint),
