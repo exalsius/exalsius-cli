@@ -24,6 +24,7 @@ from exalsius.workspaces.models import (
     GetWorkspaceRequestDTO,
     ResourcePoolDTO,
     WorkspaceBaseTemplateDTO,
+    WorkspaceDilocoTemplateDTO,
     WorkspaceJupyterTemplateDTO,
     WorkspaceLLMInferenceTemplateDTO,
     WorkspacePodTemplateDTO,
@@ -135,6 +136,41 @@ class WorkspacesService(BaseServiceWithAuth):
             ),
             description=description,
             to_be_deleted_at=to_be_deleted_at,
+        )
+
+    def create_diloco_workspace(
+        self,
+        cluster_id: str,
+        name: str,
+        gpu_count: int,
+        heterogeneous: bool,
+        nodes: int,
+        wandb_project_name: str,
+        wandb_group: str,
+        wandb_user_key: str,
+        huggingface_token: str,
+    ) -> WorkspaceCreateResponse:
+        resources: ResourcePoolDTO = ResourcePoolDTO(
+            gpu_count=gpu_count,
+            gpu_type=None,
+            gpu_vendor=None,
+            cpu_cores=16,
+            memory_gb=32,
+            storage_gb=50,
+        )
+
+        return self._create_workspace(
+            cluster_id=cluster_id,
+            name=name,
+            resources=resources,
+            workspace_template=WorkspaceDilocoTemplateDTO(
+                nodes=nodes,
+                heterogeneous=heterogeneous,
+                wandb_project_name=wandb_project_name,
+                wandb_group=wandb_group,
+                wandb_user_key=wandb_user_key,
+                huggingface_token=huggingface_token,
+            ),
         )
 
     def delete_workspace(self, workspace_id: str) -> WorkspaceDeleteResponse:

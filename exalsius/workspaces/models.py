@@ -17,6 +17,7 @@ class WorkspaceTemplates(str, enum.Enum):
     POD = "pod"
     JUPYTER = "jupyter"
     LLM_INFERENCE = "llm-inference"
+    DILCO = "diloco"
 
     def create_workspace_template(self) -> WorkspaceTemplate:
         match self:
@@ -58,6 +59,41 @@ class WorkspaceTemplates(str, enum.Enum):
                         "placementGroupStrategy": "PACK",
                         "cpuPerActor": "8",
                         "gpuPerActor": "1",
+                    },
+                )
+            case WorkspaceTemplates.DILCO:
+                return WorkspaceTemplate(
+                    name="diloco-training-template",
+                    variables={
+                        "deploymentName": "diloco-job",
+                        "nodes": "1",
+                        "diloco": {
+                            "model": "gpt-neo-x",
+                            "dataset": "c4",
+                            "localSteps": "128",
+                            "lr": "4e-4",
+                            "outerLr": "0.7",
+                            "warmupSteps": "1000",
+                            "totalSteps": "30000",
+                            "perDeviceTrainBatchSize": "32",
+                            "batchSize": "512",
+                            "optimMethod": "sgd",
+                            "quantization": "false",
+                            "checkpointPath": "checkpoint.pth",
+                            "checkpointInterval": "512",
+                            "device": "cuda",
+                            "wandbProjectName": "diloco-ws",
+                            "wandbGroup": "diloco-gptneo-c4",
+                            "heterogeneous": "false",
+                            "compressionDecay": "0.9",
+                            "compressionTopk": "32",
+                            "experimentDescription": "DiLoCo distributed training experiment",
+                            "experimentTags": '["diloco", "gpt-neo-x", "c4"]',
+                            "seed": "42",
+                            "wandbLogging": "true",
+                            "wandbUserKey": "",
+                            "huggingfaceToken": "",
+                        },
                     },
                 )
 
@@ -124,6 +160,29 @@ class WorkspaceLLMInferenceTemplateDTO(WorkspaceBaseTemplateDTO):
         return template
 
 
+class WorkspaceDilocoTemplateDTO(WorkspaceBaseTemplateDTO):
+    template_type: WorkspaceTemplates = WorkspaceTemplates.DILCO
+
+    nodes: int = Field(..., description="The number of nodes")
+    heterogeneous: bool = Field(..., description="Whether the nodes are heterogeneous")
+    wandb_project_name: str = Field(..., description="The name of the WandB project")
+    wandb_group: str = Field(..., description="The group of the WandB project")
+    wandb_user_key: str = Field(..., description="The user key of the WandB project")
+    huggingface_token: str = Field(
+        ..., description="The token of the HuggingFace model"
+    )
+
+    def to_api_model(self) -> WorkspaceTemplate:
+        template: WorkspaceTemplate = self.template_type.create_workspace_template()
+        template.variables["nodes"] = str(self.nodes)
+        template.variables["diloco"]["heterogeneous"] = str(self.heterogeneous)
+        template.variables["diloco"]["wandbProjectName"] = self.wandb_project_name
+        template.variables["diloco"]["wandbGroup"] = self.wandb_group
+        template.variables["diloco"]["wandbUserKey"] = self.wandb_user_key
+        template.variables["diloco"]["huggingfaceToken"] = self.huggingface_token
+        return template
+
+
 class ResourcePoolDTO(BaseModel):
     gpu_count: int = Field(..., description="The number of GPUs")
     gpu_type: Optional[str] = Field(None, description="The type of the GPUs")
@@ -162,7 +221,7 @@ class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
     def to_api_model(self) -> WorkspaceCreateRequest:
         template: WorkspaceTemplate = self.template.to_api_model()
         template.variables["deploymentName"] = commons.generate_random_name(
-            prefix=self.name, slug_length=1
+            prefix=self.name, slug_length=2
         )
 
         return WorkspaceCreateRequest(
