@@ -35,6 +35,7 @@ from exalsius.clusters.commands import (
 from exalsius.clusters.models import (
     ClusterLabels,
     ClusterLabelValuesGPUType,
+    ClusterLabelValuesTelemetryType,
     ClusterLabelValuesWorkloadType,
     ClustersAddNodeRequestDTO,
     ClustersCreateRequestDTO,
@@ -112,6 +113,7 @@ class ClustersService(BaseServiceWithAuth):
         cluster_type: ClusterType,
         no_gpu: bool,
         diloco: bool,
+        telemetry_enabled: bool,
         colony_id: Optional[str] = None,
         k8s_version: Optional[str] = None,
         to_be_deleted_at: Optional[datetime.datetime] = None,
@@ -125,6 +127,10 @@ class ClustersService(BaseServiceWithAuth):
         if diloco:
             cluster_labels[ClusterLabels.WORKLOAD_TYPE] = (
                 ClusterLabelValuesWorkloadType.VOLCANO
+            )
+        if telemetry_enabled:
+            cluster_labels[ClusterLabels.TELEMETRY_TYPE] = (
+                ClusterLabelValuesTelemetryType.ENABLED
             )
 
         return self.execute_command(

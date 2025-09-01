@@ -15,7 +15,11 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from exalsius.clusters.models import ClusterLabels, ClusterLabelValuesGPUType
+from exalsius.clusters.models import (
+    ClusterLabels,
+    ClusterLabelValuesGPUType,
+    ClusterLabelValuesTelemetryType,
+)
 
 logger = logging.getLogger("cli.config")
 
@@ -78,6 +82,7 @@ class ConfigCluster(BaseSettings):
     default_cluster_labels: Dict[ClusterLabels, str] = Field(
         default={
             ClusterLabels.GPU_TYPE: ClusterLabelValuesGPUType.NVIDIA,
+            ClusterLabels.TELEMETRY_TYPE: ClusterLabelValuesTelemetryType.DISABLED,
         },
         description="The default labels of the cluster controlling which services are installed in the cluster.",
     )
