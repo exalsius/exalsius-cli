@@ -1,4 +1,5 @@
 from exalsius_api_client.models.workspace import Workspace
+from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 from rich.console import Console
@@ -66,6 +67,13 @@ class WorkspacesDisplayManager(BaseDisplayManager):
     def display_workspace_created(self, workspace: Workspace):
         self.console.print(
             f"Workspace {workspace.name} ({workspace.id}) created successfully."
+        )
+
+    def display_workspace_created_from_response(
+        self, workspace_create_response: WorkspaceCreateResponse
+    ):
+        self.console.print(
+            f"Workspace {workspace_create_response.workspace_id} created successfully."
         )
 
     def display_workspace_deleted(self, workspace_id: str):

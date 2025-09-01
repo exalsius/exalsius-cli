@@ -65,6 +65,14 @@ class CreateWorkspaceLLMInferenceCommand(CreateWorkspaceCommand):
         super().__init__(request)
 
 
+class CreateWorkspaceDilocoCommand(CreateWorkspaceCommand):
+    def __init__(
+        self,
+        request: CreateWorkspaceRequestDTO,
+    ):
+        super().__init__(request)
+
+
 class DeleteWorkspaceCommand(BaseCommand[WorkspaceDeleteResponse]):
     def __init__(self, request: DeleteWorkspaceRequestDTO):
         self.request: DeleteWorkspaceRequestDTO = request

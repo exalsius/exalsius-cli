@@ -22,6 +22,7 @@ app = typer.Typer()
 app_deploy = typer.Typer()
 app_jupyter = typer.Typer()
 app_llm_inference = typer.Typer()
+app_diloco = typer.Typer()
 
 app.add_typer(app_deploy, name="deploy")
 
@@ -348,6 +349,86 @@ def deploy_llm_inference_workspace(
 
     display_manager.display_workspace_created(workspace)
     display_manager.display_workspace_access_info(workspace)
+
+
+@app_deploy.command("diloco")
+def diloco_workspace(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to deploy the service to"
+    ),
+    name: str = typer.Option(
+        utils.generate_random_name(prefix="exls-diloco"),
+        "--name",
+        "-n",
+        help="The name of the workspace to add. If not provided, a random name will be generated.",
+        show_default=False,
+    ),
+    gpu_count: PositiveInt = typer.Option(
+        1,
+        "--gpu-count",
+        "-g",
+        help="The number of GPUs to add to the workspace",
+    ),
+    nodes: PositiveInt = typer.Option(
+        1,
+        "--nodes",
+        "-n",
+        help="The number of nodes to add to the workspace",
+    ),
+    heterogeneous: bool = typer.Option(
+        False,
+        "--heterogeneous",
+        "-h",
+        help="Whether the nodes are heterogeneous",
+    ),
+    wandb_project_name: str = typer.Option(
+        None,
+        "--wandb-project-name",
+        "-p",
+        help="The name of the WandB project",
+    ),
+    wandb_group: str = typer.Option(
+        None,
+        "--wandb-group",
+        "-g",
+        help="The group of the WandB project",
+    ),
+    wandb_user_key: str = typer.Option(
+        None,
+        "--wandb-user-key",
+        "-k",
+        help="The user key of the WandB project",
+    ),
+    huggingface_token: str = typer.Option(
+        None,
+        "--huggingface-token",
+        "-t",
+        help="The token of the HuggingFace model",
+    ),
+):
+    console = Console(theme=custom_theme)
+    display_manager = WorkspacesDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service = WorkspacesService(config, access_token)
+
+    workspace_create_response: WorkspaceCreateResponse = (
+        service.create_diloco_workspace(
+            cluster_id=cluster_id,
+            name=name,
+            gpu_count=gpu_count,
+            heterogeneous=heterogeneous,
+            nodes=nodes,
+            wandb_project_name=wandb_project_name,
+            wandb_group=wandb_group,
+            wandb_user_key=wandb_user_key,
+            huggingface_token=huggingface_token,
+        )
+    )
+
+    display_manager.display_workspace_created_from_response(workspace_create_response)
 
 
 @app.command("show-access-info")
