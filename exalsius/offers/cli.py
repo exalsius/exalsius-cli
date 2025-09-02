@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 import typer
-from exalsius_api_client.models.offers_list_response import OffersListResponse
+from exalsius_api_client.models.offer import Offer
 from rich.console import Console
 
 from exalsius.config import AppConfig
@@ -66,7 +66,7 @@ def list_offers(
         spinner_style="custom",
     ):
         try:
-            offers_response: OffersListResponse = service.list_offers(
+            offers: List[Offer] = service.list_offers(
                 gpu_type=gpu_type,
                 gpu_vendor=gpu_vendor,
                 cloud_provider=cloud_provider,
@@ -77,4 +77,4 @@ def list_offers(
             display_manager.print_error(f"Failed to fetch offers: {e}")
             raise typer.Exit(1)
 
-    display_manager.display_offers(offers_response.offers)
+    display_manager.display_offers(offers)

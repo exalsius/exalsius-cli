@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import List, Optional
 
 from exalsius_api_client.api.offers_api import OffersApi
+from exalsius_api_client.models.offer import Offer
 from exalsius_api_client.models.offers_list_response import OffersListResponse
 
 from exalsius.config import AppConfig
@@ -14,6 +15,12 @@ class OffersService(BaseServiceWithAuth):
         super().__init__(config, access_token)
         self.offers_api: OffersApi = OffersApi(self.api_client)
 
+    def _sanity_filter_offers(self, offers: List[Offer]) -> List[Offer]:
+        filtered_offers = [
+            offer for offer in offers if offer.price is not None and offer.price > 0
+        ]
+        return filtered_offers
+
     def list_offers(
         self,
         gpu_type: Optional[str] = None,
@@ -21,8 +28,8 @@ class OffersService(BaseServiceWithAuth):
         cloud_provider: Optional[str] = None,
         price_min: Optional[float] = None,
         price_max: Optional[float] = None,
-    ) -> OffersListResponse:
-        return self.execute_command(
+    ) -> List[Offer]:
+        offers_list_response: OffersListResponse = self.execute_command(
             ListOffersCommand(
                 OffersListRequestDTO(
                     api=self.offers_api,
@@ -34,3 +41,5 @@ class OffersService(BaseServiceWithAuth):
                 )
             )
         )
+        offers: List[Offer] = self._sanity_filter_offers(offers_list_response.offers)
+        return offers
