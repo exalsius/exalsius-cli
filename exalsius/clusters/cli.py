@@ -238,8 +238,8 @@ def list_nodes(
     display_manager.display_cluster_nodes(nodes)
 
 
-@app.command("add-node", help="Add a node to a cluster")
-def add_node(
+@app.command("add-nodes", help="Add nodes to a cluster")
+def add_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(help="The ID of the cluster to add a node to"),
     node_ids: List[str] = typer.Argument(
@@ -261,7 +261,7 @@ def add_node(
     ),
 ):
     """
-    Add a node to a cluster.
+    Add nodes to a cluster.
     """
     console = Console(theme=custom_theme)
     display_manager_clusters = ClustersDisplayManager(console)
