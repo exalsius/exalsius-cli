@@ -12,6 +12,9 @@ from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResp
 from exalsius_api_client.models.cluster_kubeconfig_response import (
     ClusterKubeconfigResponse,
 )
+from exalsius_api_client.models.cluster_node_remove_response import (
+    ClusterNodeRemoveResponse,
+)
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
 from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
@@ -25,6 +28,7 @@ from exalsius.clusters.commands import (
     AddClusterNodeCommand,
     CreateClusterCommand,
     DeleteClusterCommand,
+    DeleteClusterNodeCommand,
     DeployClusterCommand,
     DownloadKubeConfigCommand,
     GetClusterCommand,
@@ -41,6 +45,7 @@ from exalsius.clusters.models import (
     ClusterNodeDTO,
     ClustersAddNodeRequestDTO,
     ClustersCreateRequestDTO,
+    ClustersDeleteNodeRequestDTO,
     ClustersDeleteRequestDTO,
     ClustersDeployRequestDTO,
     ClustersDownloadKubeConfigRequestDTO,
@@ -212,6 +217,19 @@ class ClustersService(BaseServiceWithAuth):
                     api=self.clusters_api,
                     cluster_id=cluster_id,
                     nodes_to_add=nodes_to_add,
+                )
+            )
+        )
+
+    def remove_cluster_node(
+        self, cluster_id: str, node_id: str
+    ) -> ClusterNodeRemoveResponse:
+        return self.execute_command(
+            DeleteClusterNodeCommand(
+                ClustersDeleteNodeRequestDTO(
+                    api=self.clusters_api,
+                    cluster_id=cluster_id,
+                    node_id=node_id,
                 )
             )
         )

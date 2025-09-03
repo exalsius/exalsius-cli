@@ -138,6 +138,15 @@ class ClustersAddNodeRequestDTO(ClustersBaseRequestDTO):
         )
 
 
+class ClustersDeleteNodeRequestDTO(ClustersBaseRequestDTO):
+    cluster_id: str = Field(
+        ..., description="The ID of the cluster to delete a node from"
+    )
+    node_id: str = Field(
+        ..., description="The ID of the node to delete from the cluster"
+    )
+
+
 class ListCloudCredentialsRequestDTO(BaseRequestDTO):
     api: ManagementApi = Field(..., description="The API client")
 
