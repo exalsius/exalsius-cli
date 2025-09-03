@@ -5,7 +5,7 @@ import typer
 from rich.console import Console
 
 from exalsius.clusters.display import ClustersDisplayManager
-from exalsius.clusters.models import ClusterType, NodesToAddDTO
+from exalsius.clusters.models import ClusterNodeDTO, ClusterType, NodesToAddDTO
 from exalsius.clusters.service import ClustersService
 from exalsius.config import AppConfig
 from exalsius.core.commons.models import ServiceError
@@ -230,12 +230,12 @@ def list_nodes(
     service: ClustersService = ClustersService(config, access_token)
 
     try:
-        cluster_nodes_response = service.get_cluster_nodes(cluster_id)
+        nodes: List[ClusterNodeDTO] = service.get_cluster_nodes(cluster_id)
     except ServiceError as e:
         display_manager.print_error(e.message)
         raise typer.Exit(1)
 
-    display_manager.display_cluster_nodes(cluster_nodes_response)
+    display_manager.display_cluster_nodes(nodes)
 
 
 @app.command("add-node", help="Add a node to a cluster")
@@ -273,7 +273,7 @@ def add_node(
     # TODO: Add validation for node_ids
 
     try:
-        cluster_nodes_response = service.add_cluster_node(
+        _ = service.add_cluster_node(
             cluster_id=cluster_id,
             nodes_to_add=[
                 NodesToAddDTO(node_id=node_id, node_role=node_role)
@@ -287,7 +287,7 @@ def add_node(
     display_manager_clusters.print_success(
         f"Nodes {node_ids} added to cluster {cluster_id} successfully."
     )
-    display_manager_clusters.display_cluster_nodes(cluster_nodes_response)
+    display_manager_clusters.display_cluster_node_add_success(cluster_id, node_ids)
 
 
 @app.command("show-available-resources", help="Get the resources of a cluster")

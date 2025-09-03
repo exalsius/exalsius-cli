@@ -19,6 +19,7 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 from exalsius_api_client.models.credentials import Credentials
+from exalsius_api_client.models.node_response import NodeResponse
 
 from exalsius.clusters.commands import (
     AddClusterNodeCommand,
@@ -37,6 +38,7 @@ from exalsius.clusters.models import (
     ClusterLabelValuesGPUType,
     ClusterLabelValuesTelemetryType,
     ClusterLabelValuesWorkloadType,
+    ClusterNodeDTO,
     ClustersAddNodeRequestDTO,
     ClustersCreateRequestDTO,
     ClustersDeleteRequestDTO,
@@ -55,6 +57,7 @@ from exalsius.core.base.commands import BaseCommand
 from exalsius.core.base.service import BaseServiceWithAuth, T
 from exalsius.core.commons.commands import SaveFileCommand
 from exalsius.core.commons.models import SaveFileRequestDTO, ServiceError
+from exalsius.nodes.service import NodeService
 
 
 class ClustersService(BaseServiceWithAuth):
@@ -62,6 +65,7 @@ class ClustersService(BaseServiceWithAuth):
         super().__init__(config, access_token)
         self.clusters_api: ClustersApi = ClustersApi(self.api_client)
         self.management_api: ManagementApi = ManagementApi(self.api_client)
+        self.nodes_service: NodeService = NodeService(config, access_token)
 
     def _execute_command(self, command: BaseCommand[T]) -> T:
         try:
@@ -159,8 +163,8 @@ class ClustersService(BaseServiceWithAuth):
             )
         )
 
-    def get_cluster_nodes(self, cluster_id: str) -> ClusterNodesResponse:
-        return self.execute_command(
+    def get_cluster_nodes(self, cluster_id: str) -> List[ClusterNodeDTO]:
+        cluster_nodes_response: ClusterNodesResponse = self.execute_command(
             GetClusterNodesCommand(
                 ClustersNodesRequestDTO(
                     api=self.clusters_api,
@@ -168,6 +172,36 @@ class ClustersService(BaseServiceWithAuth):
                 )
             )
         )
+
+        nodes: List[ClusterNodeDTO] = []
+
+        if cluster_nodes_response.worker_node_ids:
+            for node_id in cluster_nodes_response.worker_node_ids:
+                worker_node_response: NodeResponse = self.nodes_service.get_node(
+                    node_id
+                )
+                if worker_node_response.actual_instance:
+                    nodes.append(
+                        ClusterNodeDTO(
+                            role="WORKER",
+                            **worker_node_response.actual_instance.to_dict(),
+                        )
+                    )
+
+        if cluster_nodes_response.control_plane_node_ids:
+            for node_id in cluster_nodes_response.control_plane_node_ids:
+                control_plane_node_response: NodeResponse = self.nodes_service.get_node(
+                    node_id
+                )
+                if control_plane_node_response.actual_instance:
+                    nodes.append(
+                        ClusterNodeDTO(
+                            role="CONTROL_PLANE",
+                            **control_plane_node_response.actual_instance.to_dict(),
+                        )
+                    )
+
+        return nodes
 
     def add_cluster_node(
         self, cluster_id: str, nodes_to_add: List[NodesToAddDTO]
