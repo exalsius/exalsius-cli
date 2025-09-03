@@ -168,9 +168,6 @@ def create_cluster(
     display_manager.print_success(
         f"Cluster {cluster_create_response.cluster_id} created successfully."
     )
-    display_manager.print_info(
-        f"The cluster is in `Staging` state. Please check the status with `exls clusters get {cluster_create_response.cluster_id}`"
-    )
 
 
 @app.command("deploy", help="Deploy a cluster")
