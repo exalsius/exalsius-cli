@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import yaml
 from filelock import FileLock
@@ -13,12 +13,6 @@ from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
-)
-
-from exalsius.clusters.models import (
-    ClusterLabels,
-    ClusterLabelValuesGPUType,
-    ClusterLabelValuesTelemetryType,
 )
 
 logger = logging.getLogger("cli.config")
@@ -68,26 +62,6 @@ class Auth0Config(BaseSettings):
     )
 
 
-class ConfigDefaultCluster(BaseSettings):
-    id: str = Field(..., description="The ID of the workspace")
-    name: Optional[str] = Field(default=None, description="The name of the workspace")
-
-
-class ConfigCluster(BaseSettings):
-    default_cluster: Optional[ConfigDefaultCluster] = Field(
-        ...,
-        description="The default cluster",
-    )
-
-    default_cluster_labels: Dict[ClusterLabels, str] = Field(
-        default={
-            ClusterLabels.GPU_TYPE: ClusterLabelValuesGPUType.NVIDIA,
-            ClusterLabels.TELEMETRY_TYPE: ClusterLabelValuesTelemetryType.DISABLED,
-        },
-        description="The default labels of the cluster controlling which services are installed in the cluster.",
-    )
-
-
 class ConfigWorkspaceCreationPolling(BaseSettings):
     timeout_seconds: int = Field(
         default=120,
@@ -103,10 +77,6 @@ class AppConfig(BaseSettings):
     backend_host: str = Field(
         default="https://api.exalsius.ai",
         description="The backend host",
-    )
-    cluster_config: ConfigCluster = Field(
-        default=ConfigCluster(default_cluster=None),
-        description="The cluster configuration",
     )
     auth0: Auth0Config = Field(
         default=Auth0Config(), description="The Auth0 configuration"

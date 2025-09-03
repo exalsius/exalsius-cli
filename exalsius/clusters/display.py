@@ -1,6 +1,5 @@
 from typing import List
 
-from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
 from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
 )
@@ -10,6 +9,7 @@ from exalsius_api_client.models.credentials import Credentials
 from rich.console import Console
 from rich.table import Table
 
+from exalsius.clusters.models import ClusterNodeDTO
 from exalsius.core.base.display import BaseDisplayManager
 
 
@@ -81,22 +81,32 @@ class ClustersDisplayManager(BaseDisplayManager):
             f"The following nodes will be returned to the node pool: {all_nodes}"
         )
 
-    def display_cluster_nodes(self, cluster_nodes_response: ClusterNodesResponse):
+    def display_cluster_nodes(self, nodes: List[ClusterNodeDTO]):
         table = Table(
             title="Cluster Nodes",
             show_header=True,
             header_style="bold",
             border_style="custom",
         )
-        table.add_column("Control Plane Nodes")
-        table.add_column("Worker Nodes")
+        table.add_column("ID", style="blue")
+        table.add_column("Role", style="green")
+        table.add_column("Name", style="blue")
 
-        table.add_row(
-            str(cluster_nodes_response.control_plane_node_ids),
-            str(cluster_nodes_response.worker_node_ids),
-        )
+        for node in nodes:
+            table.add_row(
+                str(node.id),
+                str(node.role),
+                str(node.hostname),
+            )
 
         self.console.print(table)
+
+    def display_cluster_node_add_success(
+        self, cluster_id: str, node_ids_added: List[str]
+    ):
+        self.print_success(
+            f"Nodes {', '.join(node_ids_added)} added to cluster {cluster_id} successfully."
+        )
 
     def display_cluster_resources(
         self, cluster_resources_response: ClusterResourcesListResponse

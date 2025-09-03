@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.api.management_api import ManagementApi
+from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
@@ -145,3 +146,7 @@ class ClustersDownloadKubeConfigRequestDTO(ClustersBaseRequestDTO):
     cluster_id: str = Field(
         ..., description="The ID of the cluster to download the kube config for"
     )
+
+
+class ClusterNodeDTO(BaseNode):
+    role: str = Field(..., description="The role of the node")

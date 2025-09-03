@@ -27,16 +27,16 @@ class OffersDisplayManager(BaseDisplayManager):
             border_style="custom",
         )
 
-        table.add_column("ID", style="cyan")
-        table.add_column("GPU", style="cyan")
-        table.add_column("QTY", style="green")
-        table.add_column("CLOUD", style="magenta")
+        table.add_column("ID", style="blue", no_wrap=True)
+        table.add_column("GPU", style="green")
+        table.add_column("QTY", style="blue")
+        table.add_column("CLOUD", style="green")
         table.add_column("INSTANCE TYPE", style="blue")
-        table.add_column("GPU MEM (MiB)", style="yellow")
-        table.add_column("vCPUs", style="green")
-        table.add_column("HOST MEM (MiB)", style="yellow")
-        table.add_column("HOURLY COST", style="red")
-        table.add_column("REGION", style="cyan")
+        table.add_column("GPU MEM (MiB)", style="green")
+        table.add_column("vCPUs", style="blue")
+        table.add_column("HOST MEM (MiB)", style="green")
+        table.add_column("HOURLY COST", style="blue")
+        table.add_column("REGION", style="green")
 
         for offer in offers:
             table.add_row(

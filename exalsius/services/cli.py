@@ -4,12 +4,11 @@ import typer
 from exalsius_api_client.models.service_create_response import ServiceCreateResponse
 from rich.console import Console
 
-from exalsius.config import AppConfig, ConfigDefaultCluster
+from exalsius.config import AppConfig
 from exalsius.core.commons.models import ServiceError
 from exalsius.services.display import ServicesDisplayManager
 from exalsius.services.models import ServiceTemplates
 from exalsius.services.service import ServicesService
-from exalsius.state import AppState
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
@@ -28,13 +27,6 @@ def _root(
     List and manage services of a cluster.
     """
     utils.help_if_no_subcommand(ctx)
-
-    if cluster:
-        state: AppState = utils.get_app_state_from_ctx(ctx)
-        state.config.default_cluster = ConfigDefaultCluster(
-            id=cluster,
-            name=cluster,
-        )
 
 
 @app.command("list", help="List all services of a cluster")
