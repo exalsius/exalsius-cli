@@ -24,28 +24,24 @@ class NodesDisplayManager(BaseDisplayManager):
     def _add_common_columns(self, table: Table):
         table.add_column("ID", style="blue", no_wrap=True)
         table.add_column("Hostname", style="green")
-        table.add_column("Type", style="blue")
-        table.add_column("Import Time", style="green")
-        table.add_column("Status", style="blue")
+        table.add_column("Import Time", style="blue")
+        table.add_column("Status", style="green")
 
     def _add_cloud_node_specific_columns(self, table: Table):
         """Add columns specific to CloudNode type."""
-        table.add_column("Provider", style="green")
-        table.add_column("Instance Type", style="blue")
-        table.add_column("Price", style="green")
+        table.add_column("Provider", style="blue")
+        table.add_column("Instance Type", style="green")
+        table.add_column("Price", style="blue")
 
     def _add_self_managed_node_specific_columns(self, table: Table):
         """Add columns specific to SelfManagedNode type."""
-        table.add_column("IP Address", style="green")
-        table.add_column("Username", style="blue")
-        table.add_column("SSH Key Name", style="green")
+        table.add_column("IP Address", style="blue")
 
     def _add_cloud_node_row(self, table: Table, node: CloudNode):
         """Add a row with all CloudNode specific attributes."""
         table.add_row(
             str(node.id),
             str(node.hostname),
-            str(node.node_type),
             str(node.import_time),
             str(node.node_status),
             str(node.provider),
@@ -58,12 +54,9 @@ class NodesDisplayManager(BaseDisplayManager):
         table.add_row(
             str(node.id),
             str(node.hostname),
-            str(node.node_type),
             str(node.import_time),
             str(node.node_status),
             str(node.endpoint),
-            str(node.username),
-            str(node.ssh_key_id),
         )
 
     def display_nodes(self, nodes: List[NodeResponse]):
@@ -71,8 +64,8 @@ class NodesDisplayManager(BaseDisplayManager):
             self.print_info("No nodes found. Please add nodes to the node pool.")
             return
 
-        cloud_table = self._create_node_table("Cloud Nodes")
-        self_managed_table = self._create_node_table("Self-Managed Nodes")
+        cloud_table = self._create_node_table("Node Pool")
+        self_managed_table = self._create_node_table("Node Pool")
 
         self._add_common_columns(cloud_table)
         self._add_common_columns(self_managed_table)
