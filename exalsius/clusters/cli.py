@@ -290,6 +290,35 @@ def add_node(
     display_manager_clusters.display_cluster_node_add_success(cluster_id, node_ids)
 
 
+@app.command("remove-node", help="Remove a node from a cluster")
+def remove_node(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        help="The ID of the cluster to remove a node from"
+    ),
+    node_id: str = typer.Argument(help="The ID of the node to remove from the cluster"),
+):
+    """
+    Remove a node from a cluster.
+    """
+    console = Console(theme=custom_theme)
+    display_manager = ClustersDisplayManager(console)
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    service: ClustersService = ClustersService(config, access_token)
+
+    try:
+        service.remove_cluster_node(cluster_id, node_id)
+    except ServiceError as e:
+        display_manager.print_error(e.message)
+        raise typer.Exit(1)
+
+    display_manager.print_success(
+        f"Node {node_id} removed from cluster {cluster_id} successfully."
+    )
+
+
 @app.command("show-available-resources", help="Get the resources of a cluster")
 def get_cluster_resources(
     ctx: typer.Context,
