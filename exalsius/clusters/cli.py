@@ -121,7 +121,7 @@ def create_cluster(
     ctx: typer.Context,
     name: str = typer.Argument(help="The name of the cluster"),
     cluster_type: ClusterType = typer.Option(
-        ClusterType.CLOUD,
+        ClusterType.REMOTE,
         "--cluster-type",
         help="The type of the cluster",
     ),
