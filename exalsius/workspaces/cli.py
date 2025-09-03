@@ -57,7 +57,7 @@ def list_workspaces(
         display_manager.print_warning("No workspaces found")
         return
 
-    display_manager.display_workspaces(workspaces_response)
+    display_manager.display_workspaces(cluster_id, workspaces_response)
 
 
 @app.command("get")

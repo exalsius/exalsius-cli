@@ -24,11 +24,11 @@ class ClustersDisplayManager(BaseDisplayManager):
             header_style="bold",
             border_style="custom",
         )
-        table.add_column("ID", no_wrap=True)
-        table.add_column("Name")
-        table.add_column("Status")
-        table.add_column("Created At")
-        table.add_column("Updated At")
+        table.add_column("ID", style="blue", no_wrap=True)
+        table.add_column("Name", style="green")
+        table.add_column("Status", style="blue")
+        table.add_column("Created At", style="green")
+        table.add_column("Updated At", style="blue")
         # TODO add services
 
         for cluster in cluster_list_response.clusters:

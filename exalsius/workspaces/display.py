@@ -13,19 +13,22 @@ class WorkspacesDisplayManager(BaseDisplayManager):
     def __init__(self, console: Console):
         super().__init__(console)
 
-    def display_workspaces(self, workspace_list_response: WorkspacesListResponse):
+    def display_workspaces(
+        self, cluster_id: str, workspace_list_response: WorkspacesListResponse
+    ):
         """Display a list of workspaces in a formatted table."""
         table = Table(
-            title="exalsius Workspaces",
+            title=f"Workspaces on cluster {cluster_id}",
             show_header=True,
             header_style="bold",
             border_style="custom",
         )
 
-        table.add_column("ID", style="cyan", no_wrap=True)
-        table.add_column("Name", style="cyan", no_wrap=True)
-        table.add_column("Status", style="magenta")
+        table.add_column("ID", style="blue", no_wrap=True)
+        table.add_column("Name", style="green", no_wrap=True)
+        table.add_column("Status", style="blue")
         table.add_column("Owner", style="green")
+        table.add_column("Cluster ID", style="blue")
 
         for workspace in workspace_list_response.workspaces:
             table.add_row(
@@ -33,6 +36,7 @@ class WorkspacesDisplayManager(BaseDisplayManager):
                 workspace.name,
                 workspace.workspace_status or "N/A",
                 workspace.owner,
+                cluster_id,
             )
 
         self.console.print(table)
