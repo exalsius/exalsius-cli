@@ -118,7 +118,6 @@ class ClustersDisplayManager(BaseDisplayManager):
             border_style="custom",
         )
 
-        table.add_column("Node")
         table.add_column("Available GPUs")
         table.add_column("Available CPUs")
         table.add_column("Available Memory")
@@ -127,7 +126,6 @@ class ClustersDisplayManager(BaseDisplayManager):
         for node in cluster_resources_response.resources:
             if node and node.available and node.occupied:
                 table.add_row(
-                    str(node.node_id),
                     str(f"{node.available.gpu_count} GPUs"),
                     str(f"{node.available.cpu_cores} cores"),
                     str(f"{node.available.memory_gb} GB"),
