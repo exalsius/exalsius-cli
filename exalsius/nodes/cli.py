@@ -97,7 +97,10 @@ def delete_node(
 @app.command("import-ssh")
 def import_ssh(
     ctx: typer.Context,
-    hostname: str = typer.Option(help="The hostname of the node to import"),
+    hostname: str = typer.Option(
+        help="The hostname of the node to import",
+        default_factory=utils.generate_random_name,
+    ),
     endpoint: str = typer.Option(help="The endpoint of the node to import"),
     username: str = typer.Option(help="The username of the node to import"),
     ssh_key_id: str = typer.Option(help="The ID of the SSH key to import"),
@@ -127,8 +130,14 @@ def import_ssh(
 def import_offer(
     ctx: typer.Context,
     offer_id: str = typer.Argument(help="The ID of the offer to import"),
-    hostname: str = typer.Option(help="The hostname of the node to import"),
-    amount: int = typer.Option(help="The amount of nodes to import"),
+    hostname: str = typer.Option(
+        help="The hostname of the node to import",
+        default_factory=utils.generate_random_name,
+    ),
+    amount: int = typer.Option(
+        help="The amount of nodes to import",
+        default=1,
+    ),
 ):
     """Import a node from an offer into the node pool"""
     console = Console(theme=custom_theme)
