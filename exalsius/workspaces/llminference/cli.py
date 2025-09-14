@@ -103,14 +103,8 @@ def deploy_llm_inference_workspace(
         "-m",
         help="The amount of memory in GB to add to the workspace",
     ),
-    pvc_storage_gb: PositiveInt = typer.Option(
-        50,
-        "--pvc-storage-gb",
-        "-p",
-        help="The amount of PVC storage in GB to add to the workspace",
-    ),
     ephemeral_storage_gb: PositiveInt = typer.Option(
-        50,
+        100,
         "--ephemeral-storage-gb",
         "-e",
         help="The amount of ephemeral storage in GB to add to the workspace",
@@ -166,7 +160,7 @@ def deploy_llm_inference_workspace(
         gpu_vendor=None,
         cpu_cores=cpu_cores,
         memory_gb=memory_gb,
-        storage_gb=pvc_storage_gb,
+        storage_gb=1,  # llm inference workspaces do not support PVC storage, this will be ignored
     )
 
     workspace_create_response: WorkspaceCreateResponse = (
@@ -180,6 +174,7 @@ def deploy_llm_inference_workspace(
                 huggingface_model=huggingface_model,
                 huggingface_token=huggingface_token,
                 num_model_replicas=num_model_replicas,
+                runtime_environment_pip_packages=pip_dependencies,
                 tensor_parallel_size=tensor_parallel_size,
                 pipeline_parallel_size=pipeline_parallel_size,
                 cpu_per_actor=cpu_per_actor,
