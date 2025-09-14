@@ -12,10 +12,10 @@ from exalsius.core.commons.models import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer()
+clusters_app = typer.Typer()
 
 
-@app.callback(invoke_without_command=True)
+@clusters_app.callback(invoke_without_command=True)
 def _root(
     ctx: typer.Context,
 ):
@@ -25,7 +25,7 @@ def _root(
     utils.help_if_no_subcommand(ctx)
 
 
-@app.command("list", help="List all clusters")
+@clusters_app.command("list", help="List all clusters")
 def list_clusters(
     ctx: typer.Context,
     status: Optional[str] = typer.Option(
@@ -54,7 +54,7 @@ def list_clusters(
     display_manager.display_clusters(clusters)
 
 
-@app.command("get", help="Get a cluster")
+@clusters_app.command("get", help="Get a cluster")
 def get_cluster(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(..., help="The ID of the cluster to get"),
@@ -80,7 +80,7 @@ def get_cluster(
     display_manager.display_cluster(cluster_response)
 
 
-@app.command("delete", help="Delete a cluster")
+@clusters_app.command("delete", help="Delete a cluster")
 def delete_cluster(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(help="The ID of the cluster to delete"),
@@ -116,7 +116,7 @@ def delete_cluster(
     display_manager.print_success(f"Cluster {cluster_id} deleted successfully.")
 
 
-@app.command("create", help="Create a cluster")
+@clusters_app.command("create", help="Create a cluster")
 def create_cluster(
     ctx: typer.Context,
     name: str = typer.Argument(help="The name of the cluster"),
@@ -170,7 +170,7 @@ def create_cluster(
     )
 
 
-@app.command("deploy", help="Deploy a cluster")
+@clusters_app.command("deploy", help="Deploy a cluster")
 def deploy_cluster(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(help="The ID of the cluster to deploy"),
@@ -211,7 +211,7 @@ def deploy_cluster(
     )
 
 
-@app.command("list-nodes", help="List all nodes of a cluster")
+@clusters_app.command("list-nodes", help="List all nodes of a cluster")
 def list_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(help="The ID of the cluster to list nodes of"),
@@ -235,7 +235,7 @@ def list_nodes(
     display_manager.display_cluster_nodes(nodes)
 
 
-@app.command("add-nodes", help="Add nodes to a cluster")
+@clusters_app.command("add-nodes", help="Add nodes to a cluster")
 def add_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(help="The ID of the cluster to add a node to"),
@@ -287,7 +287,7 @@ def add_nodes(
     display_manager_clusters.display_cluster_node_add_success(cluster_id, node_ids)
 
 
-@app.command("remove-node", help="Remove a node from a cluster")
+@clusters_app.command("remove-node", help="Remove a node from a cluster")
 def remove_node(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -316,7 +316,7 @@ def remove_node(
     )
 
 
-@app.command("show-available-resources", help="Get the resources of a cluster")
+@clusters_app.command("show-available-resources", help="Get the resources of a cluster")
 def get_cluster_resources(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -343,7 +343,7 @@ def get_cluster_resources(
     display_manager.display_cluster_resources(cluster_resources_response)
 
 
-@app.command(
+@clusters_app.command(
     "list-cloud-credentials",
     help="List all available cloud provider credentials for the current user",
 )
@@ -365,7 +365,9 @@ def list_cloud_credentials(ctx: typer.Context):
     display_manager.display_cloud_credentials(cloud_credentials)
 
 
-@app.command("import-kubeconfig", help="Import a kubeconfig file into a cluster")
+@clusters_app.command(
+    "import-kubeconfig", help="Import a kubeconfig file into a cluster"
+)
 def import_kubeconfig(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(

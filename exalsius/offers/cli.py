@@ -10,10 +10,10 @@ from exalsius.offers.service import OffersService
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer()
+offers_app = typer.Typer()
 
 
-@app.callback(invoke_without_command=True)
+@offers_app.callback(invoke_without_command=True)
 def _root(
     ctx: typer.Context,
 ):
@@ -31,7 +31,7 @@ def parse_clouds(value: Optional[List[str]]) -> Optional[List[str]]:
     return value
 
 
-@app.command("list")
+@offers_app.command("list")
 def list_offers(
     ctx: typer.Context,
     gpu_type: Optional[str] = typer.Option(

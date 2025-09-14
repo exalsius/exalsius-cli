@@ -25,31 +25,31 @@ app.command()(logout)
 
 
 app.add_typer(
-    offers.cli.app,
+    offers.cli.offers_app,
     name="offers",
     help="List and manage GPU offers from cloud providers",
 )
 
 app.add_typer(
-    nodes.cli.app,
+    nodes.cli.nodes_app,
     name="nodes",
     help="Manage the node pool",
 )
 
 app.add_typer(
-    clusters.cli.app,
+    clusters.cli.clusters_app,
     name="clusters",
     help="Manage clusters",
 )
 
 app.add_typer(
-    workspaces.cli.app,
+    workspaces.cli.workspaces_app,
     name="workspaces",
     help="Manage workspaces of a cluster",
 )
 
 app.add_typer(
-    services.cli.app,
+    services.cli.services_app,
     name="services",
     help="Manage services of a cluster",
 )

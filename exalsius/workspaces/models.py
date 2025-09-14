@@ -1,5 +1,4 @@
 import datetime
-import enum
 from abc import abstractmethod
 from typing import Optional
 
@@ -11,91 +10,6 @@ from pydantic import BaseModel, Field
 
 from exalsius.core.base.models import BaseRequestDTO
 from exalsius.utils import commons
-
-
-class WorkspaceTemplates(str, enum.Enum):
-    POD = "pod"
-    JUPYTER = "jupyter"
-    LLM_INFERENCE = "llm-inference"
-    DILCO = "diloco"
-
-    def create_workspace_template(self) -> WorkspaceTemplate:
-        match self:
-            case WorkspaceTemplates.POD:
-                return WorkspaceTemplate(
-                    name="vscode-devcontainer-template",
-                    variables={
-                        "deploymentName": "devcontainer",
-                        "deploymentNamespace": "default",
-                        "deploymentImage": "nvcr.io/nvidia/pytorch:25.01-py3",
-                        "podStorage": "20Gi",
-                        "podShmSize": "8Gi",
-                    },
-                )
-            case WorkspaceTemplates.JUPYTER:
-                return WorkspaceTemplate(
-                    name="jupyter-notebook-template",
-                    variables={
-                        "deploymentName": "my-notebook",
-                        "deploymentNamespace": "default",
-                        "deploymentImage": "tensorflow/tensorflow:2.18.0-gpu-jupyter",
-                        "enablePvcDeletion": "false",
-                        "notebookPassword": "mysecurepassword",
-                        "podStorage": "20Gi",
-                    },
-                )
-            case WorkspaceTemplates.LLM_INFERENCE:
-                return WorkspaceTemplate(
-                    name="ray-llm-service-template",
-                    variables={
-                        "deploymentName": "my-llm-service",
-                        "deploymentNamespace": "default",
-                        "deploymentImage": "rayproject/ray-ml:2.46.0.0e19ea",
-                        "numModelReplicas": "1",
-                        "runtimeEnvironmentPipPackages": "numpy==1.26.4,vllm>=0.9.0,ray==2.46.0",
-                        "llmModelName": "microsoft/phi-4",
-                        "tensorParallelSize": "1",
-                        "pipelineParallelSize": "1",
-                        "placementGroupStrategy": "PACK",
-                        "cpuPerActor": "8",
-                        "gpuPerActor": "1",
-                    },
-                )
-            case WorkspaceTemplates.DILCO:
-                return WorkspaceTemplate(
-                    name="diloco-training-template",
-                    variables={
-                        "deploymentName": "diloco-job",
-                        "nodes": "1",
-                        "diloco": {
-                            "model": "gpt-neo-x",
-                            "dataset": "c4",
-                            "localSteps": "128",
-                            "lr": "4e-4",
-                            "outerLr": "0.7",
-                            "warmupSteps": "1000",
-                            "totalSteps": "30000",
-                            "perDeviceTrainBatchSize": "32",
-                            "batchSize": "512",
-                            "optimMethod": "sgd",
-                            "quantization": "false",
-                            "checkpointPath": "checkpoint.pth",
-                            "checkpointInterval": "512",
-                            "device": "cuda",
-                            "wandbProjectName": "diloco-ws",
-                            "wandbGroup": "diloco-gptneo-c4",
-                            "heterogeneous": "false",
-                            "compressionDecay": "0.9",
-                            "compressionTopk": "32",
-                            "experimentDescription": "DiLoCo distributed training experiment",
-                            "experimentTags": '["diloco", "gpt-neo-x", "c4"]',
-                            "seed": "42",
-                            "wandbLogging": "true",
-                            "wandbUserKey": "",
-                            "huggingfaceToken": "",
-                        },
-                    },
-                )
 
 
 class WorkspacesBaseRequestDTO(BaseRequestDTO):
@@ -111,76 +25,11 @@ class GetWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
 
 
 class WorkspaceBaseTemplateDTO(BaseModel):
-    template_type: WorkspaceTemplates = Field(
-        ..., description="The type of the workspace template"
-    )
+    name: str = Field(..., description="The name of the workspace template")
 
     @abstractmethod
     def to_api_model(self) -> WorkspaceTemplate:
         pass
-
-
-class WorkspacePodTemplateDTO(WorkspaceBaseTemplateDTO):
-    template_type: WorkspaceTemplates = WorkspaceTemplates.POD
-
-    def to_api_model(self) -> WorkspaceTemplate:
-        template: WorkspaceTemplate = self.template_type.create_workspace_template()
-        return template
-
-
-class WorkspaceJupyterTemplateDTO(WorkspaceBaseTemplateDTO):
-    template_type: WorkspaceTemplates = WorkspaceTemplates.JUPYTER
-
-    jupyter_password: Optional[str] = Field(
-        None, description="The password of the Jupyter notebook"
-    )
-
-    def to_api_model(self) -> WorkspaceTemplate:
-        template: WorkspaceTemplate = self.template_type.create_workspace_template()
-        if self.jupyter_password is not None:
-            template.variables["notebookPassword"] = self.jupyter_password
-        return template
-
-
-class WorkspaceLLMInferenceTemplateDTO(WorkspaceBaseTemplateDTO):
-    template_type: WorkspaceTemplates = WorkspaceTemplates.LLM_INFERENCE
-
-    huggingface_model: str = Field(
-        ..., description="The model of the workspace template"
-    )
-    huggingface_token: Optional[str] = Field(
-        None, description="The token of the workspace template"
-    )
-
-    def to_api_model(self) -> WorkspaceTemplate:
-        template: WorkspaceTemplate = self.template_type.create_workspace_template()
-        template.variables["huggingfaceModel"] = self.huggingface_model
-        if self.huggingface_token is not None:
-            template.variables["huggingFaceToken"] = self.huggingface_token
-        return template
-
-
-class WorkspaceDilocoTemplateDTO(WorkspaceBaseTemplateDTO):
-    template_type: WorkspaceTemplates = WorkspaceTemplates.DILCO
-
-    nodes: int = Field(..., description="The number of nodes")
-    heterogeneous: bool = Field(..., description="Whether the nodes are heterogeneous")
-    wandb_project_name: str = Field(..., description="The name of the WandB project")
-    wandb_group: str = Field(..., description="The group of the WandB project")
-    wandb_user_key: str = Field(..., description="The user key of the WandB project")
-    huggingface_token: str = Field(
-        ..., description="The token of the HuggingFace model"
-    )
-
-    def to_api_model(self) -> WorkspaceTemplate:
-        template: WorkspaceTemplate = self.template_type.create_workspace_template()
-        template.variables["nodes"] = str(self.nodes)
-        template.variables["diloco"]["heterogeneous"] = str(self.heterogeneous)
-        template.variables["diloco"]["wandbProjectName"] = self.wandb_project_name
-        template.variables["diloco"]["wandbGroup"] = self.wandb_group
-        template.variables["diloco"]["wandbUserKey"] = self.wandb_user_key
-        template.variables["diloco"]["huggingfaceToken"] = self.huggingface_token
-        return template
 
 
 class ResourcePoolDTO(BaseModel):
