@@ -43,11 +43,12 @@ def deploy_diloco_workspace(
         help="The ID of the cluster to deploy the service to"
     ),
     name: str = typer.Option(
-        utils.generate_random_name(prefix="exls-diloco"),
+        "exls-diloco",
         "--name",
         "-n",
         help="The name of the workspace to add. If not provided, a random name will be generated.",
         show_default=False,
+        callback=utils.validate_kubernetes_name,
     ),
     nodes: PositiveInt = typer.Option(
         1,
@@ -94,6 +95,7 @@ def deploy_diloco_workspace(
         None,
         "--wandb-user-key",
         "-k",
+        envvar=["WANDB_API_KEY"],
         help="The user key of the WandB project",
     ),
     wandb_project_name: str = typer.Option(
@@ -112,7 +114,8 @@ def deploy_diloco_workspace(
         None,
         "--huggingface-token",
         "-t",
-        help="The token of the HuggingFace model",
+        envvar=["HUGGINGFACE_TOKEN", "HF_TOKEN"],
+        help="The HuggingFace token to use",
     ),
 ):
     console = Console(theme=custom_theme)

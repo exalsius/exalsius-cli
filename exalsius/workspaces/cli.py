@@ -16,6 +16,7 @@ logger = logging.getLogger("cli.workspaces")
 
 workspaces_app = typer.Typer()
 workspaces_deploy_app = typer.Typer()
+
 workspaces_app.add_typer(workspaces_deploy_app, name="deploy")
 
 
@@ -124,3 +125,11 @@ def poll_workspace_creation(
             raise typer.Exit(1)
 
     return workspace_response.workspace
+
+
+# This serves as a registry for the workspaces CLI commands making sure they are imported and registered with typer
+
+from exalsius.workspaces.devpod import cli as devpod_cli  # noqa: F401, E402
+from exalsius.workspaces.diloco import cli as diloco_cli  # noqa: F401, E402
+from exalsius.workspaces.jupyter import cli as jupyter_cli  # noqa: F401, E402
+from exalsius.workspaces.llminference import cli as llminference_cli  # noqa: F401, E402

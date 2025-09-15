@@ -27,11 +27,12 @@ def deploy_llm_inference_workspace(
         help="The ID of the cluster to deploy the service to"
     ),
     name: str = typer.Option(
-        utils.generate_random_name(prefix="exls-llm-inference"),
+        "exls-llminference",
         "--name",
         "-n",
         help="The name of the workspace to add. If not provided, a random name will be generated.",
         show_default=False,
+        callback=utils.validate_kubernetes_name,
     ),
     docker_image: str = typer.Option(
         "rayproject/ray-ml:2.46.0.0e19ea",
@@ -97,13 +98,13 @@ def deploy_llm_inference_workspace(
         "--cpu-per-actor",
         help="The number of CPUs to use per actor",
     ),
-    memory_gb: PositiveInt = typer.Option(
+    memory_gb_per_actor: PositiveInt = typer.Option(
         32,
         "--memory-gb",
         "-m",
         help="The amount of memory in GB to add to the workspace",
     ),
-    ephemeral_storage_gb: PositiveInt = typer.Option(
+    ephemeral_storage_gb_per_actor: PositiveInt = typer.Option(
         100,
         "--ephemeral-storage-gb",
         "-e",
@@ -159,7 +160,7 @@ def deploy_llm_inference_workspace(
         gpu_type=None,
         gpu_vendor=None,
         cpu_cores=cpu_cores,
-        memory_gb=memory_gb,
+        memory_gb=memory_gb_per_actor,
         storage_gb=1,  # llm inference workspaces do not support PVC storage, this will be ignored
     )
 
@@ -179,7 +180,7 @@ def deploy_llm_inference_workspace(
                 pipeline_parallel_size=pipeline_parallel_size,
                 cpu_per_actor=cpu_per_actor,
                 gpu_per_actor=gpu_per_actor,
-                ephemeral_storage_gb=ephemeral_storage_gb,
+                ephemeral_storage_gb=ephemeral_storage_gb_per_actor,
             ),
         )
     )

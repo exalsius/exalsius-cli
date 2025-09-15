@@ -25,7 +25,6 @@ class DilocoTrainerVariablesDTO(BaseSettings):
     per_device_train_batch_size: int = Field(
         ...,
         description="The per device train batch size",
-        alias="perDeviceTrainBatchSize",
     )
     batch_size: int = Field(..., description="The batch size", alias="batchSize")
     optim_method: str = Field(
@@ -35,7 +34,6 @@ class DilocoTrainerVariablesDTO(BaseSettings):
     checkpoint_path: str = Field(
         ...,
         description="The path to save checkpoints",
-        alias="checkpointPath",
     )
     checkpoint_interval: int = Field(
         ..., description="The checkpoint interval", alias="checkpointInterval"
@@ -53,12 +51,10 @@ class DilocoTrainerVariablesDTO(BaseSettings):
     experiment_description: str = Field(
         ...,
         description="The experiment description",
-        alias="experimentDescription",
     )
-    experiment_tags: list[str] = Field(
+    experiment_tags: str = Field(
         ...,
-        description="The experiment tags",
-        alias="experimentTags",
+        description='The experiment tags. Example: \'["diloco", "gpt-neo-x", "c4"]\'',
     )
     seed: int = Field(..., description="The random seed")
     wandb_logging: bool = Field(
@@ -98,7 +94,7 @@ class DilocoWorkspaceVariablesDTO(BaseSettings):
 
 
 class DilocoWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
-    name: Literal["diloco-workspace-template"] = "diloco-workspace-template"
+    name: Literal["diloco-training-template"] = "diloco-training-template"
     variables: DilocoWorkspaceVariablesDTO = Field(
         ..., description="The variables of the diloco workspace template"
     )
