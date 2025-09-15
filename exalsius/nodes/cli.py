@@ -10,10 +10,10 @@ from exalsius.nodes.service import NodeService
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer()
+nodes_app = typer.Typer()
 
 
-@app.callback(invoke_without_command=True)
+@nodes_app.callback(invoke_without_command=True)
 def _root(
     ctx: typer.Context,
 ):
@@ -23,7 +23,7 @@ def _root(
     utils.help_if_no_subcommand(ctx)
 
 
-@app.command("list")
+@nodes_app.command("list")
 def list_nodes(
     ctx: typer.Context,
     node_type: NodeType = typer.Option(
@@ -50,7 +50,7 @@ def list_nodes(
     display_manager.display_nodes(nodes_response.nodes)
 
 
-@app.command("get")
+@nodes_app.command("get")
 def get_node(
     ctx: typer.Context,
     node_id: str = typer.Argument(help="The ID of the node to get"),
@@ -72,7 +72,7 @@ def get_node(
     display_manager.display_node(node_response)
 
 
-@app.command("delete")
+@nodes_app.command("delete")
 def delete_node(
     ctx: typer.Context,
     node_id: str = typer.Argument(help="The ID of the node to delete"),
@@ -94,7 +94,7 @@ def delete_node(
     display_manager.print_success(f"Node {node_id} deleted successfully")
 
 
-@app.command("import-ssh")
+@nodes_app.command("import-ssh")
 def import_ssh(
     ctx: typer.Context,
     hostname: str = typer.Option(
@@ -126,7 +126,7 @@ def import_ssh(
     )
 
 
-@app.command("import-offer")
+@nodes_app.command("import-offer")
 def import_offer(
     ctx: typer.Context,
     offer_id: str = typer.Argument(help="The ID of the offer to import"),
@@ -158,7 +158,7 @@ def import_offer(
     )
 
 
-@app.command("list-ssh-keys")
+@nodes_app.command("list-ssh-keys")
 def list_ssh_keys(ctx: typer.Context):
     """List all SSH keys in the management cluster."""
     console = Console(theme=custom_theme)
@@ -178,7 +178,7 @@ def list_ssh_keys(ctx: typer.Context):
     display_manager.display_ssh_keys(ssh_keys_response.ssh_keys)
 
 
-@app.command("add-ssh-key")
+@nodes_app.command("add-ssh-key")
 def add_ssh_key(
     ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name for the SSH key"),
@@ -206,7 +206,7 @@ def add_ssh_key(
     )
 
 
-@app.command("delete-ssh-key")
+@nodes_app.command("delete-ssh-key")
 def delete_ssh_key(
     ctx: typer.Context,
     id: str = typer.Argument(..., help="ID of the SSH key to delete"),

@@ -12,10 +12,10 @@ from exalsius.services.service import ServicesService
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
 
-app = typer.Typer()
+services_app = typer.Typer()
 
 
-@app.callback(invoke_without_command=True)
+@services_app.callback(invoke_without_command=True)
 def _root(
     ctx: typer.Context,
     cluster: Annotated[
@@ -29,7 +29,7 @@ def _root(
     utils.help_if_no_subcommand(ctx)
 
 
-@app.command("list", help="List all services of a cluster")
+@services_app.command("list", help="List all services of a cluster")
 def list_services(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(help="The ID of the cluster to list services of"),
@@ -57,7 +57,7 @@ def list_services(
     display_manager.display_services(services_response)
 
 
-@app.command("get", help="Get a service of a cluster")
+@services_app.command("get", help="Get a service of a cluster")
 def get_service(
     ctx: typer.Context,
     service_id: str = typer.Argument(help="The ID of the service to get"),
@@ -81,7 +81,7 @@ def get_service(
     display_manager.display_service(service_response)
 
 
-@app.command("delete", help="Delete a service of a cluster")
+@services_app.command("delete", help="Delete a service of a cluster")
 def delete_service(
     ctx: typer.Context,
     service_id: str = typer.Argument(help="The ID of the service to delete"),
@@ -105,7 +105,7 @@ def delete_service(
     display_manager.display_delete_service_message(service_response)
 
 
-@app.command("list-templates", help="List all service templates")
+@services_app.command("list-templates", help="List all service templates")
 def list_service_templates(
     ctx: typer.Context,
 ):
@@ -120,7 +120,7 @@ def list_service_templates(
     )
 
 
-@app.command("describe-template", help="Describe a service template")
+@services_app.command("describe-template", help="Describe a service template")
 def describe_service_template(
     ctx: typer.Context,
     service_template: ServiceTemplates = typer.Argument(
@@ -138,7 +138,7 @@ def describe_service_template(
     )
 
 
-@app.command("deploy", help="Deploy a service to a cluster")
+@services_app.command("deploy", help="Deploy a service to a cluster")
 def deploy_service(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
