@@ -1,10 +1,15 @@
+import copy
 import logging
 
 import typer
 from rich.console import Console
 
 from exalsius.auth.display import AuthDisplayManager
-from exalsius.auth.models import NotLoggedInWarning
+from exalsius.auth.models import (
+    Auth0AuthenticationDTO,
+    Auth0UserInfoDTO,
+    NotLoggedInWarning,
+)
 from exalsius.auth.service import Auth0Service
 from exalsius.core.commons.models import ServiceError, ServiceWarning
 from exalsius.state import AppState
@@ -14,25 +19,10 @@ from exalsius.utils.theme import custom_theme
 logger = logging.getLogger(__name__)
 
 
-def login(
-    ctx: typer.Context,
-):
-    """
-    Authenticates the user and stores the credentials for future use.
-
-    This command initiates the device code authentication flow. The user is prompted
-    to visit a URL and enter a code to authorize the device. The command polls
-    for the authentication to complete. Upon success, the tokens are stored
-    securely in the system's keyring for subsequent CLI calls.
-    """
-    logger.debug("Starting login process.")
-    app_state: AppState = utils.get_app_state_from_ctx(ctx)
-
-    console: Console = Console(theme=custom_theme)
-    display_manager: AuthDisplayManager = AuthDisplayManager(console)
-
-    auth_service: Auth0Service = Auth0Service(config=app_state.config)
-
+def _authorization_workflow(
+    auth_service: Auth0Service,
+    display_manager: AuthDisplayManager,
+) -> tuple[Auth0AuthenticationDTO, Auth0UserInfoDTO]:
     # Start the device code authentication flow. Get the device code.
     logger.debug("Fetching device code.")
     try:
@@ -89,6 +79,29 @@ def login(
         raise typer.Exit(1)
 
     logger.debug("Token is valid.")
+    return auth_resp, validate_resp
+
+
+def login(
+    ctx: typer.Context,
+):
+    """
+    Authenticates the user and stores the credentials for future use.
+
+    This command initiates the device code authentication flow. The user is prompted
+    to visit a URL and enter a code to authorize the device. The command polls
+    for the authentication to complete. Upon success, the tokens are stored
+    securely in the system's keyring for subsequent CLI calls.
+    """
+    logger.debug("Starting login process.")
+    app_state: AppState = utils.get_app_state_from_ctx(ctx)
+
+    console: Console = Console(theme=custom_theme)
+    display_manager: AuthDisplayManager = AuthDisplayManager(console)
+
+    auth_service: Auth0Service = Auth0Service(config=app_state.config)
+
+    auth_resp, validate_resp = _authorization_workflow(auth_service, display_manager)
 
     # Store the tokens on the system's keyring for future access.
     logger.debug("Storing token on keyring.")
@@ -143,3 +156,45 @@ def logout(ctx: typer.Context):
 
     logger.debug("Logout successful.")
     display_manager.display_logout_success()
+
+
+def request_node_agent_tokens(
+    ctx: typer.Context,
+):
+    """
+    Requests a new access token and refresh token for use with a node agent and displays the new tokens.
+
+    The new tokens are displayed but not stored in the keyring.
+    """
+    logger.debug("Starting process of requesting node agent tokens.")
+    original_app_state: AppState = utils.get_app_state_from_ctx(ctx)
+    modified_app_state: AppState = copy.deepcopy(original_app_state)
+    modified_app_state.config.auth0.client_id = (
+        modified_app_state.config.auth0_node_agent.client_id
+    )
+    modified_app_state.config.auth0.scope = (
+        modified_app_state.config.auth0_node_agent.scope
+    )
+
+    console: Console = Console(theme=custom_theme)
+    display_manager: AuthDisplayManager = AuthDisplayManager(console)
+
+    auth_service: Auth0Service = Auth0Service(config=modified_app_state.config)
+
+    auth_resp, validate_resp = _authorization_workflow(auth_service, display_manager)
+
+    # sanity check
+    auth_service.scope_escalation_check(
+        refresh_token=auth_resp.refresh_token,
+        current_scope=original_app_state.config.auth0_node_agent.scope,
+        reference_scope=original_app_state.config.auth0.scope,
+    )
+
+    # Display the node agent tokens to the user.
+    logger.debug(f"Login successful for user {validate_resp.email}.")
+    display_manager.display_node_agent_tokens_request_success(
+        access_token=auth_resp.access_token,
+        refresh_token=auth_resp.refresh_token,
+        expires_in=auth_resp.expires_in,
+        scope=auth_resp.scope,
+    )

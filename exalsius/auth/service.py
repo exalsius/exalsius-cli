@@ -4,7 +4,7 @@ import sys
 import traceback
 import webbrowser
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import List, Optional
 
 from exalsius.auth.commands import (
     Auth0FetchDeviceCodeCommand,
@@ -36,6 +36,8 @@ from exalsius.config import AppConfig, Auth0Config
 from exalsius.core.base.commands import BaseCommand
 from exalsius.core.base.service import BaseService, T
 from exalsius.core.commons.models import ServiceError, ServiceWarning
+
+logger = logging.getLogger(__name__)
 
 
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
@@ -152,6 +154,19 @@ class Auth0Service(BaseService):
         )
         return self._execute_command(Auth0RefreshTokenCommand(request=req))
 
+    def reauthorize_with_scope(
+        self,
+        refresh_token: str,
+        scope: List[str],
+    ) -> Auth0AuthenticationDTO:
+        req = Auth0RefreshTokenRequestDTO(
+            domain=self.config.domain,
+            client_id=self.config.client_id,
+            refresh_token=refresh_token,
+            scope=scope,
+        )
+        return self._execute_command(Auth0RefreshTokenCommand(request=req))
+
     def acquire_access_token(self) -> str:
         try:
             load_resp = self.load_access_token_from_keyring()
@@ -220,3 +235,33 @@ class Auth0Service(BaseService):
             return self.__open_browser(webbrowser.get("silent"), uri)
 
         return self.__open_browser(webbrowser.get(), uri)
+
+    def scope_escalation_check(
+        self,
+        refresh_token: str,
+        current_scope: List[str],
+        reference_scope: List[str],
+    ):
+        # Sanity check: Try to use refresh token with a different scope
+        logger.debug("Performing sanity check with refresh token...")
+        # Try to get a token with a scope that's in default but not in provided scope
+        additional_scope = None
+        for ref_scope in reference_scope:
+            if ref_scope not in current_scope:
+                additional_scope = ref_scope
+                break
+
+        if additional_scope:
+            logger.debug(f"Trying to refresh with additional scope: {additional_scope}")
+            test_scope = current_scope + [additional_scope]
+            error_response = None
+            try:
+                self.reauthorize_with_scope(refresh_token, test_scope)
+            except ServiceError as e:
+                error_response = e
+            finally:
+                assert error_response is not None and "500 Server Error" in str(
+                    error_response
+                )
+        else:
+            logger.debug("No additional scopes available for sanity check")

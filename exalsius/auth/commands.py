@@ -235,11 +235,14 @@ class Auth0RefreshTokenCommand(PostRequestCommand[Auth0AuthenticationDTO]):
         return f"https://{self.request.domain}/oauth/token"
 
     def _get_payload(self) -> Dict[str, str]:
-        return {
+        payload = {
             "grant_type": "refresh_token",
             "client_id": self.request.client_id,
             "refresh_token": self.request.refresh_token,
         }
+        if self.request.scope:
+            payload["scope"] = " ".join(self.request.scope)
+        return payload
 
     def execute(self) -> Auth0AuthenticationDTO:
         return self._execute_post_request(Auth0AuthenticationDTO)
