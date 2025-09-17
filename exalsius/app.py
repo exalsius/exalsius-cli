@@ -6,7 +6,7 @@ import typer
 from exalsius import __version__, clusters
 from exalsius import config as cli_config
 from exalsius import nodes, offers, services, workspaces
-from exalsius.auth.cli import login, logout
+from exalsius.auth.cli import login, logout, request_node_agent_tokens
 from exalsius.auth.service import Auth0Service
 from exalsius.core.commons.models import ServiceError
 from exalsius.logging import setup_logging
@@ -18,10 +18,11 @@ NON_AUTH_COMMANDS = ["login", "logout"]
 
 app = typer.Typer()
 
-# We add the login and logout commands to the root app to
+# We add the login, logout, and request_node_agent_tokens commands to the root app to
 # use them without a subcommand.
 app.command()(login)
 app.command()(logout)
+app.command()(request_node_agent_tokens)
 
 
 app.add_typer(

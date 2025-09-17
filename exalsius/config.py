@@ -34,7 +34,15 @@ class Auth0Config(BaseSettings):
         default="https://api.exalsius.ai", description="The Auth0 audience"
     )
     scope: List[str] = Field(
-        default=["openid", "audience", "profile", "email", "offline_access"],
+        default=[
+            "openid",
+            "audience",
+            "profile",
+            "email",
+            "offline_access",
+            "userview",
+            "nodeagent",
+        ],
         description="The Auth0 scope",
     )
     algorithms: List[str] = Field(
@@ -62,6 +70,17 @@ class Auth0Config(BaseSettings):
     )
 
 
+class Auth0NodeAgentConfig(BaseSettings):
+    client_id: str = Field(
+        default="faXh6VlIgMpS3HwowrxrksooFiNHBvQg",
+        description="The Auth0 client ID for the node agent",
+    )
+    scope: List[str] = Field(
+        default=["openid", "offline_access", "nodeagent"],
+        description="The Auth0 scope for the node agent",
+    )
+
+
 class ConfigWorkspaceCreationPolling(BaseSettings):
     timeout_seconds: int = Field(
         default=120,
@@ -80,6 +99,10 @@ class AppConfig(BaseSettings):
     )
     auth0: Auth0Config = Field(
         default=Auth0Config(), description="The Auth0 configuration"
+    )
+    auth0_node_agent: Auth0NodeAgentConfig = Field(
+        default=Auth0NodeAgentConfig(),
+        description="The Auth0 configuration for the node agent (includes client ID and scope)",
     )
     workspace_creation_polling: ConfigWorkspaceCreationPolling = Field(
         default=ConfigWorkspaceCreationPolling(),

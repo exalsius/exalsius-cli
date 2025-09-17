@@ -118,6 +118,9 @@ class Auth0ValidateTokenRequestDTO(Auth0BasePostRequestDTO):
 
 class Auth0RefreshTokenRequestDTO(Auth0BasePostRequestDTO):
     refresh_token: str = Field(..., description="The refresh token")
+    scope: Optional[List[str]] = Field(
+        default=None, description="The scope for reauthorization"
+    )
 
 
 ######################################
