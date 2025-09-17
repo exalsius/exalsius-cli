@@ -13,7 +13,7 @@ from exalsius.logging import setup_logging
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 
-NON_AUTH_COMMANDS = ["login", "logout"]
+NON_AUTH_COMMANDS = ["login", "logout", "request-node-agent-tokens"]
 
 
 app = typer.Typer()
