@@ -11,6 +11,7 @@ from exalsius.auth.models import (
     NotLoggedInWarning,
 )
 from exalsius.core.commons.models import ServiceError, ServiceWarning
+from tests.unit.utils.test_helpers import print_response_details
 
 
 @pytest.fixture
@@ -376,6 +377,9 @@ def test_request_node_agent_tokens_success_interactive(
         )
         result = runner.invoke(app, ["request-node-agent-tokens"])
 
+    if result.exit_code != 0:
+        print_response_details(result)
+
     assert result.exit_code == 0
     mock_auth_service_instance.fetch_device_code.assert_called_once()
     mock_display_manager_instance.display_device_code_polling_started_via_browser.assert_called_once()
@@ -500,6 +504,9 @@ def test_request_node_agent_tokens_polling_cancelled(
     mock_auth_service_instance.poll_for_authentication.side_effect = KeyboardInterrupt
 
     result = runner.invoke(app, ["request-node-agent-tokens"])
+
+    if result.exit_code != 0:
+        print_response_details(result)
 
     assert result.exit_code == 0
     mock_display_manager_instance.display_device_code_polling_cancelled.assert_called_once()
