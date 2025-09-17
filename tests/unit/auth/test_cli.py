@@ -13,24 +13,23 @@ from exalsius.auth.models import (
 from exalsius.core.commons.models import ServiceError, ServiceWarning
 
 
-def print_response_details(response):
+def print_cli_runner_result_details(result):
     """
     Print detailed information about a FastAPI TestClient response.
 
     Args:
         response: The response object from FastAPI's TestClient
     """
-    print("\n=== Response Details ===")
-    print(f"Status Code: {response.status_code}")
-    print("\nHeaders:")
-    for key, value in response.headers.items():
-        print(f"  {key}: {value}")
-
-    print("\nBody:")
-    try:
-        print(response.json())
-    except Exception:
-        print(response.text)
+    print("\n=== Result Details ===")
+    for name in dir(result):
+        if name.startswith("_"):  # skip dunder/private
+            continue
+        try:
+            value = getattr(result, name)
+        except Exception as e:
+            print(f"{name}: <error {type(e).__name__}> {e}")
+        else:
+            print(f"{name}: {value!r}")
     print("=====================\n")
 
 
@@ -398,7 +397,7 @@ def test_request_node_agent_tokens_success_interactive(
         result = runner.invoke(app, ["request-node-agent-tokens"])
 
     if result.exit_code != 0:
-        print_response_details(result)
+        print_cli_runner_result_details(result)
 
     assert result.exit_code == 0
     mock_auth_service_instance.fetch_device_code.assert_called_once()
@@ -526,7 +525,7 @@ def test_request_node_agent_tokens_polling_cancelled(
     result = runner.invoke(app, ["request-node-agent-tokens"])
 
     if result.exit_code != 0:
-        print_response_details(result)
+        print_cli_runner_result_details(result)
 
     assert result.exit_code == 0
     mock_display_manager_instance.display_device_code_polling_cancelled.assert_called_once()
