@@ -52,6 +52,9 @@ def test_login_success_interactive(
         email="test@exalsius.com",
     )
 
+    # Mock test_scope_escalation to return successfully, because assertion exit code might irritate CI workflow
+    mock_auth_service_instance.test_scope_escalation.return_value = None
+
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
         mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
             True
@@ -367,6 +370,9 @@ def test_request_node_agent_tokens_success_interactive(
         email="test@exalsius.com",
     )
 
+    # Mock test_scope_escalation to return successfully, because assertion exit code might irritate CI workflow
+    mock_auth_service_instance.test_scope_escalation.return_value = None
+
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
         mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
             True
@@ -500,6 +506,9 @@ def test_request_node_agent_tokens_polling_cancelled(
         )
     )
     mock_auth_service_instance.poll_for_authentication.side_effect = KeyboardInterrupt
+
+    # Mock test_scope_escalation to return successfully, because assertion exit code might irritate CI workflow
+    mock_auth_service_instance.test_scope_escalation.return_value = None
 
     result = runner.invoke(app, ["request-node-agent-tokens"])
 
