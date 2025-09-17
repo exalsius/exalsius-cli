@@ -184,7 +184,7 @@ def request_node_agent_tokens(
     auth_resp, validate_resp = _authorization_workflow(auth_service, display_manager)
 
     # sanity check
-    auth_service.test_scope_escalation(
+    auth_service.scope_escalation_check(
         refresh_token=auth_resp.refresh_token,
         current_scope=original_app_state.config.auth0_node_agent.scope,
         reference_scope=original_app_state.config.auth0.scope,

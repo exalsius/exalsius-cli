@@ -236,7 +236,7 @@ class Auth0Service(BaseService):
 
         return self.__open_browser(webbrowser.get(), uri)
 
-    def test_scope_escalation(
+    def scope_escalation_check(
         self,
         refresh_token: str,
         current_scope: List[str],

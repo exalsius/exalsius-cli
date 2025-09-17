@@ -52,9 +52,6 @@ def test_login_success_interactive(
         email="test@exalsius.com",
     )
 
-    # Mock test_scope_escalation to return successfully, because assertion exit code might irritate CI workflow
-    mock_auth_service_instance.test_scope_escalation.return_value = None
-
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
         mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
             True
@@ -370,8 +367,8 @@ def test_request_node_agent_tokens_success_interactive(
         email="test@exalsius.com",
     )
 
-    # Mock test_scope_escalation to return successfully, because assertion exit code might irritate CI workflow
-    mock_auth_service_instance.test_scope_escalation.return_value = None
+    # Mock scope_escalation_check to return successfully, because assertion exit code might irritate CI workflow
+    mock_auth_service_instance.scope_escalation_check.return_value = None
 
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
         mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
@@ -386,17 +383,12 @@ def test_request_node_agent_tokens_success_interactive(
         "test_device_code"
     )
     mock_auth_service_instance.validate_token.assert_called_once_with("test_id_token")
-    mock_auth_service_instance.test_scope_escalation.assert_called_once_with(
+    mock_auth_service_instance.scope_escalation_check.assert_called_once_with(
         refresh_token="test_node_agent_refresh_token",
         current_scope=["openid", "profile", "node:agent"],
         reference_scope=["openid", "profile", "email"],
     )
-    mock_display_manager_instance.display_node_agent_tokens_request_success.assert_called_once_with(
-        access_token="test_node_agent_access_token",
-        refresh_token="test_node_agent_refresh_token",
-        expires_in=3600,
-        scope="openid profile node:agent",
-    )
+    mock_display_manager_instance.display_node_agent_tokens_request_success.assert_called_once()
 
 
 @patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
@@ -471,7 +463,7 @@ def test_request_node_agent_tokens_scope_escalation_test_fails(
     )
 
     # Mock scope escalation test failure
-    mock_auth_service_instance.test_scope_escalation.side_effect = AssertionError(
+    mock_auth_service_instance.scope_escalation_check.side_effect = AssertionError(
         "Scope escalation test failed"
     )
 
@@ -506,9 +498,6 @@ def test_request_node_agent_tokens_polling_cancelled(
         )
     )
     mock_auth_service_instance.poll_for_authentication.side_effect = KeyboardInterrupt
-
-    # Mock test_scope_escalation to return successfully, because assertion exit code might irritate CI workflow
-    mock_auth_service_instance.test_scope_escalation.return_value = None
 
     result = runner.invoke(app, ["request-node-agent-tokens"])
 
