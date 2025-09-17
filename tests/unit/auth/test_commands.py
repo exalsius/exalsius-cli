@@ -367,6 +367,67 @@ class TestAuth0RefreshTokenCommand:
         assert isinstance(result, Auth0AuthenticationDTO)
         assert result.access_token == "new_access_token"
 
+    def test_execute_success_with_scope(self, mock_post):
+        request = Auth0RefreshTokenRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            refresh_token="test_refresh_token",
+            scope=["openid", "profile", "node:agent"],
+        )
+        command = Auth0RefreshTokenCommand(request)
+        mock_response = MagicMock()
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {
+            "access_token": "new_access_token_with_scope",
+            "id_token": "new_id_token",
+            "scope": "openid profile node:agent",
+            "expires_in": 3600,
+            "token_type": "Bearer",
+        }
+        mock_post.return_value = mock_response
+
+        result = command.execute()
+
+        assert isinstance(result, Auth0AuthenticationDTO)
+        assert result.access_token == "new_access_token_with_scope"
+        assert result.scope == "openid profile node:agent"
+
+        # Verify the scope was included in the payload
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert "scope" in call_args[1]["data"]
+        assert call_args[1]["data"]["scope"] == "openid profile node:agent"
+
+    def test_execute_http_error_with_scope(self, mock_post):
+        request = Auth0RefreshTokenRequestDTO(
+            domain="test.domain",
+            client_id="test_client_id",
+            refresh_token="test_refresh_token",
+            scope=["invalid_scope"],
+        )
+        command = Auth0RefreshTokenCommand(request)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {
+            "error": "server_error",
+            "error_description": "Scope escalation not allowed",
+        }
+        http_error = requests.HTTPError(response=mock_response)
+        mock_response.raise_for_status.side_effect = http_error
+        mock_post.return_value = mock_response
+
+        with pytest.raises(requests.HTTPError) as excinfo:
+            command.execute()
+
+        # Check the response attributes
+        assert excinfo.value.response.status_code == 500
+        assert excinfo.value.response.json()["error"] == "server_error"
+        assert (
+            "Scope escalation not allowed"
+            in excinfo.value.response.json()["error_description"]
+        )
+
 
 @patch("exalsius.core.commons.commands.requests.post")
 class TestAuth0RevokeTokenCommand:

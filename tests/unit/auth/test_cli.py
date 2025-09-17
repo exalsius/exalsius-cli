@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -315,3 +315,193 @@ def test_logout_service_error(
     mock_display_manager_instance.display_authentication_error.assert_called_once_with(
         "Failed to logout"
     )
+
+
+@patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
+@patch("exalsius.auth.cli.AuthDisplayManager")
+@patch("exalsius.auth.cli.Auth0Service")
+@patch("exalsius.auth.cli.copy.deepcopy")
+def test_request_node_agent_tokens_success_interactive(
+    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+):
+    # Setup mock app state
+    mock_original_app_state = MagicMock()
+    mock_original_app_state.config.auth0.scope = ["openid", "profile", "email"]
+    mock_original_app_state.config.auth0_node_agent.client_id = "node_agent_client_id"
+    mock_original_app_state.config.auth0_node_agent.scope = [
+        "openid",
+        "profile",
+        "node:agent",
+    ]
+    mock_get_app_state.return_value = mock_original_app_state
+
+    mock_modified_app_state = MagicMock()
+    mock_deepcopy.return_value = mock_modified_app_state
+
+    mock_auth_service_instance = mock_auth0_service.return_value
+    mock_display_manager_instance = mock_display_manager.return_value
+
+    # Mock the authorization workflow responses
+    mock_auth_service_instance.fetch_device_code.return_value = (
+        Auth0DeviceCodeAuthenticationDTO(
+            device_code="test_device_code",
+            user_code="test_user_code",
+            verification_uri="https://test.com",
+            verification_uri_complete="https://test.com/complete",
+            expires_in=300,
+            interval=5,
+        )
+    )
+    mock_auth_service_instance.poll_for_authentication.return_value = (
+        Auth0AuthenticationDTO(
+            access_token="test_node_agent_access_token",
+            id_token="test_id_token",
+            refresh_token="test_node_agent_refresh_token",
+            expires_in=3600,
+            scope="openid profile node:agent",
+            token_type="Bearer",
+        )
+    )
+    mock_auth_service_instance.validate_token.return_value = Auth0UserInfoDTO(
+        sub="test_sub",
+        email="test@exalsius.com",
+    )
+
+    with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
+        mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
+            True
+        )
+        result = runner.invoke(app, ["request-node-agent-tokens"])
+
+    assert result.exit_code == 0
+    mock_auth_service_instance.fetch_device_code.assert_called_once()
+    mock_display_manager_instance.display_device_code_polling_started_via_browser.assert_called_once()
+    mock_auth_service_instance.poll_for_authentication.assert_called_once_with(
+        "test_device_code"
+    )
+    mock_auth_service_instance.validate_token.assert_called_once_with("test_id_token")
+    mock_auth_service_instance.test_scope_escalation.assert_called_once_with(
+        refresh_token="test_node_agent_refresh_token",
+        current_scope=["openid", "profile", "node:agent"],
+        reference_scope=["openid", "profile", "email"],
+    )
+    mock_display_manager_instance.display_node_agent_tokens_request_success.assert_called_once_with(
+        access_token="test_node_agent_access_token",
+        refresh_token="test_node_agent_refresh_token",
+        expires_in=3600,
+        scope="openid profile node:agent",
+    )
+
+
+@patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
+@patch("exalsius.auth.cli.AuthDisplayManager")
+@patch("exalsius.auth.cli.Auth0Service")
+@patch("exalsius.auth.cli.copy.deepcopy")
+def test_request_node_agent_tokens_fetch_device_code_error(
+    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+):
+    mock_original_app_state = MagicMock()
+    mock_get_app_state.return_value = mock_original_app_state
+    mock_deepcopy.return_value = MagicMock()
+
+    mock_auth_service_instance = mock_auth0_service.return_value
+    mock_display_manager_instance = mock_display_manager.return_value
+
+    mock_auth_service_instance.fetch_device_code.side_effect = ServiceError(
+        "Failed to fetch device code for node agent"
+    )
+
+    result = runner.invoke(app, ["request-node-agent-tokens"])
+
+    assert result.exit_code == 1
+    mock_display_manager_instance.display_authentication_error.assert_called_once_with(
+        "Failed to fetch device code for node agent"
+    )
+
+
+@patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
+@patch("exalsius.auth.cli.AuthDisplayManager")
+@patch("exalsius.auth.cli.Auth0Service")
+@patch("exalsius.auth.cli.copy.deepcopy")
+def test_request_node_agent_tokens_scope_escalation_test_fails(
+    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+):
+    mock_original_app_state = MagicMock()
+    mock_original_app_state.config.auth0.scope = ["openid", "profile", "email"]
+    mock_original_app_state.config.auth0_node_agent.scope = [
+        "openid",
+        "profile",
+        "node:agent",
+    ]
+    mock_get_app_state.return_value = mock_original_app_state
+    mock_deepcopy.return_value = MagicMock()
+
+    mock_auth_service_instance = mock_auth0_service.return_value
+
+    # Mock successful authorization workflow
+    mock_auth_service_instance.fetch_device_code.return_value = (
+        Auth0DeviceCodeAuthenticationDTO(
+            device_code="test_device_code",
+            user_code="test_user_code",
+            verification_uri="https://test.com",
+            verification_uri_complete="https://test.com/complete",
+            expires_in=300,
+            interval=5,
+        )
+    )
+    mock_auth_service_instance.poll_for_authentication.return_value = (
+        Auth0AuthenticationDTO(
+            access_token="test_node_agent_access_token",
+            id_token="test_id_token",
+            refresh_token="test_node_agent_refresh_token",
+            expires_in=3600,
+            scope="openid profile node:agent",
+            token_type="Bearer",
+        )
+    )
+    mock_auth_service_instance.validate_token.return_value = Auth0UserInfoDTO(
+        sub="test_sub",
+        email="test@exalsius.com",
+    )
+
+    # Mock scope escalation test failure
+    mock_auth_service_instance.test_scope_escalation.side_effect = AssertionError(
+        "Scope escalation test failed"
+    )
+
+    result = runner.invoke(app, ["request-node-agent-tokens"])
+
+    # Should still exit with 1 due to the assertion error
+    assert result.exit_code == 1
+
+
+@patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
+@patch("exalsius.auth.cli.AuthDisplayManager")
+@patch("exalsius.auth.cli.Auth0Service")
+@patch("exalsius.auth.cli.copy.deepcopy")
+def test_request_node_agent_tokens_polling_cancelled(
+    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+):
+    mock_original_app_state = MagicMock()
+    mock_get_app_state.return_value = mock_original_app_state
+    mock_deepcopy.return_value = MagicMock()
+
+    mock_auth_service_instance = mock_auth0_service.return_value
+    mock_display_manager_instance = mock_display_manager.return_value
+
+    mock_auth_service_instance.fetch_device_code.return_value = (
+        Auth0DeviceCodeAuthenticationDTO(
+            device_code="test_device_code",
+            user_code="test_user_code",
+            verification_uri="https://test.com",
+            verification_uri_complete="https://test.com/complete",
+            expires_in=300,
+            interval=5,
+        )
+    )
+    mock_auth_service_instance.poll_for_authentication.side_effect = KeyboardInterrupt
+
+    result = runner.invoke(app, ["request-node-agent-tokens"])
+
+    assert result.exit_code == 0
+    mock_display_manager_instance.display_device_code_polling_cancelled.assert_called_once()

@@ -329,3 +329,97 @@ class TestAuth0Service:
         mock_open_browser.assert_called_once_with(
             mock_webbrowser_get.return_value, "http://test.com"
         )
+
+    def test_reauthorize_with_scope(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        expected_dto = Auth0AuthenticationDTO(
+            access_token="new_access_token",
+            id_token="new_id_token",
+            scope="openid profile node:agent",
+            expires_in=3600,
+            token_type="Bearer",
+            refresh_token="new_refresh_token",
+        )
+        mock_execute.return_value = expected_dto
+
+        result = auth_service.reauthorize_with_scope(
+            "test_refresh_token", ["openid", "profile", "node:agent"]
+        )
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, Auth0RefreshTokenCommand)
+        assert command.request.refresh_token == "test_refresh_token"
+        assert command.request.scope == ["openid", "profile", "node:agent"]
+        assert result == expected_dto
+
+    def test_scope_escalation_check_with_additional_scope(self, auth_service, mocker):
+        mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
+        mock_reauthorize.side_effect = ServiceError(
+            "500 Server Error: Scope escalation not allowed"
+        )
+
+        current_scope = ["openid", "profile", "node:agent"]
+        reference_scope = ["openid", "profile", "email"]
+
+        # Should not raise an exception since we expect the 500 error
+        auth_service.test_scope_escalation(
+            refresh_token="test_refresh_token",
+            current_scope=current_scope,
+            reference_scope=reference_scope,
+        )
+
+        mock_reauthorize.assert_called_once_with(
+            "test_refresh_token", ["openid", "profile", "node:agent", "email"]
+        )
+
+    def test_scope_escalation_check_no_additional_scope(self, auth_service, mocker):
+        mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
+
+        current_scope = ["openid", "profile", "email"]
+        reference_scope = ["openid", "profile"]
+
+        # Should not call reauthorize_with_scope since no additional scope available
+        auth_service.test_scope_escalation(
+            refresh_token="test_refresh_token",
+            current_scope=current_scope,
+            reference_scope=reference_scope,
+        )
+
+        mock_reauthorize.assert_not_called()
+
+    def test_scope_escalation_check_unexpected_success(self, auth_service, mocker):
+        mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
+        mock_reauthorize.return_value = Auth0AuthenticationDTO(
+            access_token="escalated_token",
+            id_token="id_token",
+            scope="openid profile node:agent email",
+            expires_in=3600,
+            token_type="Bearer",
+        )
+
+        current_scope = ["openid", "profile", "node:agent"]
+        reference_scope = ["openid", "profile", "email"]
+
+        # Should raise AssertionError since we expect the escalation to fail
+        with pytest.raises(AssertionError):
+            auth_service.test_scope_escalation(
+                refresh_token="test_refresh_token",
+                current_scope=current_scope,
+                reference_scope=reference_scope,
+            )
+
+    def test_scope_escalation_check_wrong_error(self, auth_service, mocker):
+        mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
+        mock_reauthorize.side_effect = ServiceError("400 Bad Request: Invalid token")
+
+        current_scope = ["openid", "profile", "node:agent"]
+        reference_scope = ["openid", "profile", "email"]
+
+        # Should raise AssertionError since we expect a 500 error, not 400
+        with pytest.raises(AssertionError):
+            auth_service.test_scope_escalation(
+                refresh_token="test_refresh_token",
+                current_scope=current_scope,
+                reference_scope=reference_scope,
+            )

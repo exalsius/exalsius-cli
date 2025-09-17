@@ -111,3 +111,85 @@ def test_display_logout_success(display_manager, mock_console):
 def test_display_not_logged_in(display_manager, mock_console):
     display_manager.display_not_logged_in()
     mock_console.print.assert_called_once_with("[blue]You are not logged in.[/blue]")
+
+
+def test_display_node_agent_tokens_request_success_with_refresh_token(
+    display_manager, mock_console
+):
+    access_token = "test_access_token_12345"
+    refresh_token = "test_refresh_token_67890"
+    expires_in = 3600
+    scope = "openid profile node:agent"
+
+    display_manager.display_node_agent_tokens_request_success(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+        scope=scope,
+    )
+
+    # Verify the success message
+    mock_console.print.assert_any_call(
+        "[green]Requesting node agent tokens successful![/green]"
+    )
+
+    # Verify access token display
+    mock_console.print.assert_any_call("[blue]New Access Token:[/blue]")
+    mock_console.print.assert_any_call(f"[blue]{access_token}[/blue]")
+
+    # Verify refresh token display
+    mock_console.print.assert_any_call("[blue]New Refresh Token:[/blue]")
+    mock_console.print.assert_any_call(f"[blue]{refresh_token}[/blue]")
+
+    # Verify expires in display
+    mock_console.print.assert_any_call(f"[blue]Expires in: {expires_in} seconds[/blue]")
+
+    # Verify scope display
+    mock_console.print.assert_any_call(f"[blue]Scope: {scope}[/blue]")
+
+    # Verify warning about not storing tokens
+    mock_console.print.assert_any_call(
+        "[blue]Note: These tokens are not stored in the keyring.[/blue]"
+    )
+
+
+def test_display_node_agent_tokens_request_success_without_refresh_token(
+    display_manager, mock_console
+):
+    access_token = "test_access_token_12345"
+    expires_in = 3600
+    scope = "openid profile node:agent"
+
+    display_manager.display_node_agent_tokens_request_success(
+        access_token=access_token,
+        refresh_token=None,
+        expires_in=expires_in,
+        scope=scope,
+    )
+
+    # Verify the success message
+    mock_console.print.assert_any_call(
+        "[green]Requesting node agent tokens successful![/green]"
+    )
+
+    # Verify access token display
+    mock_console.print.assert_any_call("[blue]New Access Token:[/blue]")
+    mock_console.print.assert_any_call(f"[blue]{access_token}[/blue]")
+
+    # Verify refresh token is NOT displayed
+    assert not any(
+        call
+        for call in mock_console.print.call_args_list
+        if "[blue]New Refresh Token:[/blue]" in str(call)
+    )
+
+    # Verify expires in display
+    mock_console.print.assert_any_call(f"[blue]Expires in: {expires_in} seconds[/blue]")
+
+    # Verify scope display
+    mock_console.print.assert_any_call(f"[blue]Scope: {scope}[/blue]")
+
+    # Verify warning about not storing tokens
+    mock_console.print.assert_any_call(
+        "[blue]Note: These tokens are not stored in the keyring.[/blue]"
+    )
