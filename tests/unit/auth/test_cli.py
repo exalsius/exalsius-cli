@@ -463,7 +463,7 @@ def test_get_deployment_token_success_interactive(
         current_scope=["openid", "profile", "node:agent"],
         reference_scope=["openid", "profile", "email"],
     )
-    mock_display_manager_instance.display_node_agent_tokens_request_success.assert_called_once()
+    mock_display_manager_instance.display_deployment_token_request_success.assert_called_once()
 
 
 @patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
@@ -546,7 +546,7 @@ def test_get_deployment_token_success_non_interactive(
 
     assert result.exit_code == 0
     mock_display_manager_instance.display_device_code_polling_started.assert_called_once()
-    mock_display_manager_instance.display_node_agent_tokens_request_success.assert_called_once()
+    mock_display_manager_instance.display_deployment_token_request_success.assert_called_once()
 
 
 @patch("exalsius.auth.cli.utils.get_app_state_from_ctx")
