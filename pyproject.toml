@@ -5,7 +5,6 @@ description = "The exalsius CLI"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
-    "kubernetes>=32.0.1",
     "rich>=13.9.4",
     "typer>=0.15.2",
     "pandas>=2.2.3",
@@ -33,6 +32,9 @@ exls = "exalsius.app:app"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.pyright]
+typeCheckingMode = "basic"
+
 [dependency-groups]
 dev = [
     "black>=25.1.0",
@@ -42,4 +44,5 @@ dev = [
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "ruff>=0.9.9",
+    "pyright>=1.1.376",
 ]
