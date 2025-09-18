@@ -139,7 +139,8 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand[Auth0AuthenticationDT
                     last_error = str(e.response.json())
                     retry_count += 1
                     continue
-            except Exception:
+            except Exception as e:
+                last_error = str(e)
                 retry_count += 1
                 continue
 
@@ -263,7 +264,21 @@ class Auth0RevokeTokenCommand(PostRequestCommand[Auth0RevokeTokenStatusDTO]):
         }
 
     def execute(self) -> Auth0RevokeTokenStatusDTO:
-        return self._execute_post_request(Auth0RevokeTokenStatusDTO)
+        try:
+            self._execute_post_request_empty_response()
+        except requests.HTTPError as e:
+            raise Auth0APIError(
+                e.response.json()["error"],
+                e.response.status_code,
+                e.response.json()["error_description"],
+            )
+        except Exception as e:
+            raise Auth0APIError(
+                "unexpected error while revoking token",
+                500,
+                str(e),
+            )
+        return Auth0RevokeTokenStatusDTO(success=True)
 
 
 class ClearTokenFromKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
@@ -276,6 +291,7 @@ class ClearTokenFromKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
                 KeyringKeys.SERVICE_KEY,
                 f"{self.request.client_id}_{token_type}",
             )
+
             return True
         except Exception as e:
             logging.warning(f"Failed to delete token {token_type} from keyring: {e}")

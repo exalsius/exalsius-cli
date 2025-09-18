@@ -6,14 +6,14 @@ import typer
 from exalsius import __version__, clusters
 from exalsius import config as cli_config
 from exalsius import nodes, offers, services, workspaces
-from exalsius.auth.cli import login, logout, request_node_agent_tokens
+from exalsius.auth.cli import deployment_token_app, login, logout
 from exalsius.auth.service import Auth0Service
 from exalsius.core.commons.models import ServiceError
 from exalsius.logging import setup_logging
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 
-NON_AUTH_COMMANDS = ["login", "logout", "request-node-agent-tokens"]
+NON_AUTH_COMMANDS = ["login", "logout", "deployment-token"]
 
 
 app = typer.Typer()
@@ -22,7 +22,6 @@ app = typer.Typer()
 # use them without a subcommand.
 app.command()(login)
 app.command()(logout)
-app.command()(request_node_agent_tokens)
 
 
 app.add_typer(
@@ -53,6 +52,12 @@ app.add_typer(
     services.cli.services_app,
     name="services",
     help="Manage services of a cluster",
+)
+
+app.add_typer(
+    deployment_token_app,
+    name="deployment-token",
+    help="Manage deployment tokens",
 )
 
 

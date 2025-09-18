@@ -19,6 +19,9 @@ from exalsius.utils.theme import custom_theme
 logger = logging.getLogger(__name__)
 
 
+deployment_token_app = typer.Typer()
+
+
 def _authorization_workflow(
     auth_service: Auth0Service,
     display_manager: AuthDisplayManager,
@@ -147,7 +150,6 @@ def logout(ctx: typer.Context):
         display_manager.display_not_logged_in()
         raise typer.Exit(0)
     except ServiceWarning as w:
-        # Warnings are logged but we expect the logout to have succeeded.
         logger.debug(str(w))
     except ServiceError as e:
         logger.error(f"Failed to log out: {e.message}")
@@ -158,15 +160,16 @@ def logout(ctx: typer.Context):
     display_manager.display_logout_success()
 
 
-def request_node_agent_tokens(
+@deployment_token_app.command("get")
+def get_deployment_token(
     ctx: typer.Context,
 ):
     """
-    Requests a new access token and refresh token for use with a node agent and displays the new tokens.
+    Requests a new access token and refresh token for deployment and displays the new tokens.
 
     The new tokens are displayed but not stored in the keyring.
     """
-    logger.debug("Starting process of requesting node agent tokens.")
+    logger.debug("Starting process of requesting deployment tokens.")
     original_app_state: AppState = utils.get_app_state_from_ctx(ctx)
     modified_app_state: AppState = copy.deepcopy(original_app_state)
     modified_app_state.config.auth0.client_id = (
@@ -183,18 +186,16 @@ def request_node_agent_tokens(
 
     auth_resp, validate_resp = _authorization_workflow(auth_service, display_manager)
 
-    # sanity check
-    auth_service.scope_escalation_check(
-        refresh_token=auth_resp.refresh_token,
-        current_scope=original_app_state.config.auth0_node_agent.scope,
-        reference_scope=original_app_state.config.auth0.scope,
-    )
+    # Sanity check: If the refresh token is present, check if the scope can be used to escalate the scope.
+    if auth_resp.refresh_token:
+        auth_service.scope_escalation_check(
+            refresh_token=auth_resp.refresh_token,
+            current_scope=original_app_state.config.auth0_node_agent.scope,
+            reference_scope=original_app_state.config.auth0.scope,
+        )
 
-    # Display the node agent tokens to the user.
-    logger.debug(f"Login successful for user {validate_resp.email}.")
-    display_manager.display_node_agent_tokens_request_success(
+    # Display the deployment token to the user.
+    logger.debug(f"Deployment token request successful for user {validate_resp.email}.")
+    display_manager.display_deployment_token_request_success(
         access_token=auth_resp.access_token,
-        refresh_token=auth_resp.refresh_token,
-        expires_in=auth_resp.expires_in,
-        scope=auth_resp.scope,
     )

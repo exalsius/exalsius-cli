@@ -69,6 +69,17 @@ class TestAuth0Service:
         assert isinstance(command, Auth0FetchDeviceCodeCommand)
         assert result == expected_dto
 
+    def test_fetch_device_code_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("API error")
+
+        with pytest.raises(ServiceError, match="API error"):
+            auth_service.fetch_device_code()
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, Auth0FetchDeviceCodeCommand)
+
     def test_poll_for_authentication(self, auth_service, mocker):
         mock_execute = mocker.patch.object(auth_service, "_execute_command")
         expected_dto = Auth0AuthenticationDTO(
@@ -88,6 +99,18 @@ class TestAuth0Service:
         assert command.request.device_code == "test_device_code"
         assert result == expected_dto
 
+    def test_poll_for_authentication_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("Polling failed")
+
+        with pytest.raises(ServiceError, match="Polling failed"):
+            auth_service.poll_for_authentication("test_device_code")
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, Auth0PollForAuthenticationCommand)
+        assert command.request.device_code == "test_device_code"
+
     def test_validate_token(self, auth_service, mocker):
         mock_execute = mocker.patch.object(auth_service, "_execute_command")
         expected_dto = Auth0UserInfoDTO(sub="user_id", email="test@test.com")
@@ -101,6 +124,18 @@ class TestAuth0Service:
         assert command.request.id_token == "test_id_token"
         assert result == expected_dto
 
+    def test_validate_token_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("Validation failed")
+
+        with pytest.raises(ServiceError, match="Validation failed"):
+            auth_service.validate_token("test_id_token")
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, Auth0ValidateTokenCommand)
+        assert command.request.id_token == "test_id_token"
+
     def test_store_token_on_keyring(self, auth_service, mocker):
         mock_execute = mocker.patch.object(auth_service, "_execute_command")
 
@@ -110,6 +145,17 @@ class TestAuth0Service:
         command = mock_execute.call_args[0][0]
         assert isinstance(command, StoreTokenOnKeyringCommand)
         assert command.request.access_token == "test_token"
+
+    def test_store_token_on_keyring_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("Keyring error")
+
+        with pytest.raises(ServiceError, match="Keyring error"):
+            auth_service.store_token_on_keyring("test_token", 3600)
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, StoreTokenOnKeyringCommand)
 
     def test_load_access_token_from_keyring(self, auth_service, mocker):
         mock_execute = mocker.patch.object(auth_service, "_execute_command")
@@ -126,6 +172,17 @@ class TestAuth0Service:
         command = mock_execute.call_args[0][0]
         assert isinstance(command, LoadTokenFromKeyringCommand)
         assert result == expected_dto
+
+    def test_load_access_token_from_keyring_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("Keyring error")
+
+        with pytest.raises(ServiceError, match="Keyring error"):
+            auth_service.load_access_token_from_keyring()
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, LoadTokenFromKeyringCommand)
 
     def test_refresh_access_token(self, auth_service, mocker):
         mock_execute = mocker.patch.object(auth_service, "_execute_command")
@@ -146,6 +203,17 @@ class TestAuth0Service:
         assert isinstance(command, Auth0RefreshTokenCommand)
         assert command.request.refresh_token == "test_refresh_token"
         assert result == expected_dto
+
+    def test_refresh_access_token_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("Refresh failed")
+
+        with pytest.raises(ServiceError, match="Refresh failed"):
+            auth_service.refresh_access_token("test_refresh_token")
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, Auth0RefreshTokenCommand)
 
     def test_acquire_access_token_valid_token(self, auth_service, mocker):
         mock_load = mocker.patch.object(auth_service, "load_access_token_from_keyring")
@@ -238,6 +306,41 @@ class TestAuth0Service:
         ):
             auth_service.acquire_access_token()
 
+    def test_acquire_access_token_expired_token_store_fails(self, auth_service, mocker):
+        mock_load = mocker.patch.object(auth_service, "load_access_token_from_keyring")
+        mock_refresh = mocker.patch.object(auth_service, "refresh_access_token")
+        mock_store = mocker.patch.object(auth_service, "store_token_on_keyring")
+
+        past_expiry = datetime.now() - timedelta(minutes=1)
+        loaded_token = LoadedTokenDTO(
+            access_token="expired_token",
+            expiry=past_expiry,
+            refresh_token="refresh_token",
+        )
+        mock_load.return_value = loaded_token
+
+        refreshed_auth_dto = Auth0AuthenticationDTO(
+            access_token="new_access_token",
+            id_token="new_id_token",
+            scope="openid profile",
+            expires_in=3600,
+            token_type="Bearer",
+            refresh_token="new_refresh_token",
+        )
+        mock_refresh.return_value = refreshed_auth_dto
+        mock_store.side_effect = ServiceError("Failed to store token")
+
+        with pytest.raises(ServiceError, match="Failed to store token"):
+            auth_service.acquire_access_token()
+
+        mock_load.assert_called_once()
+        mock_refresh.assert_called_once_with("refresh_token")
+        mock_store.assert_called_once_with(
+            token="new_access_token",
+            expires_in=3600,
+            refresh_token="new_refresh_token",
+        )
+
     def test_acquire_access_token_load_fails(self, auth_service, mocker):
         mock_load = mocker.patch.object(auth_service, "load_access_token_from_keyring")
         mock_load.side_effect = ServiceError("Could not load from keyring")
@@ -294,6 +397,57 @@ class TestAuth0Service:
         clear_command = mock_execute.call_args_list[1][0][0]
         assert isinstance(clear_command, ClearTokenFromKeyringCommand)
 
+    def test_logout_clear_fails(self, auth_service, mocker):
+        mock_load = mocker.patch.object(auth_service, "load_access_token_from_keyring")
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+
+        loaded_token = LoadedTokenDTO(
+            access_token="test_token",
+            expiry=datetime.now() + timedelta(days=1),
+            refresh_token="refresh_token",
+        )
+        mock_load.return_value = loaded_token
+
+        mock_execute.side_effect = [None, ServiceError("Clear failed")]
+
+        with pytest.raises(
+            ServiceError, match="failed to clear token from keyring: Clear failed"
+        ):
+            auth_service.logout()
+
+        assert mock_execute.call_count == 2
+        revoke_command = mock_execute.call_args_list[0][0][0]
+        clear_command = mock_execute.call_args_list[1][0][0]
+        assert isinstance(revoke_command, Auth0RevokeTokenCommand)
+        assert isinstance(clear_command, ClearTokenFromKeyringCommand)
+
+    def test_logout_revoke_and_clear_fail(self, auth_service, mocker):
+        mock_load = mocker.patch.object(auth_service, "load_access_token_from_keyring")
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+
+        loaded_token = LoadedTokenDTO(
+            access_token="test_token",
+            expiry=datetime.now() + timedelta(days=1),
+            refresh_token="refresh_token",
+        )
+        mock_load.return_value = loaded_token
+
+        mock_execute.side_effect = [
+            ServiceError("Revoke failed"),
+            ServiceError("Clear failed"),
+        ]
+
+        with pytest.raises(
+            ServiceError, match="failed to clear token from keyring: Clear failed"
+        ):
+            auth_service.logout()
+
+        assert mock_execute.call_count == 2
+        revoke_command = mock_execute.call_args_list[0][0][0]
+        clear_command = mock_execute.call_args_list[1][0][0]
+        assert isinstance(revoke_command, Auth0RevokeTokenCommand)
+        assert isinstance(clear_command, ClearTokenFromKeyringCommand)
+
     def test_open_browser_for_device_code_authentication_silent(
         self, auth_service, mocker
     ):
@@ -330,6 +484,27 @@ class TestAuth0Service:
             mock_webbrowser_get.return_value, "http://test.com"
         )
 
+    def test_open_browser_for_device_code_authentication_fails(
+        self, auth_service, mocker
+    ):
+        mocker.patch(
+            "exalsius.auth.service._register_silent_browser", return_value=True
+        )
+        mock_open_browser = mocker.patch.object(
+            auth_service, "_Auth0Service__open_browser", return_value=False
+        )
+        mock_webbrowser_get = mocker.patch("webbrowser.get")
+
+        result = auth_service.open_browser_for_device_code_authentication(
+            "http://test.com"
+        )
+
+        assert result is False
+        mock_webbrowser_get.assert_called_once_with("silent")
+        mock_open_browser.assert_called_once_with(
+            mock_webbrowser_get.return_value, "http://test.com"
+        )
+
     def test_reauthorize_with_scope(self, auth_service, mocker):
         mock_execute = mocker.patch.object(auth_service, "_execute_command")
         expected_dto = Auth0AuthenticationDTO(
@@ -353,7 +528,22 @@ class TestAuth0Service:
         assert command.request.scope == ["openid", "profile", "node:agent"]
         assert result == expected_dto
 
-    def scope_escalation_check_check_with_additional_scope(self, auth_service, mocker):
+    def test_reauthorize_with_scope_fails(self, auth_service, mocker):
+        mock_execute = mocker.patch.object(auth_service, "_execute_command")
+        mock_execute.side_effect = ServiceError("Reauthorization failed")
+
+        with pytest.raises(ServiceError, match="Reauthorization failed"):
+            auth_service.reauthorize_with_scope(
+                "test_refresh_token", ["openid", "profile", "node:agent"]
+            )
+
+        mock_execute.assert_called_once()
+        command = mock_execute.call_args[0][0]
+        assert isinstance(command, Auth0RefreshTokenCommand)
+        assert command.request.refresh_token == "test_refresh_token"
+        assert command.request.scope == ["openid", "profile", "node:agent"]
+
+    def test_scope_escalation_check_with_additional_scope(self, auth_service, mocker):
         mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
         mock_reauthorize.side_effect = ServiceError(
             "500 Server Error: Scope escalation not allowed"
@@ -373,7 +563,7 @@ class TestAuth0Service:
             "test_refresh_token", ["openid", "profile", "node:agent", "email"]
         )
 
-    def scope_escalation_check_check_no_additional_scope(self, auth_service, mocker):
+    def test_scope_escalation_check_no_additional_scope(self, auth_service, mocker):
         mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
 
         current_scope = ["openid", "profile", "email"]
@@ -388,7 +578,7 @@ class TestAuth0Service:
 
         mock_reauthorize.assert_not_called()
 
-    def scope_escalation_check_check_unexpected_success(self, auth_service, mocker):
+    def test_scope_escalation_check_unexpected_success(self, auth_service, mocker):
         mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
         mock_reauthorize.return_value = Auth0AuthenticationDTO(
             access_token="escalated_token",
@@ -409,7 +599,7 @@ class TestAuth0Service:
                 reference_scope=reference_scope,
             )
 
-    def scope_escalation_check_check_wrong_error(self, auth_service, mocker):
+    def test_scope_escalation_check_wrong_error(self, auth_service, mocker):
         mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
         mock_reauthorize.side_effect = ServiceError("400 Bad Request: Invalid token")
 
