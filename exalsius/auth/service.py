@@ -258,14 +258,7 @@ class Auth0Service(BaseService):
         if additional_scope:
             logger.debug(f"Trying to refresh with additional scope: {additional_scope}")
             test_scope = current_scope + [additional_scope]
-            error_response = None
-            try:
-                self.reauthorize_with_scope(refresh_token, test_scope)
-            except ServiceError as e:
-                error_response = e
-            finally:
-                assert error_response is not None and "500 Server Error" in str(
-                    error_response
-                )
+            response = self.reauthorize_with_scope(refresh_token, test_scope)
+            assert sorted(response.scope.split(" ")) == sorted(current_scope)
         else:
             logger.debug("No additional scopes available for sanity check")

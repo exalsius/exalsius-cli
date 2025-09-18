@@ -193,7 +193,6 @@ def get_deployment_token(
             current_scope=original_app_state.config.auth0_node_agent.scope,
             reference_scope=original_app_state.config.auth0.scope,
         )
-
     # Display the deployment token to the user.
     logger.debug(f"Deployment token request successful for user {validate_resp.email}.")
     display_manager.display_deployment_token_request_success(

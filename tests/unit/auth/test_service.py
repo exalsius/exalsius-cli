@@ -545,14 +545,18 @@ class TestAuth0Service:
 
     def test_scope_escalation_check_with_additional_scope(self, auth_service, mocker):
         mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
-        mock_reauthorize.side_effect = ServiceError(
-            "500 Server Error: Scope escalation not allowed"
+        mock_reauthorize.return_value = Auth0AuthenticationDTO(
+            access_token="access_token",
+            id_token="id_token",
+            scope="profile openid node:agent",
+            expires_in=3600,
+            token_type="Bearer",
         )
 
         current_scope = ["openid", "profile", "node:agent"]
         reference_scope = ["openid", "profile", "email"]
 
-        # Should not raise an exception since we expect the 500 error
+        # Should not raise an exception since its essentially the same scope, just different order
         auth_service.scope_escalation_check(
             refresh_token="test_refresh_token",
             current_scope=current_scope,
@@ -601,12 +605,18 @@ class TestAuth0Service:
 
     def test_scope_escalation_check_wrong_error(self, auth_service, mocker):
         mock_reauthorize = mocker.patch.object(auth_service, "reauthorize_with_scope")
-        mock_reauthorize.side_effect = ServiceError("400 Bad Request: Invalid token")
+        mock_reauthorize.return_value = Auth0AuthenticationDTO(
+            access_token="access_token",
+            id_token="id_token",
+            scope="profile openid node:agent email",
+            expires_in=3600,
+            token_type="Bearer",
+        )
 
         current_scope = ["openid", "profile", "node:agent"]
         reference_scope = ["openid", "profile", "email"]
 
-        # Should raise AssertionError since we expect a 500 error, not 400
+        # Should raise AssertionError since we expect the scope to not change
         with pytest.raises(AssertionError):
             auth_service.scope_escalation_check(
                 refresh_token="test_refresh_token",
