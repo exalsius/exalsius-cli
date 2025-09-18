@@ -33,11 +33,10 @@ repos:
         args:
           - "--ignore=E501,F403,F405"
 
-  # pyright
   - repo: local
     hooks:
       - id: pyright
-        name: pyright
-        entry: pyright
-        language: python
+        name: pyright type check
+        entry: pyright --project pyproject.toml
+        language: system
         types: [python]
