@@ -1,5 +1,80 @@
 # Changelog
 
+## [0.3.0](https://github.com/exalsius/exalsius-cli/compare/v0.2.0...v0.3.0) (2025-09-18)
+
+
+### Features
+
+* add boilerplate for workspaces implementation ([da1885e](https://github.com/exalsius/exalsius-cli/commit/da1885eaeee18a6679639bc7f410e448a238e4f9))
+* add boilerplate to get workspace elem ([056c60d](https://github.com/exalsius/exalsius-cli/commit/056c60dd18ce2fdd65232abf31f17fd024c520c5))
+* add cluster operations ([4ec7bc5](https://github.com/exalsius/exalsius-cli/commit/4ec7bc519b1c2ad91a5d99e432ec9ea0409394e7))
+* add node cli commands and operations ([3651b78](https://github.com/exalsius/exalsius-cli/commit/3651b78301b2aeebbc0e0fac5635e76013933dd4))
+* add possibility to request scoped tokens for agent node(s) ([#89](https://github.com/exalsius/exalsius-cli/issues/89)) ([ea79167](https://github.com/exalsius/exalsius-cli/commit/ea79167fa2e43fab5de1c3cd99fa71db7844fd93))
+* add pyright to precommit and ci ([#91](https://github.com/exalsius/exalsius-cli/issues/91)) ([9f39e71](https://github.com/exalsius/exalsius-cli/commit/9f39e71fae2914e0a677db120ae453b4497468c6))
+* added command to import kubeconfig and store it locally in .kube folder ([#72](https://github.com/exalsius/exalsius-cli/issues/72)) ([4437d54](https://github.com/exalsius/exalsius-cli/commit/4437d54021eb7980d4fe1d60759108bda115b3ac))
+* added diloco workspace ([#82](https://github.com/exalsius/exalsius-cli/issues/82)) ([f33e8d5](https://github.com/exalsius/exalsius-cli/commit/f33e8d5c82a739510d424ff3bef6f46f9ce581a1))
+* added services commands to support interaction with the service endpoints ([#71](https://github.com/exalsius/exalsius-cli/issues/71)) ([a879f8f](https://github.com/exalsius/exalsius-cli/commit/a879f8f8fee1b72c17c172c58e30f13add1f5ab1))
+* added support for default cluster labels  ([#78](https://github.com/exalsius/exalsius-cli/issues/78)) ([d0f603a](https://github.com/exalsius/exalsius-cli/commit/d0f603a4c7eb4c7d3d2c29fa9c806b5990d8a587))
+* cluster default ID support for  show-available-resources and get ([ae9ebdf](https://github.com/exalsius/exalsius-cli/commit/ae9ebdf1416f83fc7931f8d689b4794cdae605c8))
+* configuration option for deploying observability into cluster ([#80](https://github.com/exalsius/exalsius-cli/issues/80)) ([da6c564](https://github.com/exalsius/exalsius-cli/commit/da6c564ba73887e8e61b16ed159ab40d2437c6b7))
+* Define a password for a jupyter notebook and wait until running ([971f488](https://github.com/exalsius/exalsius-cli/commit/971f488167b1af22b6914429e8a27191561129c8))
+* device code auth flow: added QR code display as alternative when browser is not available or not opened ([#53](https://github.com/exalsius/exalsius-cli/issues/53)) ([59a8dcb](https://github.com/exalsius/exalsius-cli/commit/59a8dcb0d9d3b98e460ceb327cd885fae709fe61))
+* display workspace access info ([#33](https://github.com/exalsius/exalsius-cli/issues/33)) ([cf5ece6](https://github.com/exalsius/exalsius-cli/commit/cf5ece6be645cc4dc5e874f9f9e0745c6d42da31))
+* huge command pattern refactor and fix basis commands ([#60](https://github.com/exalsius/exalsius-cli/issues/60)) ([93917b5](https://github.com/exalsius/exalsius-cli/commit/93917b570a0eb647d164e508da710fdb29237b39))
+* implemented a table view for the clusters nodes ([#84](https://github.com/exalsius/exalsius-cli/issues/84)) ([5c9a498](https://github.com/exalsius/exalsius-cli/commit/5c9a498f02146f48860c27641c0d5312adb2a45b))
+* Implemented add and delete for workspaces ([431119c](https://github.com/exalsius/exalsius-cli/commit/431119c7e7eef655351ee018fb10ccba9e40a861))
+* implemented auth0 device control login flow ([#50](https://github.com/exalsius/exalsius-cli/issues/50)) ([894c45d](https://github.com/exalsius/exalsius-cli/commit/894c45d0cbea6848ab2d1322b6242e8782ccef4c))
+* implemented auth0 logout flow. Improved UX: user feedback when running commands while not logged in ([#51](https://github.com/exalsius/exalsius-cli/issues/51)) ([85c2fd1](https://github.com/exalsius/exalsius-cli/commit/85c2fd1d28274cb7e95fef88499b731725b95764))
+* implemented auto browser opening within the device code authentication flow ([#52](https://github.com/exalsius/exalsius-cli/issues/52)) ([da4d667](https://github.com/exalsius/exalsius-cli/commit/da4d667c14a9799a1dc82ea0b62aa79e4bc6124e))
+* implemented basic login mechanism ([#37](https://github.com/exalsius/exalsius-cli/issues/37)) ([6d77ecb](https://github.com/exalsius/exalsius-cli/commit/6d77ecb7efd429068df3c4f5ad7425ac7a266257))
+* Implemented CLI config management and added a configuration for default cluster setting. ([2e15b97](https://github.com/exalsius/exalsius-cli/commit/2e15b97f9a2cdd3794c3f530a5d47bbf4640ab23))
+* implemented commands for service endpoints ([#69](https://github.com/exalsius/exalsius-cli/issues/69)) ([6368238](https://github.com/exalsius/exalsius-cli/commit/63682386ec93b213c858f59549d9553191b432df))
+* Implemented commmands for setting and getting default cluster ([086368b](https://github.com/exalsius/exalsius-cli/commit/086368b01655cc0a2c9374d0bf5eb944de566d71))
+* Implemented list workspaces and describe workspaces ([1aa0b1a](https://github.com/exalsius/exalsius-cli/commit/1aa0b1a91200d6c4920affed96b001afc35f281e))
+* implemented node removal from cluster ([#85](https://github.com/exalsius/exalsius-cli/issues/85)) ([5b597fe](https://github.com/exalsius/exalsius-cli/commit/5b597fef4aad3f4a12edd73f1522c4df00efdda7))
+* Implemented proper authentication, credential configuration handling, and improved type safety ([#48](https://github.com/exalsius/exalsius-cli/issues/48)) ([62e24c0](https://github.com/exalsius/exalsius-cli/commit/62e24c02726857ff8145d17d20bdbeb00ee7aa54))
+* Implemented showing available resources for a cluster ([ca4391e](https://github.com/exalsius/exalsius-cli/commit/ca4391e73119046deb29f66c348a7195922c2f05))
+* implemented workspace type options ([#41](https://github.com/exalsius/exalsius-cli/issues/41)) ([0f05618](https://github.com/exalsius/exalsius-cli/commit/0f056180e8625c4c5648b5186a9a7745fd2fb804))
+* integration of llm-inference workspace ([#46](https://github.com/exalsius/exalsius-cli/issues/46)) ([09fedcd](https://github.com/exalsius/exalsius-cli/commit/09fedcdc4abb7fba491b2f1667ef77da3c282f9d))
+* refactored code project structure to vertical slicing ([#58](https://github.com/exalsius/exalsius-cli/issues/58)) ([c76675b](https://github.com/exalsius/exalsius-cli/commit/c76675b9b6301569bf6aa5edb4b788bf971b2efd))
+* refactored workspace code structure ([#88](https://github.com/exalsius/exalsius-cli/issues/88)) ([70097dc](https://github.com/exalsius/exalsius-cli/commit/70097dcdeb8f051e5696f9eacea255af9bea9147))
+* removed vscode config from tracked files. Added ides to gitignore ([#34](https://github.com/exalsius/exalsius-cli/issues/34)) ([3a00544](https://github.com/exalsius/exalsius-cli/commit/3a00544af73769dc0f38e350c70cad8ac6f926a7))
+* show help when no sub-command is specified ([#59](https://github.com/exalsius/exalsius-cli/issues/59)) ([bd93ecb](https://github.com/exalsius/exalsius-cli/commit/bd93ecbe966ecfbd36615be7b241b91bbdfebd71))
+* use exalsius-api instead of skypilot api for the scan-prices command ([ccdb23c](https://github.com/exalsius/exalsius-cli/commit/ccdb23c1e327a065da5843b5d55fed9736a30f0c))
+
+
+### Bug Fixes
+
+* adapt tests ([#93](https://github.com/exalsius/exalsius-cli/issues/93)) ([947b98c](https://github.com/exalsius/exalsius-cli/commit/947b98caedb764226343d5f6420e79504987a018))
+* add ExalsiusError to ssh key operations ([8776633](https://github.com/exalsius/exalsius-cli/commit/877663320ee26060eeb5ca0faf5aa77c604d8607))
+* added error handling to service calls. Fixed ssh key command namings. Added ID argument to ssh key delete. ([cfc0121](https://github.com/exalsius/exalsius-cli/commit/cfc01218d0abc227b2192e448a3d78d553f21bed))
+* dependency cleanup ([#92](https://github.com/exalsius/exalsius-cli/issues/92)) ([501275a](https://github.com/exalsius/exalsius-cli/commit/501275a77b850cdeac8126afc596d24ae6a1c546))
+* display message when workspaces are deleted ([#35](https://github.com/exalsius/exalsius-cli/issues/35)) ([61c132a](https://github.com/exalsius/exalsius-cli/commit/61c132a9412b7d0e436f391ebab070fd3239cf5d))
+* explicitely set the deployment name of a workspace to prevent name colisions ([#75](https://github.com/exalsius/exalsius-cli/issues/75)) ([ebf7f77](https://github.com/exalsius/exalsius-cli/commit/ebf7f77f8b19bd45bd22500004dc02c4807d5c22))
+* fixed auth tests and deployment token ([#90](https://github.com/exalsius/exalsius-cli/issues/90)) ([9ab8a31](https://github.com/exalsius/exalsius-cli/commit/9ab8a3142953c06a940e8bf1086b19477d705fc5))
+* fixed bug where key path instead of key contenct was encoded and sent to api ([#65](https://github.com/exalsius/exalsius-cli/issues/65)) ([302e45e](https://github.com/exalsius/exalsius-cli/commit/302e45eba65fa0e375212cacc694958720f2762b))
+* fixed double dash in service naming ([#76](https://github.com/exalsius/exalsius-cli/issues/76)) ([5522f7c](https://github.com/exalsius/exalsius-cli/commit/5522f7c8804241bc9bb1c3eadde9da2b51947d43))
+* fixed general http error handling bug ([3213140](https://github.com/exalsius/exalsius-cli/commit/321314097c86f26abd07658b226400b40ca42359))
+* Fixed get command indent ([5cfd01b](https://github.com/exalsius/exalsius-cli/commit/5cfd01bdf8fab35063a90efb3d0163e0699b443b))
+* Fixed json display of single workspace ([#31](https://github.com/exalsius/exalsius-cli/issues/31)) ([1cb7d92](https://github.com/exalsius/exalsius-cli/commit/1cb7d92439c92883d1801c5a13c7c3a59b28e52a))
+* fixed offers response typing and updated exalsius sdk version. ([#49](https://github.com/exalsius/exalsius-cli/issues/49)) ([19b2ef9](https://github.com/exalsius/exalsius-cli/commit/19b2ef9a4ff7b7846530ada48358d08864cb1f6e))
+* fixed ssh delete api call. added explicit parameter passing to node import. ([514db56](https://github.com/exalsius/exalsius-cli/commit/514db569ba2d27c8e03aa931fd537edc1e4d06c8))
+* fixed the correct help message display for subcommands ([#55](https://github.com/exalsius/exalsius-cli/issues/55)) ([a53e241](https://github.com/exalsius/exalsius-cli/commit/a53e241f5dcdcc560ac120ad73e56c976e9b88f3))
+* fixed workspace creation to support the new templates structure. ([#73](https://github.com/exalsius/exalsius-cli/issues/73)) ([e80da5a](https://github.com/exalsius/exalsius-cli/commit/e80da5a98f83e8bfda3456c9b918b2d19a061e2e))
+* hotfixed resource definition for workspace ([#44](https://github.com/exalsius/exalsius-cli/issues/44)) ([728f358](https://github.com/exalsius/exalsius-cli/commit/728f358221a3777e3dbb5566d326f7ac6fece768))
+* improved node table display ([#79](https://github.com/exalsius/exalsius-cli/issues/79)) ([b32468b](https://github.com/exalsius/exalsius-cli/commit/b32468bcff47055a5800f18df109fb3df58d67b8))
+* improved robustness of workload result printing ([#32](https://github.com/exalsius/exalsius-cli/issues/32)) ([c2b7f21](https://github.com/exalsius/exalsius-cli/commit/c2b7f211bf888b4707093a7cf6c43a605510fced))
+* make cluster ID display robust ([#40](https://github.com/exalsius/exalsius-cli/issues/40)) ([f67df5e](https://github.com/exalsius/exalsius-cli/commit/f67df5e6db28b87b5a7e3e812a3ca13dba9ca54f))
+* moved cli list service command from clusters to services ([#68](https://github.com/exalsius/exalsius-cli/issues/68)) ([6d89af3](https://github.com/exalsius/exalsius-cli/commit/6d89af3e23443c875c6d279875088fc7feb493a5))
+* nodes display ([#81](https://github.com/exalsius/exalsius-cli/issues/81)) ([cf736b3](https://github.com/exalsius/exalsius-cli/commit/cf736b3d231b792b72f4fa4e324f9174a8013bf3))
+* proper handling of empty response on token revoke against the auth0 api ([#61](https://github.com/exalsius/exalsius-cli/issues/61)) ([ee1008d](https://github.com/exalsius/exalsius-cli/commit/ee1008db5014a8d95dc3c378e73d42ff0782a253))
+* rename exalsius cli app to exls ([8768942](https://github.com/exalsius/exalsius-cli/commit/8768942aa4a279c17eefa912f659b27b967d454e))
+
+
+### Documentation
+
+* adjust readme ([166f61c](https://github.com/exalsius/exalsius-cli/commit/166f61cd1dbcfaa782a7016a6bd115074c222ccc))
+
 ## [0.2.0](https://github.com/exalsius/exalsius-cli/compare/v0.1.0...v0.2.0) (2025-03-27)
 
 
