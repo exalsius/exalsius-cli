@@ -208,13 +208,17 @@ class Auth0Service(BaseService):
             token=load_resp.access_token,
             token_type_hint="access_token",
         )
+
         try:
             self._execute_command(Auth0RevokeTokenCommand(request=req))
         except ServiceError as e:
-            logging.warning(f"failed to revoke token: {e}, ignoring.")
+            logging.warning(f"failed to revoke token: {e}")
 
         req = ClearTokenFromKeyringRequestDTO(client_id=self.config.client_id)
-        self._execute_command(ClearTokenFromKeyringCommand(request=req))
+        try:
+            self._execute_command(ClearTokenFromKeyringCommand(request=req))
+        except ServiceError as e:
+            raise ServiceError(f"failed to clear token from keyring: {e}")
 
     def __open_browser(
         self,

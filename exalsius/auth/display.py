@@ -75,23 +75,14 @@ class AuthDisplayManager(BaseDisplayManager):
     def display_not_logged_in(self):
         self.print_info("You are not logged in.")
 
-    def display_node_agent_tokens_request_success(
+    def display_deployment_token_request_success(
         self,
         access_token: str,
-        refresh_token: Optional[str],
-        expires_in: int,
-        scope: str,
     ):
-        self.print_success("Requesting node agent tokens successful!")
         self.print_info("")
-        self.print_info("New Access Token:")
+        self.print_success("Request for deployment token successful!")
+        self.print_info("")
+        self.print_success("Your deployment token is:")
+        self.print_info("")
         self.print_info(access_token)
         self.print_info("")
-        if refresh_token:
-            self.print_info("New Refresh Token:")
-            self.print_info(refresh_token)
-            self.print_info("")
-        self.print_info(f"Expires in: {expires_in} seconds")
-        self.print_info(f"Scope: {scope}")
-        self.print_info("")
-        self.print_info("Note: These tokens are not stored in the keyring.")

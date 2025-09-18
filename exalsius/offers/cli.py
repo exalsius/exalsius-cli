@@ -57,6 +57,7 @@ def list_offers(
     display_manager = OffersDisplayManager(console)
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
+
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = OffersService(config, access_token)
 
