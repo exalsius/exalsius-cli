@@ -1,25 +1,26 @@
-from rich.console import Console
+from typing import List, Protocol, TypeVar
 
-from exalsius.utils.theme import custom_theme
+from exalsius.core.base.render import (
+    BaseListRenderer,
+    BaseSingleItemRenderer,
+)
+
+S = TypeVar("S")
+T = TypeVar("T", contravariant=True)
+U = TypeVar("U")
 
 
-class BaseDisplayManager:
-    def __init__(self, console: Console):
-        self.console = console
-        self.theme = custom_theme
+class BaseListDisplay(Protocol[S, U]):
+    """Base display manager."""
 
-    def print_error(self, message: str) -> None:
-        """Print an error message."""
-        self.console.print(f"[red]{message}[/red]")
+    renderer: BaseListRenderer[S, U]
 
-    def print_warning(self, message: str) -> None:
-        """Print a warning message."""
-        self.console.print(f"[yellow]{message}[/yellow]")
+    def display(self, data: List[S]) -> None: ...
 
-    def print_success(self, message: str) -> None:
-        """Print a success message."""
-        self.console.print(f"[green]{message}[/green]")
 
-    def print_info(self, message: str) -> None:
-        """Print an info message."""
-        self.console.print(f"[blue]{message}[/blue]")
+class BaseSingleItemDisplay(Protocol[T, U]):
+    """Base display manager."""
+
+    renderer: BaseSingleItemRenderer[T, U]
+
+    def display(self, data: T) -> None: ...

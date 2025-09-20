@@ -21,6 +21,9 @@ CFG_DIR = Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "exalsi
 CFG_FILE = CFG_DIR / "config.yaml"
 CONFIG_LOCK_FILE = CFG_DIR / "config.lock"
 
+CONFIG_ENV_PREFIX = "EXLS_"
+CONFIG_ENV_NESTED_DELIMITER = "__"
+
 
 class Auth0Config(BaseSettings):
     domain: str = Field(
@@ -110,8 +113,8 @@ class AppConfig(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_prefix="EXLS_",
-        env_nested_delimiter="__",
+        env_prefix=CONFIG_ENV_PREFIX,
+        env_nested_delimiter=CONFIG_ENV_NESTED_DELIMITER,
         extra="ignore",
     )
 

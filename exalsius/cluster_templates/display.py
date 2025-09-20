@@ -4,10 +4,10 @@ from exalsius_api_client.models.cluster_template import ClusterTemplate
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.core.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplay
 
 
-class ClusterTemplatesDisplayManager(BaseDisplayManager):
+class ClusterTemplatesDisplayManager(BaseDisplay):
     def __init__(self, console: Console):
         super().__init__(console)
 

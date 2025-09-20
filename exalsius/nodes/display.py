@@ -9,10 +9,10 @@ from exalsius_api_client.models.ssh_keys_list_response_ssh_keys_inner import (
 from rich.console import Console
 from rich.table import Table
 
-from exalsius.core.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplay
 
 
-class NodesDisplayManager(BaseDisplayManager):
+class NodesDisplayManager(BaseDisplay):
     def __init__(self, console: Console):
         super().__init__(console)
 

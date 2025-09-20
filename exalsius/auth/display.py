@@ -3,10 +3,10 @@ from typing import Optional
 import qrcode
 from rich.console import Console
 
-from exalsius.core.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplay
 
 
-class AuthDisplayManager(BaseDisplayManager):
+class AuthDisplayManager(BaseDisplay):
     def __init__(self, console: Console):
         super().__init__(console)
 

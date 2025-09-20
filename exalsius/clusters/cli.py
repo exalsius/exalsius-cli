@@ -4,10 +4,11 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
-from exalsius.clusters.display import ClustersDisplayManager
+from exalsius.clusters.display import TableClusterDisplayManager
 from exalsius.clusters.models import ClusterNodeDTO, ClusterType, NodesToAddDTO
 from exalsius.clusters.service import ClustersService
 from exalsius.config import AppConfig
+from exalsius.core.base.models import ErrorDTO
 from exalsius.core.commons.models import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.utils.theme import custom_theme
@@ -37,8 +38,7 @@ def list_clusters(
     """
     List all clusters.
     """
-    console: Console = Console(theme=custom_theme)
-    display_manager: ClustersDisplayManager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -48,10 +48,16 @@ def list_clusters(
     try:
         clusters = service.list_clusters(status)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.display_clusters(clusters)
+    display_manager.display_clusters(clusters.clusters)
 
 
 @clusters_app.command("get", help="Get a cluster")
@@ -62,8 +68,7 @@ def get_cluster(
     """
     Get a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -74,10 +79,16 @@ def get_cluster(
     try:
         cluster_response = service.get_cluster(cluster_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.display_cluster(cluster_response)
+    display_manager.display_cluster(cluster_response.cluster)
 
 
 @clusters_app.command("delete", help="Delete a cluster")

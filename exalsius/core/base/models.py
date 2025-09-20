@@ -1,8 +1,6 @@
-from typing import TypeVar
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class BaseRequestDTO(BaseModel):
@@ -14,3 +12,11 @@ class BaseRequestDTO(BaseModel):
 class DeserializationError(Exception):
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class ErrorDTO(BaseModel):
+    """Error DTO for renderers."""
+
+    message: str
+    error_type: Optional[str] = None
+    error_code: Optional[str] = None

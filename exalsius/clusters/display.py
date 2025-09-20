@@ -1,155 +1,86 @@
 from typing import List
 
-from exalsius_api_client.models.cluster_resources_list_response import (
-    ClusterResourcesListResponse,
+from exalsius_api_client.models.cluster import Cluster
+
+from exalsius.core.base.models import ErrorDTO
+from exalsius.core.base.render import BaseListRenderer, BaseSingleItemRenderer
+from exalsius.core.commons.display import (
+    ConsoleListDisplay,
+    ConsoleSingleItemDisplay,
 )
-from exalsius_api_client.models.cluster_response import ClusterResponse
-from exalsius_api_client.models.clusters_list_response import ClustersListResponse
-from exalsius_api_client.models.credentials import Credentials
-from rich.console import Console
-from rich.table import Table
+from exalsius.core.commons.render.json import (
+    JsonListRenderer,
+    JsonMessageRenderer,
+    JsonSingleItemRenderer,
+)
+from exalsius.core.commons.render.table import (
+    TableListRenderer,
+    TableSingleItemRenderer,
+    get_column,
+)
 
-from exalsius.clusters.models import ClusterNodeDTO
-from exalsius.core.base.display import BaseDisplayManager
 
-
-class ClustersDisplayManager(BaseDisplayManager):
-    def __init__(self, console: Console):
-        super().__init__(console)
-
-    def display_clusters(self, cluster_list_response: ClustersListResponse):
-        table = Table(
-            title="Clusters",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
-        )
-        table.add_column("ID", style="blue", no_wrap=True)
-        table.add_column("Name", style="green")
-        table.add_column("Status", style="blue")
-        table.add_column("Created At", style="green")
-        table.add_column("Updated At", style="blue")
-        # TODO add services
-
-        for cluster in cluster_list_response.clusters:
-            table.add_row(
-                str(cluster.id),
-                str(cluster.name),
-                str(cluster.cluster_status),
-                str(cluster.created_at),
-                str(cluster.updated_at),
-            )
-
-        self.console.print(table)
-
-    def display_cluster(self, cluster_response: ClusterResponse):
-        table = Table(
-            title="Cluster",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
-        )
-        table.add_column("ID")
-        table.add_column("Name")
-        table.add_column("Status")
-        table.add_column("Created At")
-        table.add_column("Updated At")
-        # TODO add services
-
-        cluster = cluster_response.cluster
-        table.add_row(
-            str(cluster.id),
-            str(cluster.name),
-            str(cluster.cluster_status),
-            str(cluster.created_at),
-            str(cluster.updated_at),
-        )
-
-        self.console.print(table)
-
-    def display_delete_cluster_message(self, cluster_response: ClusterResponse):
-        all_nodes: list[str] = []
-        if cluster_response.cluster.control_plane_node_ids:
-            all_nodes.extend(cluster_response.cluster.control_plane_node_ids)
-        if cluster_response.cluster.worker_node_ids:
-            all_nodes.extend(cluster_response.cluster.worker_node_ids)
-
-        self.print_info(
-            f"Cluster {cluster_response.cluster.id} will be deleted. This action is irreversible."
-        )
-        self.print_info(
-            f"The following nodes will be returned to the node pool: {all_nodes}"
-        )
-
-    def display_cluster_nodes(self, nodes: List[ClusterNodeDTO]):
-        table = Table(
-            title="Cluster Nodes",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
-        )
-        table.add_column("ID", style="blue")
-        table.add_column("Role", style="green")
-        table.add_column("Name", style="blue")
-
-        for node in nodes:
-            table.add_row(
-                str(node.id),
-                str(node.role),
-                str(node.hostname),
-            )
-
-        self.console.print(table)
-
-    def display_cluster_node_add_success(
-        self, cluster_id: str, node_ids_added: List[str]
+class ClusterDisplayManager:
+    def __init__(
+        self,
+        list_renderer: BaseListRenderer[Cluster, str],
+        single_item_renderer: BaseSingleItemRenderer[Cluster, str],
+        info_renderer: BaseSingleItemRenderer[str, str],
+        success_renderer: BaseSingleItemRenderer[str, str],
+        error_renderer: BaseSingleItemRenderer[ErrorDTO, str],
     ):
-        self.print_success(
-            f"Nodes {', '.join(node_ids_added)} added to cluster {cluster_id} successfully."
+        self.list_display = ConsoleListDisplay[Cluster](renderer=list_renderer)
+        self.single_item_display = ConsoleSingleItemDisplay[Cluster](
+            renderer=single_item_renderer
+        )
+        self.info_display = ConsoleSingleItemDisplay[str](renderer=info_renderer)
+        self.success_display = ConsoleSingleItemDisplay[str](renderer=success_renderer)
+        self.error_display = ConsoleSingleItemDisplay[ErrorDTO](renderer=error_renderer)
+
+    def display_clusters(self, data: List[Cluster]):
+        self.list_display.display(data)
+
+    def display_cluster(self, data: Cluster):
+        self.single_item_display.display(data)
+
+    def display_info(self, message: str):
+        self.info_display.display(message)
+
+    def display_success(self, message: str):
+        self.success_display.display(message)
+
+    def display_error(self, error: ErrorDTO):
+        self.error_display.display(error)
+
+
+class JsonClusterDisplayManager(ClusterDisplayManager):
+    def __init__(self):
+        super().__init__(
+            list_renderer=JsonListRenderer[Cluster](),
+            single_item_renderer=JsonSingleItemRenderer[Cluster](),
+            info_renderer=JsonMessageRenderer(message_key="message"),
+            success_renderer=JsonMessageRenderer(message_key="message"),
+            error_renderer=JsonSingleItemRenderer[ErrorDTO](),
         )
 
-    def display_cluster_resources(
-        self, cluster_resources_response: ClusterResourcesListResponse
-    ):
-        table = Table(
-            title="Cluster Resource Availability",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
+
+class TableClusterDisplayManager(ClusterDisplayManager):
+    def __init__(self):
+        columns_rendering_map = {
+            "id": get_column("ID", no_wrap=True),
+            "name": get_column("Name"),
+            "cluster_status": get_column("Status"),
+            "created_at": get_column("Created At"),
+            "updated_at": get_column("Updated At"),
+        }
+        super().__init__(
+            list_renderer=TableListRenderer[Cluster](
+                columns_rendering_map=columns_rendering_map
+            ),
+            single_item_renderer=TableSingleItemRenderer[Cluster](
+                columns_map=columns_rendering_map
+            ),
+            info_renderer=JsonMessageRenderer(message_key="message"),
+            success_renderer=JsonMessageRenderer(message_key="message"),
+            error_renderer=JsonSingleItemRenderer[ErrorDTO](),
         )
-
-        table.add_column("Available GPUs")
-        table.add_column("Available CPUs")
-        table.add_column("Available Memory")
-        table.add_column("Available Storage")
-
-        for node in cluster_resources_response.resources:
-            if node and node.available and node.occupied:
-                table.add_row(
-                    str(f"{node.available.gpu_count} GPUs"),
-                    str(f"{node.available.cpu_cores} cores"),
-                    str(f"{node.available.memory_gb} GB"),
-                    str(f"{node.available.storage_gb} GB"),
-                )
-
-        self.console.print(table)
-
-    def display_cloud_credentials(self, cloud_credentials: List[Credentials]):
-        if not cloud_credentials:
-            self.print_info("No cloud credentials found")
-            return
-
-        table = Table(
-            title="Available Cloud Credentials",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
-        )
-
-        table.add_column("Name", style="green")
-        table.add_column("Description", style="cyan")
-
-        for cloud_credential in cloud_credentials:
-            table.add_row(cloud_credential.name, cloud_credential.description)
-
-        self.console.print(table)

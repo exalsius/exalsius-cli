@@ -10,10 +10,10 @@ from rich.console import Console
 from rich.json import JSON
 from rich.table import Table
 
-from exalsius.core.base.display import BaseDisplayManager
+from exalsius.core.base.display import BaseDisplay
 
 
-class ServicesDisplayManager(BaseDisplayManager):
+class ServicesDisplayManager(BaseDisplay):
     def __init__(self, console: Console):
         super().__init__(console)
 
