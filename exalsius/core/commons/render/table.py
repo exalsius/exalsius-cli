@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Dict, Generic, List, Optional, TypeVar
+from typing import Dict, Generic, List, Optional
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from rich.console import Console, JustifyMethod
+from rich.console import JustifyMethod
 from rich.style import Style, StyleType
 from rich.table import Table
 
@@ -12,32 +12,30 @@ from exalsius.config import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
 from exalsius.core.base.render import (
     BaseListRenderer,
     BaseSingleItemRenderer,
+    T_RenderInput_Contra,
+    T_RenderInput_Inv,
 )
-from exalsius.utils.theme import custom_theme
-
-T = TypeVar("T")
 
 
-class TableListRenderer(BaseListRenderer[T, str], Generic[T]):
+class TableListRenderer(
+    BaseListRenderer[T_RenderInput_Inv, str], Generic[T_RenderInput_Inv]
+):
     """Renders a list of items as a table."""
 
     def __init__(
         self,
         columns_rendering_map: Dict[str, Column],
         table_rendering_config: Optional[TableRenderingConfig] = None,
-        console: Optional[Console] = None,
     ):
         self.columns_rendering_map: Dict[str, Column] = columns_rendering_map
         self.table_rendering_config: TableRenderingConfig = (
             table_rendering_config or TableRenderingConfig()
         )
-        self.console: Console = console or Console(theme=custom_theme)
 
-    def render(self, data: List[T]) -> None:
+    def render(self, data: List[T_RenderInput_Inv]) -> str:
         """Render a list of items to a table."""
         if not data:
-            self.console.print("No items to display.")
-            return
+            return Table().__str__()
 
         table = Table(
             show_header=True,
@@ -60,25 +58,25 @@ class TableListRenderer(BaseListRenderer[T, str], Generic[T]):
             ]
             table.add_row(*row_values)
 
-        self.console.print(table)
+        return table.__str__()
 
 
-class TableSingleItemRenderer(BaseSingleItemRenderer[T, str], Generic[T]):
+class TableSingleItemRenderer(
+    BaseSingleItemRenderer[T_RenderInput_Contra, str], Generic[T_RenderInput_Contra]
+):
     """Renders a single item as a table."""
 
     def __init__(
         self,
         columns_map: Dict[str, Column],
         table_rendering_config: Optional[TableRenderingConfig] = None,
-        console: Optional[Console] = None,
     ):
         self.columns_map: Dict[str, Column] = columns_map
         self.table_rendering_config: TableRenderingConfig = (
             table_rendering_config or TableRenderingConfig()
         )
-        self.console: Console = console or Console(theme=custom_theme)
 
-    def render(self, data: T) -> None:
+    def render(self, data: T_RenderInput_Contra) -> str:
         """Render a single item to a table."""
         table = Table(
             show_header=True,
@@ -92,7 +90,7 @@ class TableSingleItemRenderer(BaseSingleItemRenderer[T, str], Generic[T]):
             value = str(getattr(data, key, ""))
             table.add_row(self.columns_map[key].header, value)
 
-        self.console.print(table)
+        return table.__str__()
 
 
 class Column(BaseModel):

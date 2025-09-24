@@ -2,22 +2,26 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
-from rich.console import Console
+from exalsius_api_client.models.cluster import Cluster
 
 from exalsius.clusters.display import TableClusterDisplayManager
-from exalsius.clusters.models import ClusterNodeDTO, ClusterType, NodesToAddDTO
+from exalsius.clusters.models import (
+    ClusterNodeDTO,
+    ClusterResourcesDTO,
+    ClusterType,
+    NodesToAddDTO,
+)
 from exalsius.clusters.service import ClustersService
 from exalsius.config import AppConfig
 from exalsius.core.base.models import ErrorDTO
 from exalsius.core.commons.models import ServiceError
 from exalsius.utils import commons as utils
-from exalsius.utils.theme import custom_theme
 
 clusters_app = typer.Typer()
 
 
 @clusters_app.callback(invoke_without_command=True)
-def _root(
+def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
 ):
     """
@@ -46,7 +50,7 @@ def list_clusters(
     service: ClustersService = ClustersService(config, access_token)
 
     try:
-        clusters = service.list_clusters(status)
+        clusters: List[Cluster] = service.list_clusters(status)
     except ServiceError as e:
         display_manager.display_error(
             ErrorDTO(
@@ -57,7 +61,7 @@ def list_clusters(
         )
         raise typer.Exit(1)
 
-    display_manager.display_clusters(clusters.clusters)
+    display_manager.display_clusters(clusters)
 
 
 @clusters_app.command("get", help="Get a cluster")
@@ -75,9 +79,8 @@ def get_cluster(
 
     service = ClustersService(config, access_token)
 
-    # TODO: Revisit this to improve the UX: start interative selection of cluster
     try:
-        cluster_response = service.get_cluster(cluster_id)
+        cluster: Cluster = service.get_cluster(cluster_id)
     except ServiceError as e:
         display_manager.display_error(
             ErrorDTO(
@@ -88,7 +91,7 @@ def get_cluster(
         )
         raise typer.Exit(1)
 
-    display_manager.display_cluster(cluster_response.cluster)
+    display_manager.display_cluster(cluster)
 
 
 @clusters_app.command("delete", help="Delete a cluster")
@@ -99,32 +102,44 @@ def delete_cluster(
     """
     Delete a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = ClustersService(config, access_token)
 
     try:
-        cluster_response = service.get_cluster(cluster_id)
+        cluster: Cluster = service.get_cluster(cluster_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.display_cluster(cluster_response)
+    display_manager.display_cluster(cluster)
 
-    if not typer.confirm("Are you sure you want to delete this cluster?"):
-        display_manager.display_delete_cluster_message(cluster_response)
+    if not display_manager.display_confirmation(
+        "Are you sure you want to delete this cluster?"
+    ):
         raise typer.Exit()
 
     try:
-        cluster_response = service.delete_cluster(cluster_id)
+        service.delete_cluster(cluster_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.print_success(f"Cluster {cluster_id} deleted successfully.")
+    display_manager.display_success(f"Cluster {cluster_id} deleted successfully.")
 
 
 @clusters_app.command("create", help="Create a cluster")
@@ -155,9 +170,7 @@ def create_cluster(
     """
     Create a cluster.
     """
-    # TODO: add support for full ClusterCreateRequest object, either via file or cli flags
-    console: Console = Console(theme=custom_theme)
-    display_manager: ClustersDisplayManager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -165,7 +178,7 @@ def create_cluster(
     service: ClustersService = ClustersService(config, access_token)
 
     try:
-        cluster_create_response = service.create_cluster(
+        cluster_id: str = service.create_cluster(
             name=name,
             cluster_type=cluster_type,
             no_gpu=no_gpu,
@@ -173,12 +186,16 @@ def create_cluster(
             telemetry_enabled=telemetry_enabled,
         )
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.print_success(
-        f"Cluster {cluster_create_response.cluster_id} created successfully."
-    )
+    display_manager.display_success(f"Cluster {cluster_id} created successfully.")
 
 
 @clusters_app.command("deploy", help="Deploy a cluster")
@@ -189,36 +206,49 @@ def deploy_cluster(
     """
     Deploy a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ClustersService = ClustersService(config, access_token)
 
     try:
-        cluster_response = service.get_cluster(cluster_id)
+        cluster: Cluster = service.get_cluster(cluster_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.display_cluster(cluster_response)
+    display_manager.display_cluster(cluster)
 
-    if not typer.confirm("Are you sure you want to deploy this cluster?"):
-        display_manager.display_cluster(cluster_response)
+    if not display_manager.display_confirmation(
+        "Are you sure you want to deploy this cluster?"
+    ):
         raise typer.Exit()
 
     try:
-        cluster_response = service.deploy_cluster(cluster_id)
+        service.deploy_cluster(cluster_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.print_success(
+    display_manager.display_success(
         f"Cluster {cluster_id} deployment started successfully."
     )
-    display_manager.print_info(
-        f"Please check the status with `exls clusters get {cluster_id}`"
+
+    display_manager.display_info(
+        f"You can check the status with `exls clusters get {cluster_id}`"
     )
 
 
@@ -230,8 +260,7 @@ def list_nodes(
     """
     List all nodes of a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -240,10 +269,22 @@ def list_nodes(
     try:
         nodes: List[ClusterNodeDTO] = service.get_cluster_nodes(cluster_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
     display_manager.display_cluster_nodes(nodes)
+
+
+def _node_role_callback(value: str) -> str:
+    if value not in ("WORKER", "CONTROL_PLANE"):
+        raise typer.BadParameter("node_role must be 'WORKER' or 'CONTROL_PLANE'")
+    return value
 
 
 @clusters_app.command("add-nodes", help="Add nodes to a cluster")
@@ -261,18 +302,13 @@ def add_nodes(
         show_choices=True,
         rich_help_panel="Node Role",
         prompt=False,
-        callback=lambda v: (
-            v
-            if v in ("WORKER", "CONTROL_PLANE")
-            else typer.BadParameter("node_role must be 'WORKER' or 'CONTROL_PLANE'")
-        ),
+        callback=_node_role_callback,
     ),
 ):
     """
     Add nodes to a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager_clusters = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -289,13 +325,20 @@ def add_nodes(
             ],
         )
     except ServiceError as e:
-        display_manager_clusters.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager_clusters.print_success(
+        raise typer.Exit(1)
+
+    display_manager.display_success(
         f"Nodes {node_ids} added to cluster {cluster_id} successfully."
     )
-    display_manager_clusters.display_cluster_node_add_success(cluster_id, node_ids)
 
 
 @clusters_app.command("remove-node", help="Remove a node from a cluster")
@@ -309,8 +352,7 @@ def remove_node(
     """
     Remove a node from a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -319,10 +361,16 @@ def remove_node(
     try:
         service.remove_cluster_node(cluster_id, node_id)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.print_success(
+    display_manager.display_success(
         f"Node {node_id} removed from cluster {cluster_id} successfully."
     )
 
@@ -338,42 +386,27 @@ def get_cluster_resources(
     """
     Get the resources of a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service: ClustersService = ClustersService(config, access_token)
 
     try:
-        cluster_resources_response = service.get_cluster_resources(cluster_id)
+        available_cluster_resources: List[ClusterResourcesDTO] = (
+            service.get_available_cluster_resources(cluster_id)
+        )
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.display_cluster_resources(cluster_resources_response)
-
-
-@clusters_app.command(
-    "list-cloud-credentials",
-    help="List all available cloud provider credentials for the current user",
-)
-def list_cloud_credentials(ctx: typer.Context):
-    """List all available cloud provider credentials."""
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
-
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service: ClustersService = ClustersService(config, access_token)
-
-    try:
-        cloud_credentials = service.list_cloud_credentials()
-    except ServiceError as e:
-        display_manager.print_error(e.message)
-        raise typer.Exit(1)
-
-    display_manager.display_cloud_credentials(cloud_credentials)
+    display_manager.display_cluster_resources(available_cluster_resources)
 
 
 @clusters_app.command(
@@ -393,8 +426,7 @@ def import_kubeconfig(
     """
     Import a kubeconfig file into a cluster.
     """
-    console = Console(theme=custom_theme)
-    display_manager = ClustersDisplayManager(console)
+    display_manager: TableClusterDisplayManager = TableClusterDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
@@ -403,9 +435,15 @@ def import_kubeconfig(
     try:
         service.import_kubeconfig(cluster_id, kubeconfig_path)
     except ServiceError as e:
-        display_manager.print_error(e.message)
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
 
-    display_manager.print_success(
+    display_manager.display_success(
         f"Kubeconfig from cluster {cluster_id} successfully imported to {kubeconfig_path}."
     )

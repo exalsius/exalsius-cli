@@ -1,120 +1,185 @@
 from typing import List
 
+from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cloud_node import CloudNode
-from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.self_managed_node import SelfManagedNode
 from exalsius_api_client.models.ssh_keys_list_response_ssh_keys_inner import (
     SshKeysListResponseSshKeysInner,
 )
-from rich.console import Console
-from rich.table import Table
 
-from exalsius.core.base.display import BaseDisplay
+from exalsius.core.base.render import BaseListRenderer, BaseSingleItemRenderer
+from exalsius.core.commons.display import (
+    BaseJsonDisplayManager,
+    BaseTableDisplayManager,
+    ConsoleListDisplay,
+    ConsoleSingleItemDisplay,
+)
+from exalsius.core.commons.render.json import (
+    JsonListStringRenderer,
+    JsonSingleItemStringRenderer,
+)
+from exalsius.core.commons.render.table import (
+    TableListRenderer,
+    TableSingleItemRenderer,
+    get_column,
+)
 
 
-class NodesDisplayManager(BaseDisplay):
-    def __init__(self, console: Console):
-        super().__init__(console)
-
-    def _create_node_table(self, title: str) -> Table:
-        return Table(
-            title=title, show_header=True, header_style="bold", border_style="custom"
+class JsonNodesDisplayManager(BaseJsonDisplayManager):
+    def __init__(
+        self,
+        cloud_nodes_list_renderer: BaseListRenderer[
+            CloudNode, str
+        ] = JsonListStringRenderer[CloudNode](),
+        self_managed_nodes_list_renderer: BaseListRenderer[
+            SelfManagedNode, str
+        ] = JsonListStringRenderer[SelfManagedNode](),
+        cloud_nodes_single_item_renderer: BaseSingleItemRenderer[
+            CloudNode, str
+        ] = JsonSingleItemStringRenderer[CloudNode](),
+        self_managed_nodes_single_item_renderer: BaseSingleItemRenderer[
+            SelfManagedNode, str
+        ] = JsonSingleItemStringRenderer[SelfManagedNode](),
+    ):
+        super().__init__()
+        self.cloud_nodes_list_display = ConsoleListDisplay[CloudNode](
+            renderer=cloud_nodes_list_renderer
         )
-
-    def _add_common_columns(self, table: Table):
-        table.add_column("ID", style="blue", no_wrap=True)
-        table.add_column("Hostname", style="green")
-        table.add_column("Import Time", style="blue")
-        table.add_column("Status", style="green")
-
-    def _add_cloud_node_specific_columns(self, table: Table):
-        """Add columns specific to CloudNode type."""
-        table.add_column("Provider", style="blue")
-        table.add_column("Instance Type", style="green")
-        table.add_column("Price", style="blue")
-
-    def _add_self_managed_node_specific_columns(self, table: Table):
-        """Add columns specific to SelfManagedNode type."""
-        table.add_column("IP Address", style="blue")
-
-    def _add_cloud_node_row(self, table: Table, node: CloudNode):
-        """Add a row with all CloudNode specific attributes."""
-        table.add_row(
-            str(node.id),
-            str(node.hostname),
-            str(node.import_time),
-            str(node.node_status),
-            str(node.provider),
-            str(node.instance_type),
-            str(node.price_per_hour),
+        self.self_managed_nodes_list_display = ConsoleListDisplay[SelfManagedNode](
+            renderer=self_managed_nodes_list_renderer
         )
-
-    def _add_self_managed_node_row(self, table: Table, node: SelfManagedNode):
-        """Add a row with all SelfManagedNode specific attributes."""
-        table.add_row(
-            str(node.id),
-            str(node.hostname),
-            str(node.import_time),
-            str(node.node_status),
-            str(node.endpoint),
+        self.cloud_nodes_single_item_display = ConsoleSingleItemDisplay[CloudNode](
+            renderer=cloud_nodes_single_item_renderer
         )
+        self.self_managed_nodes_single_item_display = ConsoleSingleItemDisplay[
+            SelfManagedNode
+        ](renderer=self_managed_nodes_single_item_renderer)
 
-    def display_nodes(self, nodes: List[NodeResponse]):
-        if not nodes:
-            self.print_info("No nodes found. Please add nodes to the node pool.")
-            return
+    def display_nodes(self, data: List[BaseNode]):
+        cloud_nodes = [node for node in data if isinstance(node, CloudNode)]
+        self_managed_nodes = [
+            node for node in data if isinstance(node, SelfManagedNode)
+        ]
+        if cloud_nodes:
+            self.cloud_nodes_list_display.display(cloud_nodes)
+        if self_managed_nodes:
+            self.self_managed_nodes_list_display.display(self_managed_nodes)
 
-        cloud_table = self._create_node_table("Node Pool")
-        self_managed_table = self._create_node_table("Node Pool")
+    def display_node(self, data: BaseNode):
+        if isinstance(data, CloudNode):
+            self.cloud_nodes_single_item_display.display(data)
+        elif isinstance(data, SelfManagedNode):
+            self.self_managed_nodes_single_item_display.display(data)
 
-        self._add_common_columns(cloud_table)
-        self._add_common_columns(self_managed_table)
-        self._add_cloud_node_specific_columns(cloud_table)
-        self._add_self_managed_node_specific_columns(self_managed_table)
 
-        for node in nodes:
-            if isinstance(node.actual_instance, CloudNode):
-                self._add_cloud_node_row(cloud_table, node.actual_instance)
-            elif isinstance(node.actual_instance, SelfManagedNode):
-                self._add_self_managed_node_row(
-                    self_managed_table, node.actual_instance
-                )
+DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP = {
+    "id": get_column("ID", no_wrap=True),
+    "hostname": get_column("Hostname"),
+    "import_time": get_column("Import Time"),
+    "node_status": get_column("Status"),
+    "provider": get_column("Provider"),
+    "instance_type": get_column("Instance Type"),
+    "price_per_hour": get_column("Price"),
+}
 
-        if any(isinstance(node.actual_instance, CloudNode) for node in nodes):
-            self.console.print(cloud_table)
-        if any(isinstance(node.actual_instance, SelfManagedNode) for node in nodes):
-            self.console.print(self_managed_table)
+DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP = {
+    "id": get_column("ID", no_wrap=True),
+    "hostname": get_column("Hostname"),
+    "import_time": get_column("Import Time"),
+    "node_status": get_column("Status"),
+    "endpoint": get_column("Endpoint"),
+}
 
-    def display_node(self, node: NodeResponse):
-        """Display a single node with all its attributes."""
-        if isinstance(node.actual_instance, CloudNode):
-            table = self._create_node_table("Cloud Node Details")
-            self._add_common_columns(table)
-            self._add_cloud_node_specific_columns(table)
-            self._add_cloud_node_row(table, node.actual_instance)
-        elif isinstance(node.actual_instance, SelfManagedNode):
-            table = self._create_node_table("Self-Managed Node Details")
-            self._add_common_columns(table)
-            self._add_self_managed_node_specific_columns(table)
-            self._add_self_managed_node_row(table, node.actual_instance)
-        self.console.print(table)
+
+class TableNodesDisplayManager(BaseTableDisplayManager):
+    def __init__(
+        self,
+        cloud_nodes_list_renderer: BaseListRenderer[CloudNode, str] = TableListRenderer[
+            CloudNode
+        ](columns_rendering_map=DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP),
+        self_managed_nodes_list_renderer: BaseListRenderer[
+            SelfManagedNode, str
+        ] = TableListRenderer[SelfManagedNode](
+            columns_rendering_map=DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP
+        ),
+        cloud_nodes_single_item_renderer: BaseSingleItemRenderer[
+            CloudNode, str
+        ] = TableSingleItemRenderer[CloudNode](
+            columns_map=DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP
+        ),
+        self_managed_nodes_single_item_renderer: BaseSingleItemRenderer[
+            SelfManagedNode, str
+        ] = TableSingleItemRenderer[SelfManagedNode](
+            columns_map=DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP
+        ),
+    ):
+        super().__init__()
+        self.cloud_nodes_list_display = ConsoleListDisplay[CloudNode](
+            renderer=cloud_nodes_list_renderer
+        )
+        self.self_managed_nodes_list_display = ConsoleListDisplay[SelfManagedNode](
+            renderer=self_managed_nodes_list_renderer
+        )
+        self.cloud_nodes_single_item_display = ConsoleSingleItemDisplay[CloudNode](
+            renderer=cloud_nodes_single_item_renderer
+        )
+        self.self_managed_nodes_single_item_display = ConsoleSingleItemDisplay[
+            SelfManagedNode
+        ](renderer=self_managed_nodes_single_item_renderer)
+
+    def display_nodes(self, data: List[BaseNode]):
+        cloud_nodes = [node for node in data if isinstance(node, CloudNode)]
+        if cloud_nodes:
+            self.cloud_nodes_list_display.display(cloud_nodes)
+
+        self_managed_nodes = [
+            node for node in data if isinstance(node, SelfManagedNode)
+        ]
+        if self_managed_nodes:
+            self.self_managed_nodes_list_display.display(self_managed_nodes)
+
+    def display_node(self, data: BaseNode):
+        if isinstance(data, CloudNode):
+            self.cloud_nodes_single_item_display.display(data)
+        elif isinstance(data, SelfManagedNode):
+            self.self_managed_nodes_single_item_display.display(data)
+
+
+DEFAULT_SSH_KEYS_COLUMNS_RENDERING_MAP = {
+    "id": get_column("ID", no_wrap=True),
+    "name": get_column("Name"),
+}
+
+
+class JsonSshKeysDisplayManager(BaseJsonDisplayManager):
+    def __init__(
+        self,
+        ssh_keys_list_renderer: BaseListRenderer[
+            SshKeysListResponseSshKeysInner, str
+        ] = JsonListStringRenderer[SshKeysListResponseSshKeysInner](),
+    ):
+        super().__init__()
+        self.ssh_keys_list_display = ConsoleListDisplay[
+            SshKeysListResponseSshKeysInner
+        ](renderer=ssh_keys_list_renderer)
 
     def display_ssh_keys(self, ssh_keys: List[SshKeysListResponseSshKeysInner]):
-        if not ssh_keys:
-            self.print_info("No SSH keys found")
-            return
+        self.ssh_keys_list_display.display(ssh_keys)
 
-        table = Table(
-            title="Available SSH Keys",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
-        )
 
-        table.add_column("ID", style="cyan")
-        table.add_column("Name", style="green")
+class TableSshKeysDisplayManager(BaseTableDisplayManager):
+    def __init__(
+        self,
+        ssh_keys_list_renderer: BaseListRenderer[
+            SshKeysListResponseSshKeysInner, str
+        ] = TableListRenderer[SshKeysListResponseSshKeysInner](
+            columns_rendering_map=DEFAULT_SSH_KEYS_COLUMNS_RENDERING_MAP
+        ),
+    ):
+        super().__init__()
+        self.ssh_keys_list_display = ConsoleListDisplay[
+            SshKeysListResponseSshKeysInner
+        ](renderer=ssh_keys_list_renderer)
 
-        for ssh_key in ssh_keys:
-            table.add_row(ssh_key.id, ssh_key.name)
-
-        self.console.print(table)
+    def display_ssh_keys(self, ssh_keys: List[SshKeysListResponseSshKeysInner]):
+        self.ssh_keys_list_display.display(ssh_keys)

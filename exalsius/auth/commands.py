@@ -42,7 +42,7 @@ class KeyringKeys(StrEnum):
     REFRESH_TOKEN_KEY = "refresh_token"
 
 
-class Auth0FetchDeviceCodeCommand(PostRequestCommand[Auth0DeviceCodeAuthenticationDTO]):
+class Auth0FetchDeviceCodeCommand(PostRequestCommand):
     def __init__(self, request: Auth0FetchDeviceCodeRequestDTO):
         self.request = request
 
@@ -67,7 +67,7 @@ class Auth0FetchDeviceCodeCommand(PostRequestCommand[Auth0DeviceCodeAuthenticati
             )
 
 
-class Auth0PollForAuthenticationCommand(PostRequestCommand[Auth0AuthenticationDTO]):
+class Auth0PollForAuthenticationCommand(PostRequestCommand):
     def __init__(self, request: Auth0PollForAuthenticationRequestDTO):
         self.request = request
 
@@ -147,7 +147,7 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand[Auth0AuthenticationDT
         return result
 
 
-class Auth0ValidateTokenCommand(BaseCommand[Auth0UserInfoDTO]):
+class Auth0ValidateTokenCommand(BaseCommand):
     def __init__(self, request: Auth0ValidateTokenRequestDTO):
         self.request = request
 
@@ -169,7 +169,7 @@ class Auth0ValidateTokenCommand(BaseCommand[Auth0UserInfoDTO]):
             )
 
 
-class StoreTokenOnKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
+class StoreTokenOnKeyringCommand(BaseCommand):
     def __init__(self, request: StoreTokenOnKeyringRequestDTO):
         self.request = request
 
@@ -197,7 +197,7 @@ class StoreTokenOnKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
         return TokenKeyringStorageStatusDTO(success=True)
 
 
-class LoadTokenFromKeyringCommand(BaseCommand[LoadedTokenDTO]):
+class LoadTokenFromKeyringCommand(BaseCommand):
     def __init__(self, request: LoadTokenFromKeyringRequestDTO):
         self.request = request
 
@@ -228,7 +228,7 @@ class LoadTokenFromKeyringCommand(BaseCommand[LoadedTokenDTO]):
             raise KeyringError(f"failed to load token from keyring: {e}")
 
 
-class Auth0RefreshTokenCommand(PostRequestCommand[Auth0AuthenticationDTO]):
+class Auth0RefreshTokenCommand(PostRequestCommand):
     def __init__(self, request: Auth0RefreshTokenRequestDTO):
         self.request = request
 
@@ -249,7 +249,7 @@ class Auth0RefreshTokenCommand(PostRequestCommand[Auth0AuthenticationDTO]):
         return self._execute_post_request(Auth0AuthenticationDTO)
 
 
-class Auth0RevokeTokenCommand(PostRequestCommand[Auth0RevokeTokenStatusDTO]):
+class Auth0RevokeTokenCommand(PostRequestCommand):
     def __init__(self, request: Auth0RevokeTokenRequestDTO):
         self.request = request
 
@@ -281,7 +281,7 @@ class Auth0RevokeTokenCommand(PostRequestCommand[Auth0RevokeTokenStatusDTO]):
         return Auth0RevokeTokenStatusDTO(success=True)
 
 
-class ClearTokenFromKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
+class ClearTokenFromKeyringCommand(BaseCommand):
     def __init__(self, request: ClearTokenFromKeyringRequestDTO):
         self.request = request
 

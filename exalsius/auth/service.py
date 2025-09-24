@@ -4,7 +4,7 @@ import sys
 import traceback
 import webbrowser
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from exalsius.auth.commands import (
     Auth0FetchDeviceCodeCommand,
@@ -34,7 +34,7 @@ from exalsius.auth.models import (
 )
 from exalsius.config import AppConfig, Auth0Config
 from exalsius.core.base.commands import BaseCommand
-from exalsius.core.base.service import BaseService, T
+from exalsius.core.base.service import BaseService
 from exalsius.core.commons.models import ServiceError, ServiceWarning
 
 logger = logging.getLogger(__name__)
@@ -42,15 +42,17 @@ logger = logging.getLogger(__name__)
 
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
 class _SilentBrowser(webbrowser.BackgroundBrowser):
-    def open(self, url, new=0, autoraise=True):
-        return (
+    def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool:
+        try:
             subprocess.Popen(
                 [self.name, url],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            is not None
-        )
+            return True
+        except Exception as e:
+            logging.debug(f"Could not open browser: {e}")
+            return False
 
 
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
@@ -78,7 +80,7 @@ class Auth0Service(BaseService):
         super().__init__(config)
         self.config: Auth0Config = config.auth0
 
-    def _execute_command(self, command: BaseCommand[T]) -> T:
+    def _execute_command(self, command: BaseCommand) -> Any:
         try:
             return command.execute()
         except AuthenticationError as e:
@@ -184,7 +186,7 @@ class Auth0Service(BaseService):
                 refresh_resp = self.refresh_access_token(load_resp.refresh_token)
             except ServiceError as e:
                 raise ServiceError(
-                    f"failed to refresh access token: {e}. Please log in again."
+                    f"failed to refresh access token: {e.message}. Please log in again."
                 )
 
             self.store_token_on_keyring(
@@ -218,7 +220,7 @@ class Auth0Service(BaseService):
         try:
             self._execute_command(ClearTokenFromKeyringCommand(request=req))
         except ServiceError as e:
-            raise ServiceError(f"failed to clear token from keyring: {e}")
+            raise ServiceError(f"failed to clear token from keyring: {e.message}")
 
     def __open_browser(
         self,

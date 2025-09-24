@@ -1,17 +1,17 @@
 from typing import List, Protocol, TypeVar
 
-S = TypeVar("S")
-T = TypeVar("T", contravariant=True)
-U = TypeVar("U", covariant=True)
+T_RenderInput_Inv = TypeVar("T_RenderInput_Inv")
+T_RenderInput_Contra = TypeVar("T_RenderInput_Contra", contravariant=True)
+T_RenderOutput_Cov = TypeVar("T_RenderOutput_Cov", covariant=True)
 
 
-class BaseListRenderer(Protocol[S, U]):
+class BaseListRenderer(Protocol[T_RenderInput_Inv, T_RenderOutput_Cov]):
     """Base list renderer."""
 
-    def render(self, data: List[S]) -> U: ...
+    def render(self, data: List[T_RenderInput_Inv]) -> T_RenderOutput_Cov: ...
 
 
-class BaseSingleItemRenderer(Protocol[T, U]):
+class BaseSingleItemRenderer(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
     """Base single item renderer."""
 
-    def render(self, data: T) -> U: ...
+    def render(self, data: T_RenderInput_Contra) -> T_RenderOutput_Cov: ...

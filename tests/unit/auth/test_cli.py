@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,19 +14,19 @@ from exalsius.auth.models import (
 from exalsius.core.commons.models import ServiceError, ServiceWarning
 
 
-def print_cli_runner_result_details(result):
+def print_cli_runner_result_details(result: Any):
     """
     Print detailed information about a FastAPI TestClient response.
 
     Args:
-        response: The response object from FastAPI's TestClient
+        result: The response object from FastAPI's TestClient
     """
     print("\n=== Result Details ===")
     for name in dir(result):
         if name.startswith("_"):  # skip dunder/private
             continue
         try:
-            value = getattr(result, name)
+            value: Any = getattr(result, name)
         except Exception as e:
             print(f"{name}: <error {type(e).__name__}> {e}")
         else:
@@ -42,7 +43,10 @@ def runner():
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_success_interactive(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -93,7 +97,10 @@ def test_login_success_interactive(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_success_non_interactive(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -134,7 +141,10 @@ def test_login_success_non_interactive(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_interactive_browser_open_fails(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -186,7 +196,10 @@ def test_login_interactive_browser_open_fails(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_fetch_device_code_error(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -207,7 +220,10 @@ def test_login_fetch_device_code_error(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_polling_cancelled(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -234,7 +250,10 @@ def test_login_polling_cancelled(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_validate_token_error(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -275,7 +294,10 @@ def test_login_validate_token_error(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_login_store_token_error(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -320,7 +342,10 @@ def test_login_store_token_error(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_logout_success(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -336,7 +361,10 @@ def test_logout_success(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_logout_not_logged_in(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -355,7 +383,10 @@ def test_logout_not_logged_in(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_logout_service_warning(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -374,7 +405,10 @@ def test_logout_service_warning(
 @patch("exalsius.auth.cli.AuthDisplayManager")
 @patch("exalsius.auth.cli.Auth0Service")
 def test_logout_service_error(
-    mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -394,7 +428,11 @@ def test_logout_service_error(
 @patch("exalsius.auth.cli.Auth0Service")
 @patch("exalsius.auth.cli.copy.deepcopy")
 def test_get_deployment_token_success_interactive(
-    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_deepcopy: MagicMock,
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
     # Setup mock app state
     mock_original_app_state = MagicMock()
@@ -446,7 +484,7 @@ def test_get_deployment_token_success_interactive(
         mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
             True
         )
-        result = runner.invoke(app, ["deployment-token", "get"])
+        result: Any = runner.invoke(app, ["deployment-token", "get"])
 
     if result.exit_code != 0:
         print_cli_runner_result_details(result)
@@ -471,9 +509,13 @@ def test_get_deployment_token_success_interactive(
 @patch("exalsius.auth.cli.Auth0Service")
 @patch("exalsius.auth.cli.copy.deepcopy")
 def test_get_deployment_token_fetch_device_code_error(
-    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_deepcopy: MagicMock,
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
-    mock_original_app_state = MagicMock()
+    mock_original_app_state: MagicMock = MagicMock()
     mock_get_app_state.return_value = mock_original_app_state
     mock_deepcopy.return_value = MagicMock()
 
@@ -484,7 +526,7 @@ def test_get_deployment_token_fetch_device_code_error(
         "Failed to fetch device code for node agent"
     )
 
-    result = runner.invoke(app, ["deployment-token", "get"])
+    result: Any = runner.invoke(app, ["deployment-token", "get"])
 
     assert result.exit_code == 1
     mock_display_manager_instance.display_authentication_error.assert_called_once_with(
@@ -497,9 +539,13 @@ def test_get_deployment_token_fetch_device_code_error(
 @patch("exalsius.auth.cli.Auth0Service")
 @patch("exalsius.auth.cli.copy.deepcopy")
 def test_get_deployment_token_success_non_interactive(
-    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_deepcopy: MagicMock,
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
-    mock_original_app_state = MagicMock()
+    mock_original_app_state: MagicMock = MagicMock()
     mock_original_app_state.config.auth0.scope = ["openid", "profile", "email"]
     mock_original_app_state.config.auth0_node_agent.client_id = "node_agent_client_id"
     mock_original_app_state.config.auth0_node_agent.scope = [
@@ -508,7 +554,7 @@ def test_get_deployment_token_success_non_interactive(
         "node:agent",
     ]
     mock_get_app_state.return_value = mock_original_app_state
-    mock_modified_app_state = MagicMock()
+    mock_modified_app_state: MagicMock = MagicMock()
     mock_deepcopy.return_value = mock_modified_app_state
     mock_auth_service_instance = mock_auth0_service.return_value
     mock_display_manager_instance = mock_display_manager.return_value
@@ -539,7 +585,7 @@ def test_get_deployment_token_success_non_interactive(
     mock_auth_service_instance.scope_escalation_check.return_value = None
 
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=False):
-        result = runner.invoke(app, ["deployment-token", "get"])
+        result: Any = runner.invoke(app, ["deployment-token", "get"])
 
     if result.exit_code != 0:
         print_cli_runner_result_details(result)
@@ -554,9 +600,13 @@ def test_get_deployment_token_success_non_interactive(
 @patch("exalsius.auth.cli.Auth0Service")
 @patch("exalsius.auth.cli.copy.deepcopy")
 def test_get_deployment_token_scope_escalation_test_fails(
-    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_deepcopy: MagicMock,
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
-    mock_original_app_state = MagicMock()
+    mock_original_app_state: MagicMock = MagicMock()
     mock_original_app_state.config.auth0.scope = ["openid", "profile", "email"]
     mock_original_app_state.config.auth0_node_agent.scope = [
         "openid",
@@ -599,7 +649,7 @@ def test_get_deployment_token_scope_escalation_test_fails(
         "Scope escalation test failed"
     )
 
-    result = runner.invoke(app, ["deployment-token", "get"])
+    result: Any = runner.invoke(app, ["deployment-token", "get"])
 
     # Should still exit with 1 due to the assertion error
     assert result.exit_code == 1
@@ -610,9 +660,13 @@ def test_get_deployment_token_scope_escalation_test_fails(
 @patch("exalsius.auth.cli.Auth0Service")
 @patch("exalsius.auth.cli.copy.deepcopy")
 def test_get_deployment_token_validate_token_error(
-    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_deepcopy: MagicMock,
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
-    mock_original_app_state = MagicMock()
+    mock_original_app_state: MagicMock = MagicMock()
     mock_get_app_state.return_value = mock_original_app_state
     mock_deepcopy.return_value = MagicMock()
 
@@ -643,7 +697,7 @@ def test_get_deployment_token_validate_token_error(
         "Token validation failed"
     )
 
-    result = runner.invoke(app, ["deployment-token", "get"])
+    result: Any = runner.invoke(app, ["deployment-token", "get"])
 
     assert result.exit_code == 1
     mock_display_manager_instance.display_authentication_error.assert_called_once_with(
@@ -656,9 +710,13 @@ def test_get_deployment_token_validate_token_error(
 @patch("exalsius.auth.cli.Auth0Service")
 @patch("exalsius.auth.cli.copy.deepcopy")
 def test_get_deployment_token_polling_cancelled(
-    mock_deepcopy, mock_auth0_service, mock_display_manager, mock_get_app_state, runner
+    mock_deepcopy: MagicMock,
+    mock_auth0_service: MagicMock,
+    mock_display_manager: MagicMock,
+    mock_get_app_state: MagicMock,
+    runner: CliRunner,
 ):
-    mock_original_app_state = MagicMock()
+    mock_original_app_state: MagicMock = MagicMock()
     mock_get_app_state.return_value = mock_original_app_state
     mock_deepcopy.return_value = MagicMock()
 
@@ -677,7 +735,7 @@ def test_get_deployment_token_polling_cancelled(
     )
     mock_auth_service_instance.poll_for_authentication.side_effect = KeyboardInterrupt
 
-    result = runner.invoke(app, ["deployment-token", "get"])
+    result: Any = runner.invoke(app, ["deployment-token", "get"])
 
     if result.exit_code != 0:
         print_cli_runner_result_details(result)

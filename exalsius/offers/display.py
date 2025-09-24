@@ -1,90 +1,84 @@
+from typing import List
+
 from exalsius_api_client.models.offer import Offer
-from rich.console import Console
-from rich.table import Table
 
-from exalsius.core.base.display import BaseDisplay
+from exalsius.core.base.render import BaseListRenderer, BaseSingleItemRenderer
+from exalsius.core.commons.display import (
+    BaseJsonDisplayManager,
+    BaseTableDisplayManager,
+    ConsoleListDisplay,
+    ConsoleSingleItemDisplay,
+)
+from exalsius.core.commons.render.json import (
+    JsonListStringRenderer,
+    JsonSingleItemStringRenderer,
+)
+from exalsius.core.commons.render.table import (
+    TableListRenderer,
+    TableSingleItemRenderer,
+    get_column,
+)
 
 
-class OffersDisplayManager(BaseDisplay):
-    def __init__(self, console: Console):
-        super().__init__(console)
-
-    def _group_offers_by_gpu_type(
-        self, offers_list: list[Offer]
-    ) -> dict[str, list[Offer]]:
-        offers_by_gpu = {}
-        for offer in offers_list:
-            if offer.gpu_type not in offers_by_gpu:
-                offers_by_gpu[offer.gpu_type] = []
-            offers_by_gpu[offer.gpu_type].append(offer)
-        return offers_by_gpu
-
-    def _build_table(self, title: str, offers: list[Offer]) -> Table:
-        table = Table(
-            title=title,
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
+class JsonOffersDisplayManager(BaseJsonDisplayManager):
+    def __init__(
+        self,
+        offers_list_renderer: BaseListRenderer[Offer, str] = JsonListStringRenderer[
+            Offer
+        ](),
+        offers_single_item_renderer: BaseSingleItemRenderer[
+            Offer, str
+        ] = JsonSingleItemStringRenderer[Offer](),
+    ):
+        super().__init__()
+        self.offers_list_display = ConsoleListDisplay[Offer](
+            renderer=offers_list_renderer
+        )
+        self.offers_single_item_display = ConsoleSingleItemDisplay[Offer](
+            renderer=offers_single_item_renderer
         )
 
-        table.add_column("ID", style="blue", no_wrap=True)
-        table.add_column("GPU", style="green")
-        table.add_column("QTY", style="blue")
-        table.add_column("CLOUD", style="green")
-        table.add_column("INSTANCE TYPE", style="blue")
-        table.add_column("GPU MEM (MiB)", style="green")
-        table.add_column("vCPUs", style="blue")
-        table.add_column("HOST MEM (MiB)", style="green")
-        table.add_column("HOURLY COST", style="blue")
-        table.add_column("REGION", style="green")
+    def display_offers(self, data: List[Offer]):
+        self.offers_list_display.display(data)
 
-        for offer in offers:
-            table.add_row(
-                str(offer.id),
-                str(offer.gpu_type),
-                str(offer.gpu_count),
-                str(offer.cloud_provider),
-                str(offer.instance_type),
-                (
-                    f"{offer.gpu_memory_mib:,}"
-                    if offer.gpu_memory_mib is not None
-                    else "-"
-                ),
-                str(offer.num_vcpus) if offer.num_vcpus is not None else "-",
-                (
-                    f"{offer.main_memory_mib:,}"
-                    if offer.main_memory_mib is not None
-                    else "-"
-                ),
-                (
-                    f"$ {offer.hourly_cost:.3f}"
-                    if offer.hourly_cost is not None
-                    else "-"
-                ),
-                str(offer.region),
-            )
-        return table
+    def display_offer(self, data: Offer):
+        self.offers_single_item_display.display(data)
 
-    def display_offers(
-        self, offers_list: list[Offer], group_by_gpu_type: bool = False
-    ) -> None:
-        """
-        Display the GPU instance prices in a formatted table.
 
-        Args:
-            offers_list (list[Offer]): The list of offers to display
-        """
-        if group_by_gpu_type:
-            offers_by_gpu = self._group_offers_by_gpu_type(offers_list)
-        else:
-            offers_by_gpu = {"GPU Offers": offers_list}
+DEFAULT_COLUMNS_RENDERING_MAP = {
+    "id": get_column("ID", no_wrap=True),
+    "gpu_type": get_column("GPU"),
+    "gpu_count": get_column("Qty"),
+    "cloud_provider": get_column("Cloud"),
+    "instance_type": get_column("Instance Type"),
+    "gpu_memory_mib": get_column("GPU Mem (MiB)"),
+    "num_vcpus": get_column("vCPUs"),
+    "main_memory_mib": get_column("Host Mem (MiB)"),
+    "hourly_cost": get_column("Hourly Cost"),
+    "region": get_column("Region"),
+}
 
-        for gpu_type, offers in offers_by_gpu.items():
-            offers.sort(
-                key=lambda x: (
-                    x.hourly_cost if x.hourly_cost is not None else float("inf")
-                )
-            )
-            table = self._build_table(gpu_type, offers)
 
-            self.console.print(table)
+class TableOffersDisplayManager(BaseTableDisplayManager):
+    def __init__(
+        self,
+        offers_list_renderer: BaseListRenderer[Offer, str] = TableListRenderer[Offer](
+            columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP
+        ),
+        offers_single_item_renderer: BaseSingleItemRenderer[
+            Offer, str
+        ] = TableSingleItemRenderer[Offer](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
+    ):
+        super().__init__()
+        self.offers_list_display = ConsoleListDisplay[Offer](
+            renderer=offers_list_renderer
+        )
+        self.offers_single_item_display = ConsoleSingleItemDisplay[Offer](
+            renderer=offers_single_item_renderer
+        )
+
+    def display_offers(self, data: List[Offer]):
+        self.offers_list_display.display(data)
+
+    def display_offer(self, data: Offer):
+        self.offers_single_item_display.display(data)

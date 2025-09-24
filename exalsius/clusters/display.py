@@ -2,16 +2,20 @@ from typing import List
 
 from exalsius_api_client.models.cluster import Cluster
 
-from exalsius.core.base.models import ErrorDTO
-from exalsius.core.base.render import BaseListRenderer, BaseSingleItemRenderer
+from exalsius.clusters.models import ClusterNodeDTO, ClusterResourcesDTO
+from exalsius.core.base.render import (
+    BaseListRenderer,
+    BaseSingleItemRenderer,
+)
 from exalsius.core.commons.display import (
+    BaseJsonDisplayManager,
+    BaseTableDisplayManager,
     ConsoleListDisplay,
     ConsoleSingleItemDisplay,
 )
 from exalsius.core.commons.render.json import (
-    JsonListRenderer,
-    JsonMessageRenderer,
-    JsonSingleItemRenderer,
+    JsonListStringRenderer,
+    JsonSingleItemStringRenderer,
 )
 from exalsius.core.commons.render.table import (
     TableListRenderer,
@@ -19,68 +23,118 @@ from exalsius.core.commons.render.table import (
     get_column,
 )
 
+# TODO: We probably need a available / occupied resources DTO
 
-class ClusterDisplayManager:
+
+class JsonClusterDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
-        list_renderer: BaseListRenderer[Cluster, str],
-        single_item_renderer: BaseSingleItemRenderer[Cluster, str],
-        info_renderer: BaseSingleItemRenderer[str, str],
-        success_renderer: BaseSingleItemRenderer[str, str],
-        error_renderer: BaseSingleItemRenderer[ErrorDTO, str],
+        cluster_list_renderer: BaseListRenderer[Cluster, str] = JsonListStringRenderer[
+            Cluster
+        ](),
+        cluster_single_item_renderer: BaseSingleItemRenderer[
+            Cluster, str
+        ] = JsonSingleItemStringRenderer[Cluster](),
+        cluster_nodes_list_renderer: BaseListRenderer[
+            ClusterNodeDTO, str
+        ] = JsonListStringRenderer[ClusterNodeDTO](),
+        cluster_resources_list_renderer: BaseListRenderer[
+            ClusterResourcesDTO, str
+        ] = JsonListStringRenderer[ClusterResourcesDTO](),
     ):
-        self.list_display = ConsoleListDisplay[Cluster](renderer=list_renderer)
-        self.single_item_display = ConsoleSingleItemDisplay[Cluster](
-            renderer=single_item_renderer
+        super().__init__()
+        self.cluster_list_display = ConsoleListDisplay[Cluster](
+            renderer=cluster_list_renderer
         )
-        self.info_display = ConsoleSingleItemDisplay[str](renderer=info_renderer)
-        self.success_display = ConsoleSingleItemDisplay[str](renderer=success_renderer)
-        self.error_display = ConsoleSingleItemDisplay[ErrorDTO](renderer=error_renderer)
+        self.cluster_single_item_display = ConsoleSingleItemDisplay[Cluster](
+            renderer=cluster_single_item_renderer
+        )
+        self.cluster_nodes_list_display = ConsoleListDisplay[ClusterNodeDTO](
+            renderer=cluster_nodes_list_renderer
+        )
+        self.cluster_resources_list_display = ConsoleListDisplay[ClusterResourcesDTO](
+            renderer=cluster_resources_list_renderer
+        )
 
     def display_clusters(self, data: List[Cluster]):
-        self.list_display.display(data)
+        self.cluster_list_display.display(data)
 
     def display_cluster(self, data: Cluster):
-        self.single_item_display.display(data)
+        self.cluster_single_item_display.display(data)
 
-    def display_info(self, message: str):
-        self.info_display.display(message)
+    def display_cluster_nodes(self, data: List[ClusterNodeDTO]):
+        self.cluster_nodes_list_display.display(data)
 
-    def display_success(self, message: str):
-        self.success_display.display(message)
-
-    def display_error(self, error: ErrorDTO):
-        self.error_display.display(error)
+    def display_cluster_resources(self, data: List[ClusterResourcesDTO]):
+        self.cluster_resources_list_display.display(data)
 
 
-class JsonClusterDisplayManager(ClusterDisplayManager):
-    def __init__(self):
-        super().__init__(
-            list_renderer=JsonListRenderer[Cluster](),
-            single_item_renderer=JsonSingleItemRenderer[Cluster](),
-            info_renderer=JsonMessageRenderer(message_key="message"),
-            success_renderer=JsonMessageRenderer(message_key="message"),
-            error_renderer=JsonSingleItemRenderer[ErrorDTO](),
+DEFAULT_COLUMNS_RENDERING_MAP = {
+    "id": get_column("ID", no_wrap=True),
+    "name": get_column("Name"),
+    "cluster_status": get_column("Status"),
+    "created_at": get_column("Created At"),
+    "updated_at": get_column("Updated At"),
+}
+
+DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP = {
+    "id": get_column("ID", no_wrap=True),
+    "role": get_column("Role"),
+    "hostname": get_column("Hostname"),
+}
+
+DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP = {
+    "node_id": get_column("Node ID", no_wrap=True),
+    "gpu_type": get_column("GPU Type"),
+    "gpu_count": get_column("GPU Count"),
+    "cpu_cores": get_column("CPU Cores"),
+    "memory_gb": get_column("Memory GB"),
+    "storage_gb": get_column("Storage GB"),
+}
+
+
+class TableClusterDisplayManager(BaseTableDisplayManager):
+    def __init__(
+        self,
+        cluster_list_renderer: BaseListRenderer[Cluster, str] = TableListRenderer[
+            Cluster
+        ](columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP),
+        cluster_single_item_renderer: BaseSingleItemRenderer[
+            Cluster, str
+        ] = TableSingleItemRenderer[Cluster](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
+        cluster_nodes_list_renderer: BaseListRenderer[
+            ClusterNodeDTO, str
+        ] = TableListRenderer[ClusterNodeDTO](
+            columns_rendering_map=DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP
+        ),
+        cluster_resources_list_renderer: BaseListRenderer[
+            ClusterResourcesDTO, str
+        ] = TableListRenderer[ClusterResourcesDTO](
+            columns_rendering_map=DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP
+        ),
+    ):
+        super().__init__()
+        self.cluster_list_display = ConsoleListDisplay[Cluster](
+            renderer=cluster_list_renderer
+        )
+        self.cluster_single_item_display = ConsoleSingleItemDisplay[Cluster](
+            renderer=cluster_single_item_renderer
+        )
+        self.cluster_nodes_list_display = ConsoleListDisplay[ClusterNodeDTO](
+            renderer=cluster_nodes_list_renderer
+        )
+        self.cluster_resources_list_display = ConsoleListDisplay[ClusterResourcesDTO](
+            renderer=cluster_resources_list_renderer
         )
 
+    def display_clusters(self, data: List[Cluster]):
+        self.cluster_list_display.display(data)
 
-class TableClusterDisplayManager(ClusterDisplayManager):
-    def __init__(self):
-        columns_rendering_map = {
-            "id": get_column("ID", no_wrap=True),
-            "name": get_column("Name"),
-            "cluster_status": get_column("Status"),
-            "created_at": get_column("Created At"),
-            "updated_at": get_column("Updated At"),
-        }
-        super().__init__(
-            list_renderer=TableListRenderer[Cluster](
-                columns_rendering_map=columns_rendering_map
-            ),
-            single_item_renderer=TableSingleItemRenderer[Cluster](
-                columns_map=columns_rendering_map
-            ),
-            info_renderer=JsonMessageRenderer(message_key="message"),
-            success_renderer=JsonMessageRenderer(message_key="message"),
-            error_renderer=JsonSingleItemRenderer[ErrorDTO](),
-        )
+    def display_cluster(self, data: Cluster):
+        self.cluster_single_item_display.display(data)
+
+    def display_cluster_nodes(self, data: List[ClusterNodeDTO]):
+        self.cluster_nodes_list_display.display(data)
+
+    def display_cluster_resources(self, data: List[ClusterResourcesDTO]):
+        self.cluster_resources_list_display.display(data)

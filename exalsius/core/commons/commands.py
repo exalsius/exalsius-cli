@@ -1,9 +1,9 @@
 from abc import abstractmethod
-from typing import Any, Dict, Generic, Type
+from typing import Any, Dict, Type
 
 import requests
 
-from exalsius.core.base.commands import BaseCommand, T
+from exalsius.core.base.commands import BaseCommand
 from exalsius.core.commons.models import (
     SaveFileRequestDTO,
     SaveFileResponseDTO,
@@ -11,7 +11,7 @@ from exalsius.core.commons.models import (
 )
 
 
-class PostRequestCommand(BaseCommand[T], Generic[T]):
+class PostRequestCommand(BaseCommand):
     __error_message_template = "unexpected response from post request to {}"
 
     @abstractmethod
@@ -22,13 +22,13 @@ class PostRequestCommand(BaseCommand[T], Generic[T]):
     def _get_payload(self) -> Dict[str, Any]:
         pass
 
-    def _execute_post_request(self, model: Type[T]) -> T:
+    def _execute_post_request(self, model: Type[Any]) -> Any:
         url: str = self._get_url()
         payload: Dict[str, Any] = self._get_payload()
         response: requests.Response = requests.post(url, data=payload)
         response.raise_for_status()
         if response.headers.get("Content-Type") == "application/json":
-            data: T = self._deserialize(response.json(), model)
+            data: Any = self._deserialize(response.json(), model)
         elif (
             response.status_code == 204 or response.headers.get("Content-Length") == "0"
         ):
@@ -53,7 +53,7 @@ class PostRequestCommand(BaseCommand[T], Generic[T]):
         response.raise_for_status()
 
 
-class SaveFileCommand(BaseCommand[SaveFileResponseDTO]):
+class SaveFileCommand(BaseCommand):
     def __init__(self, request: SaveFileRequestDTO):
         self.request: SaveFileRequestDTO = request
 

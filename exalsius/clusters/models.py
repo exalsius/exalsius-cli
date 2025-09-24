@@ -8,6 +8,7 @@ from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
+from exalsius_api_client.models.resource_pool import ResourcePool
 from pydantic import BaseModel, Field
 
 from exalsius.core.base.models import BaseRequestDTO
@@ -159,3 +160,7 @@ class ClustersDownloadKubeConfigRequestDTO(ClustersBaseRequestDTO):
 
 class ClusterNodeDTO(BaseNode):
     role: str = Field(..., description="The role of the node")
+
+
+class ClusterResourcesDTO(ResourcePool):
+    node_id: str = Field(..., description="The ID of the node")

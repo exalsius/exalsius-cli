@@ -1,17 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, Type, TypeVar
-
-from pydantic import BaseModel
+from typing import Any, Dict, Type
 
 from exalsius.core.base.models import DeserializationError
 
-T = TypeVar("T", bound=BaseModel)
 
-
-class BaseCommand(ABC, Generic[T]):
+class BaseCommand(ABC):
     """Base command with generic return type."""
 
-    def _deserialize(self, raw_data: Dict[str, Any], model: Type[T]) -> T:
+    def _deserialize(self, raw_data: Dict[str, Any], model: Type[Any]) -> Any:
         try:
             return model(**raw_data)
         except Exception as e:
@@ -20,6 +16,6 @@ class BaseCommand(ABC, Generic[T]):
             )
 
     @abstractmethod
-    def execute(self) -> T:
+    def execute(self) -> Any:
         """Execute the command and return a Pydantic model or error."""
         pass
