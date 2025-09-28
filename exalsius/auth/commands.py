@@ -60,7 +60,12 @@ class Auth0FetchDeviceCodeCommand(PostRequestCommand):
         try:
             return self._execute_post_request(Auth0DeviceCodeAuthenticationDTO)
         except requests.HTTPError as e:
-            raise Auth0APIError(e)
+            raise Auth0APIError(
+                error=e.response.json().get("error", "unknown error"),
+                status_code=e.response.status_code,
+                error_description=e.response.json().get("error_description", str(e)),
+                response=e.response,
+            ) from e
 
 
 class Auth0PollForAuthenticationCommand(PostRequestCommand):
@@ -121,10 +126,9 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
                         if error == "authorization_pending":
                             continue
                         else:
-                            raise Auth0APIError(
-                                e.response.json().get("error", "unknown error"),
-                                e.response.status_code,
-                                e.response.json().get("error_description", ""),
+                            raise Auth0AuthenticationError(
+                                message=f"failed to login. reason: {e.response.json().get('error_description', e.response.json().get('error', 'unknown error'))}",
+                                error_code=e.response.json().get("error"),
                             )
                     else:
                         last_error = e
@@ -141,6 +145,7 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
                                 e.response.json().get("error", "unknown error"),
                                 e.response.status_code,
                                 e.response.json().get("error_description", ""),
+                                response=e.response,
                             )
                     else:
                         last_error = e
@@ -281,10 +286,11 @@ class Auth0RevokeTokenCommand(PostRequestCommand):
             self._execute_post_request_empty_response()
         except requests.HTTPError as e:
             raise Auth0APIError(
-                e.response.json().get("error", "unknown error"),
-                e.response.status_code,
-                e.response.json().get("error_description", ""),
-            )
+                error=e.response.json().get("error", "unknown error"),
+                status_code=e.response.status_code,
+                error_description=e.response.json().get("error_description", ""),
+                response=e.response,
+            ) from e
         except Exception as e:
             raise Auth0AuthenticationError(
                 message=f"unexpected error while revoking token: {e}",

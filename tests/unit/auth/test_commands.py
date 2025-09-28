@@ -701,6 +701,7 @@ class TestAuth0RevokeTokenCommand:
         with pytest.raises(Auth0APIError) as excinfo:
             command.execute()
 
+        assert excinfo.value.response
         assert excinfo.value.error == "some_error"
         assert excinfo.value.status_code == 400
         assert excinfo.value.error_description == "some_description"
@@ -715,11 +716,12 @@ class TestAuth0RevokeTokenCommand:
         command: Auth0RevokeTokenCommand = Auth0RevokeTokenCommand(request)
         mock_post.side_effect = Exception("Some generic error")
 
-        with pytest.raises(Auth0APIError) as excinfo:
+        with pytest.raises(Auth0AuthenticationError) as excinfo:
             command.execute()
-        assert excinfo.value.error == "unexpected error while revoking token"
-        assert excinfo.value.status_code == 500
-        assert str(excinfo.value.error_description) == "Some generic error"
+        assert (
+            excinfo.value.message
+            == "unexpected error while revoking token: Some generic error"
+        )
 
 
 @patch("exalsius.auth.commands.keyring")

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
+import requests
 from pydantic import BaseModel, Field
 from requests import HTTPError
 
@@ -23,7 +24,18 @@ class KeyringError(AuthenticationError):
 
 
 class Auth0APIError(HTTPError):
-    pass
+    def __init__(
+        self,
+        error: str,
+        status_code: int,
+        error_description: str,
+        response: Optional[requests.Response] = None,
+    ):
+        self.error = error
+        self.status_code = status_code
+        self.error_description = error_description
+        message = f"[{error}] {status_code}: {error_description}"
+        super().__init__(message, response=response)
 
 
 class Auth0AuthenticationError(AuthenticationError):
