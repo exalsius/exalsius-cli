@@ -3,9 +3,6 @@ from exalsius_api_client.models.node_import_response import NodeImportResponse
 from exalsius_api_client.models.node_import_ssh_request import NodeImportSshRequest
 from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.nodes_list_response import NodesListResponse
-from exalsius_api_client.models.ssh_key_create_request import SshKeyCreateRequest
-from exalsius_api_client.models.ssh_key_create_response import SshKeyCreateResponse
-from exalsius_api_client.models.ssh_keys_list_response import SshKeysListResponse
 
 from exalsius.core.base.commands import BaseCommand
 from exalsius.nodes.models import (
@@ -14,14 +11,10 @@ from exalsius.nodes.models import (
     NodesImportFromOfferRequestDTO,
     NodesImportSSHRequestDTO,
     NodesListRequestDTO,
-    SSHKeysAddRequestDTO,
-    SSHKeysDeleteRequestDTO,
-    SSHKeysDeleteResultDTO,
-    SSHKeysListRequestDTO,
 )
 
 
-class ListNodesCommand(BaseCommand[NodesListResponse]):
+class ListNodesCommand(BaseCommand):
     def __init__(
         self,
         request: NodesListRequestDTO,
@@ -34,7 +27,7 @@ class ListNodesCommand(BaseCommand[NodesListResponse]):
         )
 
 
-class GetNodeCommand(BaseCommand[NodeResponse]):
+class GetNodeCommand(BaseCommand):
     def __init__(
         self,
         request: NodesGetRequestDTO,
@@ -45,7 +38,7 @@ class GetNodeCommand(BaseCommand[NodeResponse]):
         return self.request.api.describe_node(self.request.node_id)
 
 
-class DeleteNodeCommand(BaseCommand[NodeDeleteResponse]):
+class DeleteNodeCommand(BaseCommand):
     def __init__(
         self,
         request: NodesDeleteRequestDTO,
@@ -56,7 +49,7 @@ class DeleteNodeCommand(BaseCommand[NodeDeleteResponse]):
         return self.request.api.delete_node(self.request.node_id)
 
 
-class ImportSSHNodeCommand(BaseCommand[NodeImportResponse]):
+class ImportSSHNodeCommand(BaseCommand):
     def __init__(
         self,
         request: NodesImportSSHRequestDTO,
@@ -74,7 +67,7 @@ class ImportSSHNodeCommand(BaseCommand[NodeImportResponse]):
         )
 
 
-class ImportFromOfferCommand(BaseCommand[NodeImportResponse]):
+class ImportFromOfferCommand(BaseCommand):
     def __init__(
         self,
         request: NodesImportFromOfferRequestDTO,
@@ -87,33 +80,3 @@ class ImportFromOfferCommand(BaseCommand[NodeImportResponse]):
             hostname=self.request.hostname,
             amount=self.request.amount,
         )
-
-
-class ListSSHKeysCommand(BaseCommand[SshKeysListResponse]):
-    def __init__(self, request: SSHKeysListRequestDTO):
-        self.request: SSHKeysListRequestDTO = request
-
-    def execute(self) -> SshKeysListResponse:
-        return self.request.api.list_ssh_keys()
-
-
-class AddSSHKeyCommand(BaseCommand[SshKeyCreateResponse]):
-    def __init__(self, request: SSHKeysAddRequestDTO):
-        self.request: SSHKeysAddRequestDTO = request
-
-    def execute(self) -> SshKeyCreateResponse:
-        return self.request.api.add_ssh_key(
-            SshKeyCreateRequest(
-                name=self.request.name,
-                private_key_b64=self.request.private_key_base64,
-            )
-        )
-
-
-class DeleteSSHKeyCommand(BaseCommand[SSHKeysDeleteResultDTO]):
-    def __init__(self, request: SSHKeysDeleteRequestDTO):
-        self.request: SSHKeysDeleteRequestDTO = request
-
-    def execute(self) -> SSHKeysDeleteResultDTO:
-        self.request.api.delete_ssh_key(self.request.id)
-        return SSHKeysDeleteResultDTO(success=True)

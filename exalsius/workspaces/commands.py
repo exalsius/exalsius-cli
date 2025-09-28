@@ -12,7 +12,7 @@ from exalsius.workspaces.models import (
 )
 
 
-class ListWorkspacesCommand(BaseCommand[WorkspacesListResponse]):
+class ListWorkspacesCommand(BaseCommand):
     def __init__(self, request: WorkspacesListRequestDTO):
         self.request: WorkspacesListRequestDTO = request
 
@@ -20,7 +20,7 @@ class ListWorkspacesCommand(BaseCommand[WorkspacesListResponse]):
         return self.request.api.list_workspaces(cluster_id=self.request.cluster_id)
 
 
-class GetWorkspaceCommand(BaseCommand[WorkspaceResponse]):
+class GetWorkspaceCommand(BaseCommand):
     def __init__(self, request: GetWorkspaceRequestDTO):
         self.request: GetWorkspaceRequestDTO = request
 
@@ -30,7 +30,7 @@ class GetWorkspaceCommand(BaseCommand[WorkspaceResponse]):
         )
 
 
-class CreateWorkspaceCommand(BaseCommand[WorkspaceCreateResponse]):
+class CreateWorkspaceCommand(BaseCommand):
     def __init__(
         self,
         request: CreateWorkspaceRequestDTO,
@@ -73,7 +73,7 @@ class CreateWorkspaceDilocoCommand(CreateWorkspaceCommand):
         super().__init__(request)
 
 
-class DeleteWorkspaceCommand(BaseCommand[WorkspaceDeleteResponse]):
+class DeleteWorkspaceCommand(BaseCommand):
     def __init__(self, request: DeleteWorkspaceRequestDTO):
         self.request: DeleteWorkspaceRequestDTO = request
 

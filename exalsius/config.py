@@ -21,6 +21,9 @@ CFG_DIR = Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "exalsi
 CFG_FILE = CFG_DIR / "config.yaml"
 CONFIG_LOCK_FILE = CFG_DIR / "config.lock"
 
+CONFIG_ENV_PREFIX = "EXLS_"
+CONFIG_ENV_NESTED_DELIMITER = "__"
+
 
 class Auth0Config(BaseSettings):
     domain: str = Field(
@@ -110,8 +113,8 @@ class AppConfig(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_prefix="EXLS_",
-        env_nested_delimiter="__",
+        env_prefix=CONFIG_ENV_PREFIX,
+        env_nested_delimiter=CONFIG_ENV_NESTED_DELIMITER,
         extra="ignore",
     )
 
@@ -170,15 +173,15 @@ class ExalsiusYamlConfig(PydanticBaseSettingsSource):
         return None, field_name, False
 
 
-_APP_CONFIG: Optional[AppConfig] = None
+__app_config: Optional[AppConfig] = None
 
 
 def load_config(force_reload: bool = False) -> AppConfig:
     """Loads the application configuration, implemented as a singleton."""
-    global _APP_CONFIG
-    if _APP_CONFIG is None or force_reload:
-        _APP_CONFIG = AppConfig()
-    return _APP_CONFIG
+    global __app_config
+    if __app_config is None or force_reload:
+        __app_config = AppConfig()
+    return __app_config
 
 
 def save_config(cfg: AppConfig) -> None:

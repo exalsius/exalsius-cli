@@ -3,17 +3,26 @@ from typing import Optional
 
 import typer
 
-from exalsius import __version__, clusters
+from exalsius import (
+    __version__,
+    clusters,
+)
 from exalsius import config as cli_config
-from exalsius import nodes, offers, services, workspaces
-from exalsius.auth.cli import deployment_token_app, login, logout
+from exalsius import (
+    management,
+    nodes,
+    offers,
+    services,
+    workspaces,
+)
+from exalsius.auth.cli import login, logout
 from exalsius.auth.service import Auth0Service
 from exalsius.core.commons.models import ServiceError
 from exalsius.logging import setup_logging
 from exalsius.state import AppState
 from exalsius.utils import commons as utils
 
-NON_AUTH_COMMANDS = ["login", "logout", "deployment-token"]
+NON_AUTH_COMMANDS = ["login", "logout"]
 
 
 app = typer.Typer()
@@ -55,9 +64,9 @@ app.add_typer(
 )
 
 app.add_typer(
-    deployment_token_app,
-    name="deployment-token",
-    help="Manage deployment tokens",
+    management.cli.management_app,
+    name="management",
+    help="Manage management resources",
 )
 
 
@@ -68,7 +77,7 @@ def _version_callback(value: bool) -> None:
 
 
 @app.callback(invoke_without_command=True)
-def __root(
+def __root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
     version: Optional[bool] = typer.Option(
         None,

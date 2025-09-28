@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -17,12 +19,19 @@ class UnexpectedResponseWarning(ServiceWarning):
 
 
 class ServiceError(Exception):
-    def __init__(self, message: str):
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        error_type: Optional[str] = None,
+    ):
         super().__init__(message)
-        self.message = message
+        self.error_type: str = error_type or "service_error"
+        self.message: str = message
+        self.error_code: Optional[str] = error_code
 
     def __str__(self) -> str:
-        return f"{self.message}"
+        return f"error_type: {self.error_type}, error_code: {self.error_code}, message: {self.message}"
 
 
 class SaveFileRequestDTO(BaseModel):

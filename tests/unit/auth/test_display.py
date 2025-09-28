@@ -1,21 +1,31 @@
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
+from rich.console import Console
 
 from exalsius.auth.display import AuthDisplayManager
 
 
-@pytest.fixture
-def mock_console():
-    return MagicMock()
+def _get_printed_output(mock_console: MagicMock) -> str:
+    """Helper to get all printed text from a mock console."""
+    output: list[str] = []
+    for call_args in mock_console.print.call_args_list:
+        if call_args.args:
+            output.append(str(call_args.args[0]))
+    return "\\n".join(output)
 
 
 @pytest.fixture
-def display_manager(mock_console):
-    return AuthDisplayManager(mock_console)
+def mock_console() -> Generator[MagicMock, None, None]:
+    console_mock = MagicMock(spec=Console)
+    with patch("exalsius.core.commons.display.Console", return_value=console_mock):
+        yield console_mock
 
 
-def test_display_device_code_polling_started(display_manager, mock_console):
+def test_display_device_code_polling_started(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
+
     verification_uri_complete = "https://example.com/verify?code=123"
     user_code = "ABCD-EFGH"
 
@@ -27,16 +37,19 @@ def test_display_device_code_polling_started(display_manager, mock_console):
             verification_uri_complete, user_code
         )
 
-        assert mock_console.print.call_count > 5
-        mock_console.print.assert_any_call(
-            "[blue]Scan this QR code with your smartphone to complete login:[/blue]"
+        printed_output = _get_printed_output(mock_console)
+
+        assert (
+            "Scan this QR code with your smartphone to complete login:"
+            in printed_output
         )
         mock_qr_instance.print_ascii.assert_called_once_with(invert=True)
-        mock_console.print.assert_any_call(f"[blue]{verification_uri_complete}[/blue]")
-        mock_console.print.assert_any_call(f"[blue]{user_code}[/blue]")
+        assert verification_uri_complete in printed_output
+        assert user_code in printed_output
 
 
-def test_display_device_code_polling_started_via_browser(display_manager, mock_console):
+def test_display_device_code_polling_started_via_browser(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     verification_uri_complete = "https://example.com/verify?code=123"
     user_code = "ABCD-EFGH"
 
@@ -44,87 +57,87 @@ def test_display_device_code_polling_started_via_browser(display_manager, mock_c
         verification_uri_complete, user_code
     )
 
-    assert mock_console.print.call_count > 4
-    mock_console.print.assert_any_call(
-        "[blue]Your browser should have been opened.[/blue]"
-    )
-    mock_console.print.assert_any_call(f"[blue]{verification_uri_complete}[/blue]")
-    mock_console.print.assert_any_call(f"[blue]{user_code}[/blue]")
+    printed_output = _get_printed_output(mock_console)
+    assert "Your browser should have been opened." in printed_output
+    assert verification_uri_complete in printed_output
+    assert user_code in printed_output
 
 
-def test_display_device_code_polling_cancelled(display_manager, mock_console):
+def test_display_device_code_polling_cancelled(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     display_manager.display_device_code_polling_cancelled()
-    mock_console.print.assert_called_once_with("[blue]Login canceled via Ctrl+C[/blue]")
+
+    printed_output = _get_printed_output(mock_console)
+    assert "Login canceled via Ctrl+C" in printed_output
 
 
-def test_display_authentication_error(display_manager, mock_console):
+def test_display_authentication_error(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     error_message = "Invalid credentials"
     display_manager.display_authentication_error(error_message)
-    mock_console.print.assert_called_once_with(
-        f"[red]Login error: {error_message}[/red]"
-    )
+
+    printed_output = _get_printed_output(mock_console)
+    assert f"Login error: {error_message}" in printed_output
 
 
-def test_display_authentication_success_with_email(display_manager, mock_console):
+def test_display_authentication_success_with_email(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     email = "test@example.com"
     sub = "subject"
     display_manager.display_authentication_success(email, sub)
-    mock_console.print.assert_any_call(
-        f"[green]You are successfully logged in as '{email}'[/green]"
-    )
-    mock_console.print.assert_any_call(
-        "[green]Let's start setting up your workspaces![/green]"
-    )
+
+    printed_output = _get_printed_output(mock_console)
+    assert f"You are successfully logged in as '{email}'" in printed_output
+    assert "Let's start setting up your workspaces!" in printed_output
 
 
-def test_display_authentication_success_with_sub(display_manager, mock_console):
+def test_display_authentication_success_with_sub(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     email = None
     sub = "subject"
     display_manager.display_authentication_success(email, sub)
-    mock_console.print.assert_any_call(
-        f"[green]You are successfully logged in as '{sub}'[/green]"
-    )
-    mock_console.print.assert_any_call(
-        "[green]Let's start setting up your workspaces![/green]"
-    )
+
+    printed_output = _get_printed_output(mock_console)
+    assert f"You are successfully logged in as '{sub}'" in printed_output
+    assert "Let's start setting up your workspaces!" in printed_output
 
 
-def test_display_authentication_success_with_none(display_manager, mock_console):
+def test_display_authentication_success_with_none(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     email = None
     sub = None
     display_manager.display_authentication_success(email, sub)
-    mock_console.print.assert_any_call(
-        "[green]You are successfully logged in as 'unknown'[/green]"
-    )
-    mock_console.print.assert_any_call(
-        "[green]Let's start setting up your workspaces![/green]"
-    )
+
+    printed_output = _get_printed_output(mock_console)
+    assert "You are successfully logged in as 'unknown'" in printed_output
+    assert "Let's start setting up your workspaces!" in printed_output
 
 
-def test_display_logout_success(display_manager, mock_console):
+def test_display_logout_success(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     display_manager.display_logout_success()
-    mock_console.print.assert_called_once_with(
-        "[green]Logged out successfully.[/green]"
-    )
+
+    printed_output = _get_printed_output(mock_console)
+    assert "Logged out successfully." in printed_output
 
 
-def test_display_not_logged_in(display_manager, mock_console):
+def test_display_not_logged_in(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     display_manager.display_not_logged_in()
-    mock_console.print.assert_called_once_with("[blue]You are not logged in.[/blue]")
+
+    printed_output = _get_printed_output(mock_console)
+    assert "You are not logged in." in printed_output
 
 
-def test_display_node_agent_tokens_request_success(display_manager, mock_console):
+def test_display_deployment_token_request_success(mock_console: MagicMock):
+    display_manager = AuthDisplayManager()
     access_token = "test_access_token_12345"
 
     display_manager.display_deployment_token_request_success(
         access_token=access_token,
     )
 
-    # Verify the success message
-    mock_console.print.assert_any_call(
-        "[green]Request for deployment token successful![/green]"
-    )
-
-    # Verify access token display
-    mock_console.print.assert_any_call("[green]Your deployment token is:[/green]")
-    mock_console.print.assert_any_call(f"[blue]{access_token}[/blue]")
+    printed_output = _get_printed_output(mock_console)
+    assert "Request for deployment token successful!" in printed_output
+    assert "Your deployment token is:" in printed_output
+    assert access_token in printed_output

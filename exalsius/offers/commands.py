@@ -4,7 +4,7 @@ from exalsius.core.base.commands import BaseCommand
 from exalsius.offers.models import OffersListRequestDTO
 
 
-class ListOffersCommand(BaseCommand[OffersListResponse]):
+class ListOffersCommand(BaseCommand):
     def __init__(
         self,
         request: OffersListRequestDTO,

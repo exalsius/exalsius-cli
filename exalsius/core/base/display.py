@@ -1,25 +1,52 @@
-from rich.console import Console
+from typing import List, Protocol
 
-from exalsius.utils.theme import custom_theme
+from exalsius.core.base.render import (
+    BaseListRenderer,
+    BaseSingleItemRenderer,
+    T_RenderInput_Contra,
+    T_RenderInput_Inv,
+    T_RenderOutput_Cov,
+)
 
 
-class BaseDisplayManager:
-    def __init__(self, console: Console):
-        self.console = console
-        self.theme = custom_theme
+class BaseListDisplay(Protocol[T_RenderInput_Inv, T_RenderOutput_Cov]):
+    """Base display manager for lists of items."""
 
-    def print_error(self, message: str) -> None:
-        """Print an error message."""
-        self.console.print(f"[red]{message}[/red]")
+    @property
+    def renderer(self) -> BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov]: ...
 
-    def print_warning(self, message: str) -> None:
-        """Print a warning message."""
-        self.console.print(f"[yellow]{message}[/yellow]")
+    def display(self, data: List[T_RenderInput_Inv]) -> None: ...
 
-    def print_success(self, message: str) -> None:
-        """Print a success message."""
-        self.console.print(f"[green]{message}[/green]")
 
-    def print_info(self, message: str) -> None:
-        """Print an info message."""
-        self.console.print(f"[blue]{message}[/blue]")
+class BaseSingleItemDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
+    """Base display manager for single items."""
+
+    @property
+    def renderer(
+        self,
+    ) -> BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov]: ...
+
+    def display(self, data: T_RenderInput_Contra) -> None: ...
+
+
+class BaseConfirmationDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
+    """Base display manager for confirmation items."""
+
+    @property
+    def renderer(
+        self,
+    ) -> BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov]: ...
+
+    def display(self, data: T_RenderInput_Contra) -> bool: ...
+
+
+class BaseSpinnerDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
+    """Base display manager for spinner items."""
+
+    @property
+    def renderer(
+        self,
+    ) -> BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov]: ...
+
+    def start_display(self, data: T_RenderInput_Contra) -> None: ...
+    def stop_display(self) -> None: ...

@@ -2,11 +2,11 @@ from exalsius_api_client.models.cluster_template_list_response import (
     ClusterTemplateListResponse,
 )
 
-from exalsius.cluster_templates.models import ListClusterTemplatesRequestDTO
 from exalsius.core.base.commands import BaseCommand
+from exalsius.management.cluster_templates.models import ListClusterTemplatesRequestDTO
 
 
-class ListClusterTemplatesCommand(BaseCommand[ClusterTemplateListResponse]):
+class ListClusterTemplatesCommand(BaseCommand):
     def __init__(self, request: ListClusterTemplatesRequestDTO):
         self.request: ListClusterTemplatesRequestDTO = request
 

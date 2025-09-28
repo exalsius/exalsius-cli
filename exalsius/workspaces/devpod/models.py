@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar
 
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import Field
@@ -20,7 +20,7 @@ class DevPodWorkspaceVariablesDTO(BaseSettings):
 
 
 class DevPodWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
-    name: Literal["vscode-devcontainer-template"] = "vscode-devcontainer-template"
+    name: ClassVar[str] = "vscode-devcontainer-template"
     variables: DevPodWorkspaceVariablesDTO = Field(
         ..., description="The variables of the template"
     )

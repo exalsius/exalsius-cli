@@ -13,7 +13,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
-from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
 
 from exalsius.clusters.models import (
     ClustersAddNodeRequestDTO,
@@ -26,12 +25,11 @@ from exalsius.clusters.models import (
     ClustersListRequestDTO,
     ClustersNodesRequestDTO,
     ClustersResourcesRequestDTO,
-    ListCloudCredentialsRequestDTO,
 )
 from exalsius.core.base.commands import BaseCommand
 
 
-class ListClustersCommand(BaseCommand[ClustersListResponse]):
+class ListClustersCommand(BaseCommand):
     def __init__(self, request: ClustersListRequestDTO):
         self.request: ClustersListRequestDTO = request
 
@@ -39,7 +37,7 @@ class ListClustersCommand(BaseCommand[ClustersListResponse]):
         return self.request.api.list_clusters(self.request.status)
 
 
-class GetClusterCommand(BaseCommand[ClusterResponse]):
+class GetClusterCommand(BaseCommand):
     def __init__(self, request: ClustersGetRequestDTO):
         self.request: ClustersGetRequestDTO = request
 
@@ -47,7 +45,7 @@ class GetClusterCommand(BaseCommand[ClusterResponse]):
         return self.request.api.describe_cluster(self.request.cluster_id)
 
 
-class DeleteClusterCommand(BaseCommand[ClusterDeleteResponse]):
+class DeleteClusterCommand(BaseCommand):
     def __init__(self, request: ClustersDeleteRequestDTO):
         self.request: ClustersDeleteRequestDTO = request
 
@@ -55,7 +53,7 @@ class DeleteClusterCommand(BaseCommand[ClusterDeleteResponse]):
         return self.request.api.delete_cluster(self.request.cluster_id)
 
 
-class CreateClusterCommand(BaseCommand[ClusterCreateResponse]):
+class CreateClusterCommand(BaseCommand):
     def __init__(
         self,
         request: ClustersCreateRequestDTO,
@@ -66,7 +64,7 @@ class CreateClusterCommand(BaseCommand[ClusterCreateResponse]):
         return self.request.api.create_cluster(self.request.to_api_model())
 
 
-class DeployClusterCommand(BaseCommand[ClusterDeployResponse]):
+class DeployClusterCommand(BaseCommand):
     def __init__(self, request: ClustersDeployRequestDTO):
         self.request: ClustersDeployRequestDTO = request
 
@@ -74,7 +72,7 @@ class DeployClusterCommand(BaseCommand[ClusterDeployResponse]):
         return self.request.api.deploy_cluster(self.request.cluster_id)
 
 
-class GetClusterNodesCommand(BaseCommand[ClusterNodesResponse]):
+class GetClusterNodesCommand(BaseCommand):
     def __init__(self, request: ClustersNodesRequestDTO):
         self.request: ClustersNodesRequestDTO = request
 
@@ -82,7 +80,7 @@ class GetClusterNodesCommand(BaseCommand[ClusterNodesResponse]):
         return self.request.api.get_nodes(self.request.cluster_id)
 
 
-class AddClusterNodeCommand(BaseCommand[ClusterNodesResponse]):
+class AddClusterNodeCommand(BaseCommand):
     def __init__(
         self,
         request: ClustersAddNodeRequestDTO,
@@ -95,7 +93,7 @@ class AddClusterNodeCommand(BaseCommand[ClusterNodesResponse]):
         )
 
 
-class DeleteClusterNodeCommand(BaseCommand[ClusterNodeRemoveResponse]):
+class DeleteClusterNodeCommand(BaseCommand):
     def __init__(self, request: ClustersDeleteNodeRequestDTO):
         self.request: ClustersDeleteNodeRequestDTO = request
 
@@ -105,7 +103,7 @@ class DeleteClusterNodeCommand(BaseCommand[ClusterNodeRemoveResponse]):
         )
 
 
-class GetClusterResourcesCommand(BaseCommand[ClusterResourcesListResponse]):
+class GetClusterResourcesCommand(BaseCommand):
     def __init__(self, request: ClustersResourcesRequestDTO):
         self.request: ClustersResourcesRequestDTO = request
 
@@ -113,15 +111,7 @@ class GetClusterResourcesCommand(BaseCommand[ClusterResourcesListResponse]):
         return self.request.api.get_cluster_resources(self.request.cluster_id)
 
 
-class ListCloudCredentialsCommand(BaseCommand[CredentialsListResponse]):
-    def __init__(self, request: ListCloudCredentialsRequestDTO):
-        self.request: ListCloudCredentialsRequestDTO = request
-
-    def execute(self) -> CredentialsListResponse:
-        return self.request.api.list_credentials()
-
-
-class DownloadKubeConfigCommand(BaseCommand[ClusterKubeconfigResponse]):
+class DownloadKubeConfigCommand(BaseCommand):
     def __init__(self, request: ClustersDownloadKubeConfigRequestDTO):
         self.request: ClustersDownloadKubeConfigRequestDTO = request
 
