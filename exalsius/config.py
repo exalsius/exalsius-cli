@@ -173,15 +173,15 @@ class ExalsiusYamlConfig(PydanticBaseSettingsSource):
         return None, field_name, False
 
 
-_APP_CONFIG: Optional[AppConfig] = None
+__app_config: Optional[AppConfig] = None
 
 
 def load_config(force_reload: bool = False) -> AppConfig:
     """Loads the application configuration, implemented as a singleton."""
-    global _APP_CONFIG
-    if _APP_CONFIG is None or force_reload:
-        _APP_CONFIG = AppConfig()
-    return _APP_CONFIG
+    global __app_config
+    if __app_config is None or force_reload:
+        __app_config = AppConfig()
+    return __app_config
 
 
 def save_config(cfg: AppConfig) -> None:

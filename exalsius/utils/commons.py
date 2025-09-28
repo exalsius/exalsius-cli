@@ -3,7 +3,7 @@ import sys
 from typing import cast
 
 import typer
-from coolname import generate_slug
+from coolname import generate_slug  # type: ignore
 
 from exalsius.config import AppConfig
 from exalsius.core.commons.models import UnauthorizedError
