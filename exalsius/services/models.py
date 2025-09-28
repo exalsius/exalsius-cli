@@ -1,56 +1,40 @@
-from enum import StrEnum
+from typing import ClassVar
 
 from exalsius_api_client.api.services_api import ServicesApi
 from exalsius_api_client.models.service_deployment_create_request import (
     ServiceDeploymentCreateRequest,
 )
 from exalsius_api_client.models.service_template import ServiceTemplate
-from pydantic import Field
+from pydantic import BaseModel, Field
+from pydantic.alias_generators import to_camel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from exalsius.core.base.models import BaseRequestDTO
 
 
-class ServiceTemplates(StrEnum):
-    NVIDIA_OPERATOR = "nvidia-operator"
+class BaseServiceTemplateDTO(BaseModel):
+    name: ClassVar[str] = ""
 
-    def create_service_template(self) -> ServiceTemplate:
-        match self:
-            case ServiceTemplates.NVIDIA_OPERATOR:
-                return ServiceTemplate(
-                    name="gpu-operator-24-9-2",
-                    description="nvidia gpu operator",
-                    variables={
-                        "gpu-operator": {
-                            "operator": {
-                                "defaultRuntime": "containerd",
-                            },
-                            "toolkit": {
-                                "env": [
-                                    {
-                                        "name": "CONTAINERD_CONFIG",
-                                        "value": "/etc/k0s/containerd.d/nvidia.toml",
-                                    },
-                                    {
-                                        "name": "CONTAINERD_SOCKET",
-                                        "value": "/run/k0s/containerd.sock",
-                                    },
-                                    {
-                                        "name": "CONTAINERD_RUNTIME_CLASS",
-                                        "value": "nvidia",
-                                    },
-                                ]
-                            },
-                            "dcgmExporter": {
-                                "serviceMonitor": {
-                                    "enabled": True,
-                                    "interval": "15s",
-                                    "honorLabels": True,
-                                    "additionalLabels": {},
-                                }
-                            },
-                        }
-                    },
-                )
+    def to_api_model(self) -> ServiceTemplate: ...
+
+
+class NvidiaOperatorVariablesDTO(BaseSettings):
+    # This is a placeholder for the variables of the nvidia operator service template
+    model_config = SettingsConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class NvidiaOperatorServiceTemplateDTO(BaseServiceTemplateDTO):
+    name: ClassVar[str] = "gpu-operator-24-9-2"
+
+    variables: NvidiaOperatorVariablesDTO = Field(
+        ..., description="The variables of the nvidia operator service template"
+    )
+
+    def to_api_model(self) -> ServiceTemplate:
+        return ServiceTemplate(
+            name=self.name,
+            variables=self.variables.model_dump(by_alias=True, exclude_none=True),
+        )
 
 
 class ServicesBaseRequestDTO(BaseRequestDTO):
@@ -76,14 +60,12 @@ class ServicesDeleteRequestDTO(ServicesSingleServiceRequestDTO):
 class ServicesDeployRequestDTO(ServicesBaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster")
     name: str = Field(..., description="The name of the service")
-    service_template: ServiceTemplates = Field(
+    service_template: BaseServiceTemplateDTO = Field(
         ..., description="The service template factory to use"
     )
 
     def get_api_model(self) -> ServiceDeploymentCreateRequest:
-        service_template: ServiceTemplate = (
-            self.service_template.create_service_template()
-        )
+        service_template: ServiceTemplate = self.service_template.to_api_model()
         return ServiceDeploymentCreateRequest(
             cluster_id=self.cluster_id,
             name=self.name,

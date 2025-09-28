@@ -19,9 +19,14 @@ class UnexpectedResponseWarning(ServiceWarning):
 
 
 class ServiceError(Exception):
-    def __init__(self, message: str, error_code: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        error_code: Optional[str] = None,
+        error_type: Optional[str] = None,
+    ):
         super().__init__(message)
-        self.error_type: str = "service_error"
+        self.error_type: str = error_type or "service_error"
         self.message: str = message
         self.error_code: Optional[str] = error_code
 

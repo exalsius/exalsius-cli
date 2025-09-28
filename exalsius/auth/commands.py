@@ -60,11 +60,7 @@ class Auth0FetchDeviceCodeCommand(PostRequestCommand):
         try:
             return self._execute_post_request(Auth0DeviceCodeAuthenticationDTO)
         except requests.HTTPError as e:
-            raise Auth0APIError(
-                e.response.json()["error"],
-                e.response.status_code,
-                e.response.json()["error_description"],
-            )
+            raise Auth0APIError(e)
 
 
 class Auth0PollForAuthenticationCommand(PostRequestCommand):
@@ -81,16 +77,27 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
             "grant_type": self.request.grant_type,
         }
 
+    def _format_error(self, error: requests.HTTPError | Exception) -> str:
+        if isinstance(error, requests.HTTPError):
+            return f"HTTP error: {error.response.status_code} {error.response.json().get('error_description', error.response.json().get('error', str(error)))}"
+        else:
+            return f"unexpected error: {error}"
+
     def execute(self) -> Auth0AuthenticationDTO:
         start_time: float = time()
         retry_count: int = 0
         interval: int = self.request.poll_interval_seconds
-        last_error: Optional[str] = None
+        last_error: Optional[requests.HTTPError | Exception] = None
         while True:
             if retry_count >= self.request.retry_limit:
                 raise Auth0AuthenticationError(
-                    f"failed to authenticate after {self.request.retry_limit} retries. "
-                    f"error: {last_error}"
+                    message=f"failed to authenticate after {self.request.retry_limit} retries. "
+                    f"error: {self._format_error(last_error) if last_error else 'unknown error'}",
+                    error_code=(
+                        str(last_error.response.status_code)
+                        if last_error and isinstance(last_error, requests.HTTPError)
+                        else None
+                    ),
                 )
 
             sleep(interval)
@@ -103,7 +110,7 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
                 if result.access_token:
                     break
                 else:
-                    last_error = "auth0 returned an empty access token."
+                    last_error = Exception("auth0 returned an empty access token.")
                     retry_count += 1
                     continue
 
@@ -114,11 +121,13 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
                         if error == "authorization_pending":
                             continue
                         else:
-                            raise Auth0AuthenticationError(
-                                f"failed to login. reason: {e.response.json().get('error_description', error)}"
+                            raise Auth0APIError(
+                                e.response.json().get("error", "unknown error"),
+                                e.response.status_code,
+                                e.response.json().get("error_description", ""),
                             )
                     else:
-                        last_error = str(e.response.json())
+                        last_error = e
                         retry_count += 1
                         continue
                 if e.response.status_code == 429:
@@ -128,19 +137,21 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
                             interval += 1
                             continue
                         else:
-                            raise Auth0AuthenticationError(
-                                f"failed to login. reason: {e.response.json().get('error_description', error)}"
+                            raise Auth0APIError(
+                                e.response.json().get("error", "unknown error"),
+                                e.response.status_code,
+                                e.response.json().get("error_description", ""),
                             )
                     else:
-                        last_error = str(e.response.json())
+                        last_error = e
                         retry_count += 1
                         continue
                 else:
-                    last_error = str(e.response.json())
+                    last_error = e
                     retry_count += 1
                     continue
             except Exception as e:
-                last_error = str(e)
+                last_error = e
                 retry_count += 1
                 continue
 
@@ -162,10 +173,12 @@ class Auth0ValidateTokenCommand(BaseCommand):
             resp: Dict[str, Any] = tv.verify(self.request.id_token)
             return self._deserialize(resp, Auth0UserInfoDTO)
         except TokenValidationError as e:
-            raise Auth0AuthenticationError(f"failed to validate token: {e}")
+            raise Auth0AuthenticationError(
+                message=f"failed to validate token: {e}",
+            )
         except Exception as e:
             raise Auth0AuthenticationError(
-                f"unexpected error while validating token: {e}"
+                message=f"unexpected error while validating token: {e}",
             )
 
 
@@ -268,15 +281,13 @@ class Auth0RevokeTokenCommand(PostRequestCommand):
             self._execute_post_request_empty_response()
         except requests.HTTPError as e:
             raise Auth0APIError(
-                e.response.json()["error"],
+                e.response.json().get("error", "unknown error"),
                 e.response.status_code,
-                e.response.json()["error_description"],
+                e.response.json().get("error_description", ""),
             )
         except Exception as e:
-            raise Auth0APIError(
-                "unexpected error while revoking token",
-                500,
-                str(e),
+            raise Auth0AuthenticationError(
+                message=f"unexpected error while revoking token: {e}",
             )
         return Auth0RevokeTokenStatusDTO(success=True)
 
@@ -294,7 +305,7 @@ class ClearTokenFromKeyringCommand(BaseCommand):
 
             return True
         except Exception as e:
-            logging.warning(f"Failed to delete token {token_type} from keyring: {e}")
+            logging.warning(f"failed to delete token {token_type} from keyring: {e}")
             return False
 
     def execute(self) -> TokenKeyringStorageStatusDTO:

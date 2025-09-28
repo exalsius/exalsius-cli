@@ -1,15 +1,18 @@
 import logging
+from enum import Enum
+from typing import List, Union
 
 import typer
 from exalsius_api_client.models.workspace import Workspace
-from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
-from rich.console import Console
 
 from exalsius.config import AppConfig
-from exalsius.core.commons.models import ServiceError
+from exalsius.core.base.models import ErrorDTO
+from exalsius.core.commons.models import ServiceError, ServiceWarning
 from exalsius.utils import commons as utils
-from exalsius.utils.theme import custom_theme
-from exalsius.workspaces.display import WorkspacesDisplayManager
+from exalsius.workspaces.display import (
+    JsonWorkspacesDisplayManager,
+    TableWorkspacesDisplayManager,
+)
 from exalsius.workspaces.service import WorkspacesService
 
 logger = logging.getLogger("cli.workspaces")
@@ -20,8 +23,13 @@ workspaces_deploy_app = typer.Typer()
 workspaces_app.add_typer(workspaces_deploy_app, name="deploy")
 
 
+class DisplayFormat(str, Enum):
+    table = "table"
+    json = "json"
+
+
 @workspaces_app.callback(invoke_without_command=True)
-def _root(
+def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
 ):
     """
@@ -30,106 +38,164 @@ def _root(
     utils.help_if_no_subcommand(ctx)
 
 
-@workspaces_app.command("list")
+@workspaces_app.command("list", help="List all workspaces of a cluster")
 def list_workspaces(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
         help="The ID of the cluster to list the workspaces for"
     ),
+    format: DisplayFormat = typer.Option(
+        DisplayFormat.table,
+        "-f",
+        "--format",
+        help="The format to display the workspaces in",
+        case_sensitive=False,
+    ),
 ):
-    console = Console(theme=custom_theme)
-    display_manager = WorkspacesDisplayManager(console)
+    display_manager: Union[
+        TableWorkspacesDisplayManager, JsonWorkspacesDisplayManager
+    ] = (
+        TableWorkspacesDisplayManager()
+        if format == DisplayFormat.table
+        else JsonWorkspacesDisplayManager()
+    )
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = WorkspacesService(config, access_token)
 
-    workspaces_response = service.list_workspaces(cluster_id=cluster_id)
+    try:
+        workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
+    except ServiceError as e:
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
+        raise typer.Exit(1)
+    display_manager.display_workspaces(workspaces)
 
-    if not workspaces_response:
-        display_manager.print_warning("No workspaces found")
-        return
 
-    display_manager.display_workspaces(cluster_id, workspaces_response)
-
-
-@workspaces_app.command("get")
+@workspaces_app.command("get", help="Get a workspace of a cluster")
 def get_workspace(
     ctx: typer.Context,
     workspace_id: str = typer.Argument(
         help="The ID of the workspace to get",
     ),
+    format: DisplayFormat = typer.Option(
+        DisplayFormat.table,
+        "-f",
+        "--format",
+        help="The format to display the workspace in",
+        case_sensitive=False,
+    ),
 ):
-    console = Console(theme=custom_theme)
-    display_manager = WorkspacesDisplayManager(console)
+    display_manager: Union[
+        TableWorkspacesDisplayManager, JsonWorkspacesDisplayManager
+    ] = (
+        TableWorkspacesDisplayManager()
+        if format == DisplayFormat.table
+        else JsonWorkspacesDisplayManager()
+    )
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = WorkspacesService(config, access_token)
 
-    workspace = service.get_workspace(workspace_id)
-    if not workspace:
-        display_manager.print_error(f"Workspace with ID {workspace_id} not found")
+    try:
+        workspace: Workspace = service.get_workspace(workspace_id)
+    except ServiceError as e:
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
     display_manager.display_workspace(workspace)
 
 
-@workspaces_app.command("delete")
+@workspaces_app.command("delete", help="Delete a workspace of a cluster")
 def delete_workspace(
     ctx: typer.Context,
     workspace_id: str = typer.Argument(
         help="The ID of the workspace to delete",
     ),
 ):
-    console = Console(theme=custom_theme)
-    display_manager = WorkspacesDisplayManager(console)
+    display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = WorkspacesService(config, access_token)
 
-    workspace_delete_response = service.delete_workspace(workspace_id)
-    if not workspace_delete_response:
-        display_manager.print_error(f"Workspace with ID {workspace_id} not found")
+    try:
+        deleted_workspace_id: str = service.delete_workspace(workspace_id=workspace_id)
+    except ServiceError as e:
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
+            )
+        )
         raise typer.Exit(1)
-    display_manager.display_workspace_deleted(workspace_delete_response.workspace_id)
+    display_manager.display_success(
+        f"Workspace {deleted_workspace_id} deleted successfully."
+    )
 
 
 def poll_workspace_creation(
-    console: Console,
-    display_manager: WorkspacesDisplayManager,
+    workspace_id: str,
     service: WorkspacesService,
-    workspace_create_response: WorkspaceCreateResponse,
+    display_manager: TableWorkspacesDisplayManager,
 ) -> Workspace:
-    with console.status(
-        "[bold custom]Creating workspace...[/bold custom]",
-        spinner="bouncingBall",
-        spinner_style="custom",
-    ):
-        try:
-            workspace_response = service._poll_workspace_creation(
-                workspace_id=workspace_create_response.workspace_id
+    display_manager.spinner_display.start_display("Creating workspace...")
+    try:
+        workspace: Workspace = service.poll_workspace_creation(
+            workspace_id=workspace_id
+        )
+    except TimeoutError as e:
+        display_manager.display_info(
+            f"workspace creation timed out: {e}. "
+            + "Please check the status manually "
+            + f"with `exls workspaces get {workspace_id}`."
+        )
+        raise typer.Exit(1)
+    except ServiceError as e:
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
             )
-        except TimeoutError:
-            display_manager.print_warning(
-                f"Workspace {workspace_create_response.workspace_id} did not become active in time. "
-                + "This might be normal for some workspace types. Please check the status manually "
-                + f"with `exls workspaces get {workspace_create_response.workspace_id}`."
-            )
-            raise typer.Exit(1)
-        except ServiceError as e:
-            display_manager.print_error(str(e))
-            raise typer.Exit(1)
-        except Exception as e:
-            display_manager.print_error(f"Unexpected error: {str(e)}")
-            raise typer.Exit(1)
+        )
+        raise typer.Exit(1)
+    except ServiceWarning as e:
+        display_manager.display_info(str(e))
+        raise typer.Exit(1)
+    finally:
+        display_manager.spinner_display.stop_display()
 
-    return workspace_response.workspace
+    return workspace
 
 
+# isort: off
 # This serves as a registry for the workspaces CLI commands making sure they are imported and registered with typer
 
-from exalsius.workspaces.devpod import cli as devpod_cli  # noqa: F401, E402
-from exalsius.workspaces.diloco import cli as diloco_cli  # noqa: F401, E402
-from exalsius.workspaces.jupyter import cli as jupyter_cli  # noqa: F401, E402
-from exalsius.workspaces.llminference import cli as llminference_cli  # noqa: F401, E402
+from exalsius.workspaces.devpod import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
+    cli as devpod_cli,  # pyright: ignore[reportUnusedImport]
+)
+from exalsius.workspaces.diloco import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
+    cli as diloco_cli,  # pyright: ignore[reportUnusedImport]
+)
+from exalsius.workspaces.jupyter import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
+    cli as jupyter_cli,  # pyright: ignore[reportUnusedImport]
+)
+from exalsius.workspaces.llminference import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
+    cli as llminference_cli,  # pyright: ignore[reportUnusedImport]
+)
+
+# isort: on

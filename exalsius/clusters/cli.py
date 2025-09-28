@@ -334,8 +334,6 @@ def add_nodes(
         )
         raise typer.Exit(1)
 
-        raise typer.Exit(1)
-
     display_manager.display_success(
         f"Nodes {node_ids} added to cluster {cluster_id} successfully."
     )

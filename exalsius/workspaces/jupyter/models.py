@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar
 
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import Field
@@ -23,7 +23,8 @@ class JupyterWorkspaceVariablesDTO(BaseSettings):
 
 
 class JupyterWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
-    name: Literal["jupyter-notebook-template"] = "jupyter-notebook-template"
+    name: ClassVar[str] = "jupyter-notebook-template"
+
     variables: JupyterWorkspaceVariablesDTO = Field(
         ..., description="The variables of the jupyter notebook template"
     )

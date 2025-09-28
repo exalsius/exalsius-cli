@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
-from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
 
 from exalsius.config import AppConfig
 from exalsius.workspaces.jupyter.models import (
@@ -28,7 +27,7 @@ class JupyterWorkspacesService(WorkspacesService):
         variables: JupyterWorkspaceVariablesDTO,
         description: Optional[str] = None,
         to_be_deleted_at: Optional[datetime] = None,
-    ) -> WorkspaceCreateResponse:
+    ) -> str:
         return self._create_workspace(
             cluster_id=cluster_id,
             name=name,

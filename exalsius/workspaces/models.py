@@ -1,9 +1,9 @@
 import datetime
-from abc import abstractmethod
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import ClassVar, Optional
 
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
-from exalsius_api_client.models.resource_pool import ResourcePool
+from exalsius_api_client.models.hardware import Hardware
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import BaseModel, Field
@@ -24,12 +24,11 @@ class GetWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
     workspace_id: str = Field(..., description="The ID of the workspace")
 
 
-class WorkspaceBaseTemplateDTO(BaseModel):
-    name: str = Field(..., description="The name of the workspace template")
+class WorkspaceBaseTemplateDTO(BaseModel, ABC):
+    name: ClassVar[str] = "workspace-template"
 
     @abstractmethod
-    def to_api_model(self) -> WorkspaceTemplate:
-        pass
+    def to_api_model(self) -> WorkspaceTemplate: ...
 
 
 class ResourcePoolDTO(BaseModel):
@@ -40,8 +39,8 @@ class ResourcePoolDTO(BaseModel):
     memory_gb: int = Field(..., description="The amount of memory in GB")
     storage_gb: int = Field(..., description="The amount of storage in GB")
 
-    def to_api_model(self) -> ResourcePool:
-        return ResourcePool(
+    def to_api_model(self) -> Hardware:
+        return Hardware(
             gpu_count=self.gpu_count,
             gpu_type=self.gpu_type,
             gpu_vendor=self.gpu_vendor,
@@ -85,3 +84,11 @@ class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
 
 class DeleteWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
     workspace_id: str = Field(..., description="The ID of the workspace")
+
+
+class WorkspaceAccessInformationDTO(BaseModel):
+    workspace_id: str = Field(..., description="The ID of the workspace")
+    access_type: str = Field(..., description="The type of access")
+    access_endpoint: str = Field(
+        ..., description="The access endpoint of the workspace"
+    )

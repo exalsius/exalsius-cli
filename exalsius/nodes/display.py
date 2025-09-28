@@ -3,11 +3,7 @@ from typing import List
 from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cloud_node import CloudNode
 from exalsius_api_client.models.self_managed_node import SelfManagedNode
-from exalsius_api_client.models.ssh_keys_list_response_ssh_keys_inner import (
-    SshKeysListResponseSshKeysInner,
-)
 
-from exalsius.core.base.render import BaseListRenderer, BaseSingleItemRenderer
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -28,32 +24,32 @@ from exalsius.core.commons.render.table import (
 class JsonNodesDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
-        cloud_nodes_list_renderer: BaseListRenderer[
-            CloudNode, str
+        cloud_nodes_list_renderer: JsonListStringRenderer[
+            CloudNode
         ] = JsonListStringRenderer[CloudNode](),
-        self_managed_nodes_list_renderer: BaseListRenderer[
-            SelfManagedNode, str
+        self_managed_nodes_list_renderer: JsonListStringRenderer[
+            SelfManagedNode
         ] = JsonListStringRenderer[SelfManagedNode](),
-        cloud_nodes_single_item_renderer: BaseSingleItemRenderer[
-            CloudNode, str
+        cloud_nodes_single_item_renderer: JsonSingleItemStringRenderer[
+            CloudNode
         ] = JsonSingleItemStringRenderer[CloudNode](),
-        self_managed_nodes_single_item_renderer: BaseSingleItemRenderer[
-            SelfManagedNode, str
+        self_managed_nodes_single_item_renderer: JsonSingleItemStringRenderer[
+            SelfManagedNode
         ] = JsonSingleItemStringRenderer[SelfManagedNode](),
     ):
         super().__init__()
-        self.cloud_nodes_list_display = ConsoleListDisplay[CloudNode](
+        self.cloud_nodes_list_display = ConsoleListDisplay(
             renderer=cloud_nodes_list_renderer
         )
-        self.self_managed_nodes_list_display = ConsoleListDisplay[SelfManagedNode](
+        self.self_managed_nodes_list_display = ConsoleListDisplay(
             renderer=self_managed_nodes_list_renderer
         )
-        self.cloud_nodes_single_item_display = ConsoleSingleItemDisplay[CloudNode](
+        self.cloud_nodes_single_item_display = ConsoleSingleItemDisplay(
             renderer=cloud_nodes_single_item_renderer
         )
-        self.self_managed_nodes_single_item_display = ConsoleSingleItemDisplay[
-            SelfManagedNode
-        ](renderer=self_managed_nodes_single_item_renderer)
+        self.self_managed_nodes_single_item_display = ConsoleSingleItemDisplay(
+            renderer=self_managed_nodes_single_item_renderer
+        )
 
     def display_nodes(self, data: List[BaseNode]):
         cloud_nodes = [node for node in data if isinstance(node, CloudNode)]
@@ -94,38 +90,38 @@ DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP = {
 class TableNodesDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        cloud_nodes_list_renderer: BaseListRenderer[CloudNode, str] = TableListRenderer[
+        cloud_nodes_list_renderer: TableListRenderer[CloudNode] = TableListRenderer[
             CloudNode
         ](columns_rendering_map=DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP),
-        self_managed_nodes_list_renderer: BaseListRenderer[
-            SelfManagedNode, str
+        self_managed_nodes_list_renderer: TableListRenderer[
+            SelfManagedNode
         ] = TableListRenderer[SelfManagedNode](
             columns_rendering_map=DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP
         ),
-        cloud_nodes_single_item_renderer: BaseSingleItemRenderer[
-            CloudNode, str
+        cloud_nodes_single_item_renderer: TableSingleItemRenderer[
+            CloudNode
         ] = TableSingleItemRenderer[CloudNode](
             columns_map=DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP
         ),
-        self_managed_nodes_single_item_renderer: BaseSingleItemRenderer[
-            SelfManagedNode, str
+        self_managed_nodes_single_item_renderer: TableSingleItemRenderer[
+            SelfManagedNode
         ] = TableSingleItemRenderer[SelfManagedNode](
             columns_map=DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP
         ),
     ):
         super().__init__()
-        self.cloud_nodes_list_display = ConsoleListDisplay[CloudNode](
+        self.cloud_nodes_list_display = ConsoleListDisplay(
             renderer=cloud_nodes_list_renderer
         )
-        self.self_managed_nodes_list_display = ConsoleListDisplay[SelfManagedNode](
+        self.self_managed_nodes_list_display = ConsoleListDisplay(
             renderer=self_managed_nodes_list_renderer
         )
-        self.cloud_nodes_single_item_display = ConsoleSingleItemDisplay[CloudNode](
+        self.cloud_nodes_single_item_display = ConsoleSingleItemDisplay(
             renderer=cloud_nodes_single_item_renderer
         )
-        self.self_managed_nodes_single_item_display = ConsoleSingleItemDisplay[
-            SelfManagedNode
-        ](renderer=self_managed_nodes_single_item_renderer)
+        self.self_managed_nodes_single_item_display = ConsoleSingleItemDisplay(
+            renderer=self_managed_nodes_single_item_renderer
+        )
 
     def display_nodes(self, data: List[BaseNode]):
         cloud_nodes = [node for node in data if isinstance(node, CloudNode)]
@@ -143,43 +139,3 @@ class TableNodesDisplayManager(BaseTableDisplayManager):
             self.cloud_nodes_single_item_display.display(data)
         elif isinstance(data, SelfManagedNode):
             self.self_managed_nodes_single_item_display.display(data)
-
-
-DEFAULT_SSH_KEYS_COLUMNS_RENDERING_MAP = {
-    "id": get_column("ID", no_wrap=True),
-    "name": get_column("Name"),
-}
-
-
-class JsonSshKeysDisplayManager(BaseJsonDisplayManager):
-    def __init__(
-        self,
-        ssh_keys_list_renderer: BaseListRenderer[
-            SshKeysListResponseSshKeysInner, str
-        ] = JsonListStringRenderer[SshKeysListResponseSshKeysInner](),
-    ):
-        super().__init__()
-        self.ssh_keys_list_display = ConsoleListDisplay[
-            SshKeysListResponseSshKeysInner
-        ](renderer=ssh_keys_list_renderer)
-
-    def display_ssh_keys(self, ssh_keys: List[SshKeysListResponseSshKeysInner]):
-        self.ssh_keys_list_display.display(ssh_keys)
-
-
-class TableSshKeysDisplayManager(BaseTableDisplayManager):
-    def __init__(
-        self,
-        ssh_keys_list_renderer: BaseListRenderer[
-            SshKeysListResponseSshKeysInner, str
-        ] = TableListRenderer[SshKeysListResponseSshKeysInner](
-            columns_rendering_map=DEFAULT_SSH_KEYS_COLUMNS_RENDERING_MAP
-        ),
-    ):
-        super().__init__()
-        self.ssh_keys_list_display = ConsoleListDisplay[
-            SshKeysListResponseSshKeysInner
-        ](renderer=ssh_keys_list_renderer)
-
-    def display_ssh_keys(self, ssh_keys: List[SshKeysListResponseSshKeysInner]):
-        self.ssh_keys_list_display.display(ssh_keys)

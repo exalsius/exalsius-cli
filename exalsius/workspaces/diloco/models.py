@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import ClassVar, Optional
 
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import Field
@@ -94,7 +94,8 @@ class DilocoWorkspaceVariablesDTO(BaseSettings):
 
 
 class DilocoWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
-    name: Literal["diloco-training-template"] = "diloco-training-template"
+    name: ClassVar[str] = "diloco-training-template"
+
     variables: DilocoWorkspaceVariablesDTO = Field(
         ..., description="The variables of the diloco workspace template"
     )

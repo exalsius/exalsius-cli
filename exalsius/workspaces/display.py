@@ -1,92 +1,108 @@
+from typing import Dict, List
+
 from exalsius_api_client.models.workspace import Workspace
-from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
-from exalsius_api_client.models.workspace_response import WorkspaceResponse
-from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
-from rich.console import Console
-from rich.json import JSON
-from rich.table import Table
 
-from exalsius.core.base.display import BaseDisplay
+from exalsius.core.commons.display import (
+    BaseJsonDisplayManager,
+    BaseTableDisplayManager,
+    ConsoleListDisplay,
+    ConsoleSingleItemDisplay,
+)
+from exalsius.core.commons.render.json import (
+    JsonListStringRenderer,
+    JsonSingleItemStringRenderer,
+)
+from exalsius.core.commons.render.table import (
+    Column,
+    TableListRenderer,
+    TableSingleItemRenderer,
+    get_column,
+)
+from exalsius.workspaces.models import WorkspaceAccessInformationDTO
 
 
-class WorkspacesDisplayManager(BaseDisplay):
-    def __init__(self, console: Console):
-        super().__init__(console)
-
-    def display_workspaces(
-        self, cluster_id: str, workspace_list_response: WorkspacesListResponse
+class JsonWorkspacesDisplayManager(BaseJsonDisplayManager):
+    def __init__(
+        self,
+        workspaces_list_renderer: JsonListStringRenderer[
+            Workspace
+        ] = JsonListStringRenderer[Workspace](),
+        workspaces_single_item_renderer: JsonSingleItemStringRenderer[
+            Workspace
+        ] = JsonSingleItemStringRenderer[Workspace](),
+        workspace_access_info_renderer: JsonListStringRenderer[
+            WorkspaceAccessInformationDTO
+        ] = JsonListStringRenderer[WorkspaceAccessInformationDTO](),
     ):
-        """Display a list of workspaces in a formatted table."""
-        table = Table(
-            title=f"Workspaces on cluster {cluster_id}",
-            show_header=True,
-            header_style="bold",
-            border_style="custom",
+        super().__init__()
+        self.workspaces_list_display = ConsoleListDisplay(
+            renderer=workspaces_list_renderer
+        )
+        self.workspaces_single_item_display = ConsoleSingleItemDisplay(
+            renderer=workspaces_single_item_renderer
+        )
+        self.workspace_access_info_display = ConsoleListDisplay(
+            renderer=workspace_access_info_renderer
         )
 
-        table.add_column("ID", style="blue", no_wrap=True)
-        table.add_column("Name", style="green", no_wrap=True)
-        table.add_column("Status", style="blue")
-        table.add_column("Owner", style="green")
-        table.add_column("Cluster ID", style="blue")
+    def display_workspaces(self, data: List[Workspace]):
+        self.workspaces_list_display.display(data)
 
-        for workspace in workspace_list_response.workspaces:
-            table.add_row(
-                workspace.id,
-                workspace.name,
-                workspace.workspace_status or "N/A",
-                workspace.owner,
-                cluster_id,
-            )
+    def display_workspace(self, data: Workspace):
+        self.workspaces_single_item_display.display(data)
 
-        self.console.print(table)
+    def display_workspace_access_info(self, data: List[WorkspaceAccessInformationDTO]):
+        self.workspace_access_info_display.display(data)
 
-    def display_workspace(self, workspace_response: WorkspaceResponse):
-        import json
-        from datetime import datetime
 
-        def default_serializer(obj):
-            if isinstance(obj, datetime):
-                return obj.isoformat()
-            return str(obj)
+DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+    "id": get_column("ID", no_wrap=True),
+    "name": get_column("Name"),
+    "workspace_status": get_column("Status"),
+    "owner": get_column("Owner"),
+    "cluster_id": get_column("Cluster ID"),
+}
 
-        if workspace_response.workspace:
-            workspace: Workspace = workspace_response.workspace
-        else:
-            self.print_warning(
-                f"Workspace response is not a valid workspace: {workspace_response}"
-            )
-            return
+DEFAULT_WORKSPACE_ACCESS_INFO_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+    "workspace_id": get_column("Workspace ID", no_wrap=True),
+    "access_type": get_column("Access Type"),
+    "access_endpoint": get_column("Access Endpoint"),
+}
 
-        try:
-            json_str = json.dumps(
-                workspace.to_dict(), default=default_serializer, indent=2
-            )
-            self.console.print(JSON(json_str))
-        except Exception as e:
-            self.print_error(
-                f"Error displaying workspace {workspace.name} ({workspace.id}): {e}"
-            )
 
-    def display_workspace_created(self, workspace: Workspace):
-        self.console.print(
-            f"Workspace {workspace.name} ({workspace.id}) created successfully."
-        )
-
-    def display_workspace_created_from_response(
-        self, workspace_create_response: WorkspaceCreateResponse
+class TableWorkspacesDisplayManager(BaseTableDisplayManager):
+    def __init__(
+        self,
+        workspaces_list_renderer: TableListRenderer[Workspace] = TableListRenderer[
+            Workspace
+        ](columns_rendering_map=DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP),
+        workspaces_single_item_renderer: TableSingleItemRenderer[
+            Workspace
+        ] = TableSingleItemRenderer[Workspace](
+            columns_map=DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP
+        ),
+        workspace_access_info_renderer: TableListRenderer[
+            WorkspaceAccessInformationDTO
+        ] = TableListRenderer[WorkspaceAccessInformationDTO](
+            columns_rendering_map=DEFAULT_WORKSPACE_ACCESS_INFO_COLUMNS_RENDERING_MAP
+        ),
     ):
-        self.console.print(
-            f"Workspace {workspace_create_response.workspace_id} created successfully."
+        super().__init__()
+        self.workspaces_list_display = ConsoleListDisplay(
+            renderer=workspaces_list_renderer
+        )
+        self.workspaces_single_item_display = ConsoleSingleItemDisplay(
+            renderer=workspaces_single_item_renderer
+        )
+        self.workspace_access_info_display = ConsoleListDisplay(
+            renderer=workspace_access_info_renderer
         )
 
-    def display_workspace_deleted(self, workspace_id: str):
-        self.console.print(f"Workspace {workspace_id} deleted successfully.")
+    def display_workspaces(self, data: List[Workspace]):
+        self.workspaces_list_display.display(data)
 
-    def display_workspace_access_info(self, workspace: Workspace):
-        if workspace.access_information:
-            self.console.print(f"Access to your workspace {workspace.name} via: ")
-            for access_info in workspace.access_information:
-                self.console.print(
-                    f"  {access_info.access_protocol}://{access_info.external_ip}:{access_info.port_number}"
-                )
+    def display_workspace(self, data: Workspace):
+        self.workspaces_single_item_display.display(data)
+
+    def display_workspace_access_info(self, data: List[WorkspaceAccessInformationDTO]):
+        self.workspace_access_info_display.display(data)

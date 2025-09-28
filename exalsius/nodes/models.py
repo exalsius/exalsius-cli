@@ -1,9 +1,8 @@
 from enum import StrEnum
 from typing import Optional
 
-from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.api.nodes_api import NodesApi
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from exalsius.core.base.models import BaseRequestDTO
 
@@ -55,24 +54,3 @@ class NodesImportFromOfferRequestDTO(NodesBaseRequestDTO):
     hostname: str = Field(..., description="The hostname of the node")
     offer_id: str = Field(..., description="The ID of the offer to use")
     amount: int = Field(..., description="The amount of nodes to import")
-
-
-class SSHKeysBaseRequestDTO(BaseRequestDTO):
-    api: ManagementApi = Field(..., description="The API client")
-
-
-class SSHKeysListRequestDTO(SSHKeysBaseRequestDTO):
-    pass
-
-
-class SSHKeysAddRequestDTO(SSHKeysBaseRequestDTO):
-    name: str = Field(..., description="The name of the SSH key")
-    private_key_base64: str = Field(..., description="The base64 encoded private key")
-
-
-class SSHKeysDeleteRequestDTO(SSHKeysBaseRequestDTO):
-    id: str = Field(..., description="The ID of the SSH key")
-
-
-class SSHKeysDeleteResultDTO(BaseModel):
-    success: bool = Field(..., description="Whether the SSH key was deleted")

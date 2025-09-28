@@ -1,12 +1,15 @@
-from typing import Generic, List, Optional
+from contextlib import AbstractContextManager
+from typing import List, Optional
 
 from rich.console import Console
 from rich.prompt import Confirm
+from rich.status import Status
 
 from exalsius.core.base.display import (
     BaseConfirmationDisplay,
     BaseListDisplay,
     BaseSingleItemDisplay,
+    BaseSpinnerDisplay,
 )
 from exalsius.core.base.models import ErrorDTO
 from exalsius.core.base.render import (
@@ -14,6 +17,7 @@ from exalsius.core.base.render import (
     BaseSingleItemRenderer,
     T_RenderInput_Contra,
     T_RenderInput_Inv,
+    T_RenderOutput_Cov,
 )
 from exalsius.core.commons.render.json import (
     JsonMessageRenderer,
@@ -23,51 +27,58 @@ from exalsius.core.commons.render.text import (
     RichTextErrorMessageRenderer,
     RichTextRenderer,
     RichTextSuccessMessageRenderer,
+    TextRenderConfig,
 )
 from exalsius.utils.theme import custom_theme
 
 
-class ConsoleListDisplay(BaseListDisplay[T_RenderInput_Inv, str]):
+class ConsoleListDisplay(BaseListDisplay[T_RenderInput_Inv, T_RenderOutput_Cov]):
     """Display manager for lists of items."""
 
     def __init__(
         self,
-        renderer: BaseListRenderer[T_RenderInput_Inv, str],
+        renderer: BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov],
         console: Optional[Console] = None,
     ):
         self.console: Console = console or Console(theme=custom_theme)
-        self._renderer: BaseListRenderer[T_RenderInput_Inv, str] = renderer
+        self._renderer: BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov] = (
+            renderer
+        )
 
     @property
-    def renderer(self) -> BaseListRenderer[T_RenderInput_Inv, str]:
+    def renderer(self) -> BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov]:
         return self._renderer
 
     def display(self, data: List[T_RenderInput_Inv]) -> None:
         """Create a ListRenderableDTO and pass it to the renderer."""
-        rendered_data: str = self.renderer.render(data)
+        rendered_data: T_RenderOutput_Cov = self.renderer.render(data)
         self.console.print(rendered_data)
 
 
 class ConsoleSingleItemDisplay(
-    BaseSingleItemDisplay[T_RenderInput_Contra, str], Generic[T_RenderInput_Contra]
+    BaseSingleItemDisplay[T_RenderInput_Contra, T_RenderOutput_Cov],
 ):
     """Display manager for single items."""
 
     def __init__(
         self,
-        renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str],
+        renderer: BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov],
         console: Optional[Console] = None,
     ):
         self.console: Console = console or Console(theme=custom_theme)
-        self._renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str] = renderer
+        self._renderer: BaseSingleItemRenderer[
+            T_RenderInput_Contra, T_RenderOutput_Cov
+        ] = renderer
 
     @property
-    def renderer(self) -> BaseSingleItemRenderer[T_RenderInput_Contra, str]:
+    def renderer(
+        self,
+    ) -> BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov]:
         return self._renderer
 
     def display(self, data: T_RenderInput_Contra) -> None:
         """Create a SingleItemRenderableDTO and pass it to the renderer."""
-        rendered_data: str = self.renderer.render(data)
+        rendered_data: T_RenderOutput_Cov = self.renderer.render(data)
         self.console.print(rendered_data)
 
 
@@ -92,6 +103,39 @@ class ConsoleConfirmationDisplay(BaseConfirmationDisplay[T_RenderInput_Contra, s
         return Confirm.ask(rendered_text, console=self.console)
 
 
+class ConsoleSpinnerDisplay(BaseSpinnerDisplay[T_RenderInput_Contra, str]):
+    """Display manager for spinner items."""
+
+    def __init__(
+        self,
+        renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str],
+        console: Optional[Console] = None,
+        spinner: str = "bouncingBall",
+        spinner_style: str = "custom",
+    ):
+        self.console: Console = console or Console(theme=custom_theme)
+        self._renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str] = renderer
+        self._status: Optional[AbstractContextManager[Status]] = None
+        self._spinner: str = spinner
+        self._spinner_style: str = spinner_style
+
+    @property
+    def renderer(self) -> BaseSingleItemRenderer[T_RenderInput_Contra, str]:
+        return self._renderer
+
+    def start_display(self, data: T_RenderInput_Contra) -> None:
+        self._status = self.console.status(
+            self._renderer.render(data),
+            spinner=self._spinner,
+            spinner_style=self._spinner_style,
+        )
+
+    def stop_display(self) -> None:
+        if self._status:
+            self._status.__exit__(None, None, None)
+            self._status = None
+
+
 class BaseDisplayManager:
     def __init__(
         self,
@@ -99,12 +143,30 @@ class BaseDisplayManager:
         success_renderer: BaseSingleItemRenderer[str, str],
         error_renderer: BaseSingleItemRenderer[ErrorDTO, str],
         confirmation_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(),
+        spinner_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(
+            render_config=TextRenderConfig(bold=True, color="custom")
+        ),
     ):
-        self.info_display = ConsoleSingleItemDisplay[str](renderer=info_renderer)
-        self.success_display = ConsoleSingleItemDisplay[str](renderer=success_renderer)
-        self.error_display = ConsoleSingleItemDisplay[ErrorDTO](renderer=error_renderer)
-        self.confirmation_display = ConsoleConfirmationDisplay[str](
-            renderer=confirmation_renderer
+        self.info_display: BaseSingleItemDisplay[str, str] = ConsoleSingleItemDisplay(
+            renderer=info_renderer,
+        )
+        self.success_display: BaseSingleItemDisplay[str, str] = (
+            ConsoleSingleItemDisplay(
+                renderer=success_renderer,
+            )
+        )
+        self.error_display: BaseSingleItemDisplay[ErrorDTO, str] = (
+            ConsoleSingleItemDisplay(
+                renderer=error_renderer,
+            )
+        )
+        self.confirmation_display: BaseConfirmationDisplay[str, str] = (
+            ConsoleConfirmationDisplay(
+                renderer=confirmation_renderer,
+            )
+        )
+        self.spinner_display: BaseSpinnerDisplay[str, str] = ConsoleSpinnerDisplay(
+            renderer=spinner_renderer
         )
 
     def display_info(self, message: str):
@@ -116,8 +178,14 @@ class BaseDisplayManager:
     def display_error(self, error: ErrorDTO):
         self.error_display.display(error)
 
-    def display_confirmation(self, message: str):
+    def display_confirmation(self, message: str) -> bool:
         return self.confirmation_display.display(message)
+
+    def start_spinner_display(self, message: str):
+        self.spinner_display.start_display(message)
+
+    def stop_spinner_display(self):
+        self.spinner_display.stop_display()
 
 
 class BaseJsonDisplayManager(BaseDisplayManager):

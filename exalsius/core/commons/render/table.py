@@ -18,7 +18,7 @@ from exalsius.core.base.render import (
 
 
 class TableListRenderer(
-    BaseListRenderer[T_RenderInput_Inv, str], Generic[T_RenderInput_Inv]
+    BaseListRenderer[T_RenderInput_Inv, Table], Generic[T_RenderInput_Inv]
 ):
     """Renders a list of items as a table."""
 
@@ -32,10 +32,10 @@ class TableListRenderer(
             table_rendering_config or TableRenderingConfig()
         )
 
-    def render(self, data: List[T_RenderInput_Inv]) -> str:
+    def render(self, data: List[T_RenderInput_Inv]) -> Table:
         """Render a list of items to a table."""
         if not data:
-            return Table().__str__()
+            return Table()
 
         table = Table(
             show_header=True,
@@ -58,11 +58,11 @@ class TableListRenderer(
             ]
             table.add_row(*row_values)
 
-        return table.__str__()
+        return table
 
 
 class TableSingleItemRenderer(
-    BaseSingleItemRenderer[T_RenderInput_Contra, str], Generic[T_RenderInput_Contra]
+    BaseSingleItemRenderer[T_RenderInput_Contra, Table], Generic[T_RenderInput_Contra]
 ):
     """Renders a single item as a table."""
 
@@ -76,7 +76,7 @@ class TableSingleItemRenderer(
             table_rendering_config or TableRenderingConfig()
         )
 
-    def render(self, data: T_RenderInput_Contra) -> str:
+    def render(self, data: T_RenderInput_Contra) -> Table:
         """Render a single item to a table."""
         table = Table(
             show_header=True,
@@ -90,7 +90,7 @@ class TableSingleItemRenderer(
             value = str(getattr(data, key, ""))
             table.add_row(self.columns_map[key].header, value)
 
-        return table.__str__()
+        return table
 
 
 class Column(BaseModel):
@@ -111,6 +111,10 @@ class Column(BaseModel):
         description="The style of the column. See rich.style.Style for more details.",
     )
 
+    model_config = SettingsConfigDict(
+        arbitrary_types_allowed=True,
+    )
+
 
 class DefaultColumnRenderingConfig(BaseSettings):
     """
@@ -120,8 +124,8 @@ class DefaultColumnRenderingConfig(BaseSettings):
     """
 
     color: str = Field(description="The color of the column", default="blue")
-    bgcolor: str = Field(
-        description="The background color of the column", default="blue"
+    bgcolor: Optional[str] = Field(
+        description="The background color of the column", default=None
     )
     bold: bool = Field(description="Whether to bold the column", default=False)
     dim: bool = Field(description="Whether to dim the column", default=False)
@@ -180,10 +184,10 @@ class TableRenderingConfig(BaseSettings):
     Table configuration.
     """
 
-    header_style: StyleType = Field(
+    header_style: str = Field(
         description="The header style of the table", default="bold"
     )
-    border_style: StyleType = Field(
+    border_style: str = Field(
         description="The border style of the table", default="custom"
     )
 

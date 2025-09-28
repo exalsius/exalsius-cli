@@ -12,7 +12,7 @@ from exalsius.services.models import (
 )
 
 
-class ListServicesCommand(BaseCommand[ServicesListResponse]):
+class ListServicesCommand(BaseCommand):
     def __init__(self, request: ServicesListRequestDTO):
         self.request: ServicesListRequestDTO = request
 
@@ -20,7 +20,7 @@ class ListServicesCommand(BaseCommand[ServicesListResponse]):
         return self.request.api.list_services_deployments(self.request.cluster_id)
 
 
-class GetServiceCommand(BaseCommand[ServiceResponse]):
+class GetServiceCommand(BaseCommand):
     def __init__(self, request: ServicesGetRequestDTO):
         self.request: ServicesGetRequestDTO = request
 
@@ -30,7 +30,7 @@ class GetServiceCommand(BaseCommand[ServiceResponse]):
         )
 
 
-class DeleteServiceCommand(BaseCommand[ServiceDeleteResponse]):
+class DeleteServiceCommand(BaseCommand):
     def __init__(self, request: ServicesDeleteRequestDTO):
         self.request: ServicesDeleteRequestDTO = request
 
@@ -40,7 +40,7 @@ class DeleteServiceCommand(BaseCommand[ServiceDeleteResponse]):
         )
 
 
-class DeployServiceCommand(BaseCommand[ServiceCreateResponse]):
+class DeployServiceCommand(BaseCommand):
     def __init__(self, request: ServicesDeployRequestDTO):
         self.request: ServicesDeployRequestDTO = request
 

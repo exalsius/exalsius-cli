@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Optional
 
-from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
-
 from exalsius.config import AppConfig
 from exalsius.workspaces.devpod.models import (
     DevPodWorkspaceTemplateDTO,
@@ -26,12 +24,14 @@ class DevPodWorkspacesService(WorkspacesService):
         variables: DevPodWorkspaceVariablesDTO,
         description: Optional[str] = None,
         to_be_deleted_at: Optional[datetime] = None,
-    ) -> WorkspaceCreateResponse:
+    ) -> str:
         return self._create_workspace(
             cluster_id=cluster_id,
             name=name,
             resources=resources,
-            workspace_template=DevPodWorkspaceTemplateDTO(variables=variables),
+            workspace_template=DevPodWorkspaceTemplateDTO(
+                variables=variables,
+            ),
             description=description,
             to_be_deleted_at=to_be_deleted_at,
         )

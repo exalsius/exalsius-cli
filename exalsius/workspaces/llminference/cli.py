@@ -1,26 +1,38 @@
 import logging
+from typing import List, Optional
 
 import typer
 from exalsius_api_client.models.workspace import Workspace
-from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
+from exalsius_api_client.models.workspace_access_information import (
+    WorkspaceAccessInformation,
+)
 from pydantic import PositiveInt
-from rich.console import Console
 
 from exalsius.config import AppConfig
 from exalsius.utils import commons as utils
-from exalsius.utils.theme import custom_theme
 from exalsius.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
-from exalsius.workspaces.display import WorkspacesDisplayManager
+from exalsius.workspaces.display import TableWorkspacesDisplayManager
 from exalsius.workspaces.llminference.models import LLMInferenceWorkspaceVariablesDTO
 from exalsius.workspaces.llminference.service import LLMInferenceWorkspacesService
 from exalsius.workspaces.models import (
     ResourcePoolDTO,
+    WorkspaceAccessInformationDTO,
 )
 
-logger = logging.getLogger("cli.workspaces.llm-inference")
+logger: logging.Logger = logging.getLogger("cli.workspaces.llm-inference")
 
 
-@workspaces_deploy_app.command("llm-inference")
+@workspaces_deploy_app.callback(invoke_without_command=True)
+def _root(  # pyright: ignore[reportUnusedFunction]
+    ctx: typer.Context,
+):
+    """
+    Manage LLM inference workspaces.
+    """
+    utils.help_if_no_subcommand(ctx)
+
+
+@workspaces_deploy_app.command("llm-inference", help="Deploy a LLM inference workspace")
 def deploy_llm_inference_workspace(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -148,14 +160,15 @@ def deploy_llm_inference_workspace(
             "the number of tensor parallel replicas (`tensor-parallel-size`)."
         )
 
-    console = Console(theme=custom_theme)
-    display_manager = WorkspacesDisplayManager(console)
+    display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = LLMInferenceWorkspacesService(config, access_token)
+    service: LLMInferenceWorkspacesService = LLMInferenceWorkspacesService(
+        config, access_token
+    )
 
-    resources = ResourcePoolDTO(
+    resources: ResourcePoolDTO = ResourcePoolDTO(
         gpu_count=gpu_count,
         gpu_type=None,
         gpu_vendor=None,
@@ -164,33 +177,52 @@ def deploy_llm_inference_workspace(
         storage_gb=1,  # llm inference workspaces do not support PVC storage, this will be ignored
     )
 
-    workspace_create_response: WorkspaceCreateResponse = (
-        service.create_llm_inference_workspace(
-            cluster_id=cluster_id,
-            name=name,
-            resources=resources,
-            variables=LLMInferenceWorkspaceVariablesDTO(
-                deployment_name=name,
-                deployment_image=docker_image,
-                huggingface_model=huggingface_model,
-                huggingface_token=huggingface_token,
-                num_model_replicas=num_model_replicas,
-                runtime_environment_pip_packages=pip_dependencies,
-                tensor_parallel_size=tensor_parallel_size,
-                pipeline_parallel_size=pipeline_parallel_size,
-                cpu_per_actor=cpu_per_actor,
-                gpu_per_actor=gpu_per_actor,
-                ephemeral_storage_gb=ephemeral_storage_gb_per_actor,
-            ),
-        )
+    workspace_id: str = service.create_llm_inference_workspace(
+        cluster_id=cluster_id,
+        name=name,
+        resources=resources,
+        variables=LLMInferenceWorkspaceVariablesDTO(
+            deployment_name=name,
+            deployment_image=docker_image,
+            huggingface_model=huggingface_model,
+            huggingface_token=huggingface_token,
+            num_model_replicas=num_model_replicas,
+            runtime_environment_pip_packages=pip_dependencies,
+            tensor_parallel_size=tensor_parallel_size,
+            pipeline_parallel_size=pipeline_parallel_size,
+            cpu_per_actor=cpu_per_actor,
+            gpu_per_actor=gpu_per_actor,
+            ephemeral_storage_gb=ephemeral_storage_gb_per_actor,
+        ),
     )
 
     workspace: Workspace = poll_workspace_creation(
-        console=console,
         display_manager=display_manager,
         service=service,
-        workspace_create_response=workspace_create_response,
+        workspace_id=workspace_id,
     )
 
-    display_manager.display_workspace_created(workspace)
-    display_manager.display_workspace_access_info(workspace)
+    access_infos: Optional[List[WorkspaceAccessInformation]] = (
+        workspace.access_information
+    )
+    if not access_infos or len(access_infos) == 0:
+        display_manager.display_success(
+            f"workspace {workspace.name} ({workspace_id}) created successfully"
+        )
+        raise typer.Exit(0)
+
+    access_info_dtos: List[WorkspaceAccessInformationDTO] = []
+    for access_info in access_infos:
+        access_info_dtos.append(
+            WorkspaceAccessInformationDTO(
+                workspace_id=workspace_id,
+                access_type=access_info.access_type,
+                access_endpoint=f"{access_info.access_protocol.lower()}://{access_info.external_ip}:{access_info.port_number}",
+            )
+        )
+
+    display_manager.display_success(
+        f"workspace {workspace.name} ({workspace_id}) created successfully."
+    )
+    display_manager.display_info("Access information:")
+    display_manager.display_workspace_access_info(access_info_dtos)

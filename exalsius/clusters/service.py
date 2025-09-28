@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from exalsius_api_client.api.clusters_api import ClustersApi
-from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.exceptions import ApiException
+from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cluster import Cluster
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
 from exalsius_api_client.models.cluster_kubeconfig_response import (
@@ -20,8 +20,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
-from exalsius_api_client.models.credentials import Credentials
-from exalsius_api_client.models.node_response import NodeResponse
 
 from exalsius.clusters.commands import (
     AddClusterNodeCommand,
@@ -33,7 +31,6 @@ from exalsius.clusters.commands import (
     GetClusterCommand,
     GetClusterNodesCommand,
     GetClusterResourcesCommand,
-    ListCloudCredentialsCommand,
     ListClustersCommand,
 )
 from exalsius.clusters.models import (
@@ -54,7 +51,6 @@ from exalsius.clusters.models import (
     ClustersNodesRequestDTO,
     ClustersResourcesRequestDTO,
     ClusterType,
-    ListCloudCredentialsRequestDTO,
     NodesToAddDTO,
 )
 from exalsius.config import AppConfig
@@ -64,12 +60,13 @@ from exalsius.core.commons.commands import SaveFileCommand
 from exalsius.core.commons.models import SaveFileRequestDTO, ServiceError
 from exalsius.nodes.service import NodeService
 
+CLUSTERS_API_ERROR_TYPE: str = "ClustersApiError"
+
 
 class ClustersService(BaseServiceWithAuth):
     def __init__(self, config: AppConfig, access_token: str):
         super().__init__(config, access_token)
         self.clusters_api: ClustersApi = ClustersApi(self.api_client)
-        self.management_api: ManagementApi = ManagementApi(self.api_client)
         self.nodes_service: NodeService = NodeService(config, access_token)
 
     def _execute_command(self, command: BaseCommand) -> Any:
@@ -77,12 +74,20 @@ class ClustersService(BaseServiceWithAuth):
             return command.execute()
         except ApiException as e:
             raise ServiceError(
-                f"api error while executing command {command.__class__.__name__}. "
-                f"Error code: {e.status}, error body: {e.body}"  # pyright: ignore[reportUnknownMemberType]
+                message=f"api error while executing command {command.__class__.__name__}: {e.body}",  # pyright: ignore[reportUnknownMemberType]
+                error_code=(
+                    str(
+                        e.status  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+                    )
+                    if e.status  # pyright: ignore[reportUnknownMemberType]
+                    else None
+                ),
+                error_type=CLUSTERS_API_ERROR_TYPE,
             )
         except Exception as e:
             raise ServiceError(
-                f"unexpected error while executing command {command.__class__.__name__}: {e}"
+                message=f"unexpected error while executing command {command.__class__.__name__}: {e}",
+                error_type=CLUSTERS_API_ERROR_TYPE,
             )
 
     def _get_cluster_nodes_dto_from_response(
@@ -92,29 +97,23 @@ class ClustersService(BaseServiceWithAuth):
 
         if cluster_nodes_response.worker_node_ids:
             for node_id in cluster_nodes_response.worker_node_ids:
-                worker_node_response: NodeResponse = self.nodes_service.get_node(
-                    node_id
-                )
-                if worker_node_response.actual_instance:
-                    nodes.append(
-                        ClusterNodeDTO(
-                            role="WORKER",
-                            **worker_node_response.actual_instance.to_dict(),
-                        )
+                worker_node: BaseNode = self.nodes_service.get_node(node_id)
+                nodes.append(
+                    ClusterNodeDTO(
+                        role="WORKER",
+                        **worker_node.to_dict(),
                     )
+                )
 
         if cluster_nodes_response.control_plane_node_ids:
             for node_id in cluster_nodes_response.control_plane_node_ids:
-                control_plane_node_response: NodeResponse = self.nodes_service.get_node(
-                    node_id
-                )
-                if control_plane_node_response.actual_instance:
-                    nodes.append(
-                        ClusterNodeDTO(
-                            role="CONTROL_PLANE",
-                            **control_plane_node_response.actual_instance.to_dict(),
-                        )
+                control_plane_node: BaseNode = self.nodes_service.get_node(node_id)
+                nodes.append(
+                    ClusterNodeDTO(
+                        role="CONTROL_PLANE",
+                        **control_plane_node.to_dict(),
                     )
+                )
 
         return nodes
 
@@ -299,12 +298,3 @@ class ClustersService(BaseServiceWithAuth):
             ).execute()
         except Exception as e:
             raise ServiceError(f"Failed to save kubeconfig to {kubeconfig_path}: {e}")
-
-    def list_cloud_credentials(self) -> List[Credentials]:
-        return self.execute_command(
-            ListCloudCredentialsCommand(
-                ListCloudCredentialsRequestDTO(
-                    api=self.management_api,
-                )
-            )
-        )

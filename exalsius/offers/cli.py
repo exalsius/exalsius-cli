@@ -2,19 +2,19 @@ from typing import List, Optional
 
 import typer
 from exalsius_api_client.models.offer import Offer
-from rich.console import Console
 
 from exalsius.config import AppConfig
-from exalsius.offers.display import OffersDisplayManager
+from exalsius.core.base.models import ErrorDTO
+from exalsius.core.commons.models import ServiceError
+from exalsius.offers.display import TableOffersDisplayManager
 from exalsius.offers.service import OffersService
 from exalsius.utils import commons as utils
-from exalsius.utils.theme import custom_theme
 
 offers_app = typer.Typer()
 
 
 @offers_app.callback(invoke_without_command=True)
-def _root(
+def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
 ):
     """
@@ -53,29 +53,29 @@ def list_offers(
     """
     List available GPU offers from cloud providers.
     """
-    console = Console(theme=custom_theme)
-    display_manager = OffersDisplayManager(console)
+    display_manager: TableOffersDisplayManager = TableOffersDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
 
     config: AppConfig = utils.get_config_from_ctx(ctx)
     service = OffersService(config, access_token)
 
-    with console.status(
-        "[bold custom]Fetching offers...[/bold custom]",
-        spinner="bouncingBall",
-        spinner_style="custom",
-    ):
-        try:
-            offers: List[Offer] = service.list_offers(
-                gpu_type=gpu_type,
-                gpu_vendor=gpu_vendor,
-                cloud_provider=cloud_provider,
-                price_min=price_min,
-                price_max=price_max,
+    try:
+        offers: List[Offer] = service.list_offers(
+            gpu_type=gpu_type,
+            gpu_vendor=gpu_vendor,
+            cloud_provider=cloud_provider,
+            price_min=price_min,
+            price_max=price_max,
+        )
+    except ServiceError as e:
+        display_manager.display_error(
+            ErrorDTO(
+                message=e.message,
+                error_type=e.error_type,
+                error_code=e.error_code,
             )
-        except Exception as e:
-            display_manager.print_error(f"Failed to fetch offers: {e}")
-            raise typer.Exit(1)
+        )
+        raise typer.Exit(1)
 
     display_manager.display_offers(offers)

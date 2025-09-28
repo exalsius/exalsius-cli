@@ -3,10 +3,6 @@ from typing import List
 from exalsius_api_client.models.cluster import Cluster
 
 from exalsius.clusters.models import ClusterNodeDTO, ClusterResourcesDTO
-from exalsius.core.base.render import (
-    BaseListRenderer,
-    BaseSingleItemRenderer,
-)
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -29,30 +25,28 @@ from exalsius.core.commons.render.table import (
 class JsonClusterDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
-        cluster_list_renderer: BaseListRenderer[Cluster, str] = JsonListStringRenderer[
+        cluster_list_renderer: JsonListStringRenderer[Cluster] = JsonListStringRenderer[
             Cluster
         ](),
-        cluster_single_item_renderer: BaseSingleItemRenderer[
-            Cluster, str
+        cluster_single_item_renderer: JsonSingleItemStringRenderer[
+            Cluster
         ] = JsonSingleItemStringRenderer[Cluster](),
-        cluster_nodes_list_renderer: BaseListRenderer[
-            ClusterNodeDTO, str
+        cluster_nodes_list_renderer: JsonListStringRenderer[
+            ClusterNodeDTO
         ] = JsonListStringRenderer[ClusterNodeDTO](),
-        cluster_resources_list_renderer: BaseListRenderer[
-            ClusterResourcesDTO, str
+        cluster_resources_list_renderer: JsonListStringRenderer[
+            ClusterResourcesDTO
         ] = JsonListStringRenderer[ClusterResourcesDTO](),
     ):
         super().__init__()
-        self.cluster_list_display = ConsoleListDisplay[Cluster](
-            renderer=cluster_list_renderer
-        )
-        self.cluster_single_item_display = ConsoleSingleItemDisplay[Cluster](
+        self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
+        self.cluster_single_item_display = ConsoleSingleItemDisplay(
             renderer=cluster_single_item_renderer
         )
-        self.cluster_nodes_list_display = ConsoleListDisplay[ClusterNodeDTO](
+        self.cluster_nodes_list_display = ConsoleListDisplay(
             renderer=cluster_nodes_list_renderer
         )
-        self.cluster_resources_list_display = ConsoleListDisplay[ClusterResourcesDTO](
+        self.cluster_resources_list_display = ConsoleListDisplay(
             renderer=cluster_resources_list_renderer
         )
 
@@ -96,34 +90,32 @@ DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP = {
 class TableClusterDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        cluster_list_renderer: BaseListRenderer[Cluster, str] = TableListRenderer[
+        cluster_list_renderer: TableListRenderer[Cluster] = TableListRenderer[Cluster](
+            columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP
+        ),
+        cluster_single_item_renderer: TableSingleItemRenderer[
             Cluster
-        ](columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP),
-        cluster_single_item_renderer: BaseSingleItemRenderer[
-            Cluster, str
         ] = TableSingleItemRenderer[Cluster](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
-        cluster_nodes_list_renderer: BaseListRenderer[
-            ClusterNodeDTO, str
+        cluster_nodes_list_renderer: TableListRenderer[
+            ClusterNodeDTO
         ] = TableListRenderer[ClusterNodeDTO](
             columns_rendering_map=DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP
         ),
-        cluster_resources_list_renderer: BaseListRenderer[
-            ClusterResourcesDTO, str
+        cluster_resources_list_renderer: TableListRenderer[
+            ClusterResourcesDTO
         ] = TableListRenderer[ClusterResourcesDTO](
             columns_rendering_map=DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP
         ),
     ):
         super().__init__()
-        self.cluster_list_display = ConsoleListDisplay[Cluster](
-            renderer=cluster_list_renderer
-        )
-        self.cluster_single_item_display = ConsoleSingleItemDisplay[Cluster](
+        self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
+        self.cluster_single_item_display = ConsoleSingleItemDisplay(
             renderer=cluster_single_item_renderer
         )
-        self.cluster_nodes_list_display = ConsoleListDisplay[ClusterNodeDTO](
+        self.cluster_nodes_list_display = ConsoleListDisplay(
             renderer=cluster_nodes_list_renderer
         )
-        self.cluster_resources_list_display = ConsoleListDisplay[ClusterResourcesDTO](
+        self.cluster_resources_list_display = ConsoleListDisplay(
             renderer=cluster_resources_list_renderer
         )
 

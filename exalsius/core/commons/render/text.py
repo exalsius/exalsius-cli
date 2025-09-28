@@ -53,7 +53,7 @@ class _BaseRichTextRenderer:
         style_parts = self._get_style_parts()
         if not style_parts:
             return text
-        return f"[{style_parts}]{text}[/]"
+        return f"[{' '.join(style_parts)}]{text}[/]"
 
 
 class RichTextRenderer(_BaseRichTextRenderer, BaseSingleItemRenderer[str, str]):

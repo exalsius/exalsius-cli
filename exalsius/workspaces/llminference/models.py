@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import ClassVar, Optional
 
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import Field
@@ -47,7 +47,8 @@ class LLMInferenceWorkspaceVariablesDTO(BaseSettings):
 
 
 class LLMInferenceWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
-    name: Literal["ray-llm-service-template"] = "ray-llm-service-template"
+    name: ClassVar[str] = "ray-llm-service-template"
+
     variables: LLMInferenceWorkspaceVariablesDTO = Field(
         ..., description="The variables of the llm inference template"
     )

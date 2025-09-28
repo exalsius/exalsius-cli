@@ -10,7 +10,7 @@ from exalsius.core.base.render import (
 
 
 class BaseListDisplay(Protocol[T_RenderInput_Inv, T_RenderOutput_Cov]):
-    """Base display manager."""
+    """Base display manager for lists of items."""
 
     @property
     def renderer(self) -> BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov]: ...
@@ -19,7 +19,7 @@ class BaseListDisplay(Protocol[T_RenderInput_Inv, T_RenderOutput_Cov]):
 
 
 class BaseSingleItemDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
-    """Base display manager."""
+    """Base display manager for single items."""
 
     @property
     def renderer(
@@ -30,7 +30,7 @@ class BaseSingleItemDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
 
 
 class BaseConfirmationDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
-    """Base display manager."""
+    """Base display manager for confirmation items."""
 
     @property
     def renderer(
@@ -38,3 +38,15 @@ class BaseConfirmationDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]
     ) -> BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov]: ...
 
     def display(self, data: T_RenderInput_Contra) -> bool: ...
+
+
+class BaseSpinnerDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
+    """Base display manager for spinner items."""
+
+    @property
+    def renderer(
+        self,
+    ) -> BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov]: ...
+
+    def start_display(self, data: T_RenderInput_Contra) -> None: ...
+    def stop_display(self) -> None: ...

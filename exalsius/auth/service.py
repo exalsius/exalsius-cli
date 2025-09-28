@@ -1,7 +1,6 @@
 import logging
 import subprocess
 import sys
-import traceback
 import webbrowser
 from datetime import datetime, timedelta
 from typing import Any, List, Optional
@@ -17,6 +16,7 @@ from exalsius.auth.commands import (
     StoreTokenOnKeyringCommand,
 )
 from exalsius.auth.models import (
+    Auth0APIError,
     Auth0AuthenticationDTO,
     Auth0DeviceCodeAuthenticationDTO,
     Auth0FetchDeviceCodeRequestDTO,
@@ -38,6 +38,8 @@ from exalsius.core.base.service import BaseService
 from exalsius.core.commons.models import ServiceError, ServiceWarning
 
 logger = logging.getLogger(__name__)
+
+AUTHENTICATION_ERROR_TYPE: str = "AuthenticationError"
 
 
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
@@ -83,14 +85,26 @@ class Auth0Service(BaseService):
     def _execute_command(self, command: BaseCommand) -> Any:
         try:
             return command.execute()
+        except Auth0APIError as e:
+            raise ServiceError(
+                message=f"auth0 api error while executing command {command.__class__.__name__}: {e.response.json().get('error', 'unknown error')}",
+                error_code=(
+                    str(e.response.status_code) if e.response.status_code else None
+                ),
+                error_type=AUTHENTICATION_ERROR_TYPE,
+            )
         except AuthenticationError as e:
-            raise ServiceError(str(e))
+            raise ServiceError(
+                message=f"authentication error while executing command {command.__class__.__name__}: {e.message}",
+                error_code=str(e.error_code) if e.error_code else None,
+                error_type=AUTHENTICATION_ERROR_TYPE,
+            )
         except Warning as w:
             raise ServiceWarning(str(w))
         except Exception as e:
             raise ServiceError(
-                f"unexpected error while executing command {command.__class__.__name__}: {str(e)}"
-                f"\nStacktrace:\n{traceback.format_exc()}"
+                message=f"unexpected error while executing command {command.__class__.__name__}: {str(e)}",
+                error_type=AUTHENTICATION_ERROR_TYPE,
             )
 
     def fetch_device_code(
@@ -241,26 +255,3 @@ class Auth0Service(BaseService):
             return self.__open_browser(webbrowser.get("silent"), uri)
 
         return self.__open_browser(webbrowser.get(), uri)
-
-    def scope_escalation_check(
-        self,
-        refresh_token: str,
-        current_scope: List[str],
-        reference_scope: List[str],
-    ):
-        # Sanity check: Try to use refresh token with a different scope
-        logger.debug("Performing sanity check with refresh token...")
-        # Try to get a token with a scope that's in default but not in provided scope
-        additional_scope = None
-        for ref_scope in reference_scope:
-            if ref_scope not in current_scope:
-                additional_scope = ref_scope
-                break
-
-        if additional_scope:
-            logger.debug(f"Trying to refresh with additional scope: {additional_scope}")
-            test_scope = current_scope + [additional_scope]
-            response = self.reauthorize_with_scope(refresh_token, test_scope)
-            assert sorted(response.scope.split(" ")) == sorted(current_scope)
-        else:
-            logger.debug("No additional scopes available for sanity check")

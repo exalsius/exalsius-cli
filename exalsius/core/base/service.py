@@ -28,4 +28,6 @@ class BaseServiceWithAuth(BaseService):
         client_config: Configuration = Configuration(host=self.config.backend_host)
 
         self.api_client: ApiClient = ApiClient(configuration=client_config)
-        self.api_client.set_default_header("Authorization", f"Bearer {access_token}")
+        self.api_client.set_default_header(  # pyright: ignore[reportUnknownMemberType]
+            "Authorization", f"Bearer {access_token}"
+        )  # pyright: ignore[reportUnknownMemberType]

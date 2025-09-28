@@ -2,7 +2,6 @@ from typing import List
 
 from exalsius_api_client.models.offer import Offer
 
-from exalsius.core.base.render import BaseListRenderer, BaseSingleItemRenderer
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -23,18 +22,16 @@ from exalsius.core.commons.render.table import (
 class JsonOffersDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
-        offers_list_renderer: BaseListRenderer[Offer, str] = JsonListStringRenderer[
+        offers_list_renderer: JsonListStringRenderer[Offer] = JsonListStringRenderer[
             Offer
         ](),
-        offers_single_item_renderer: BaseSingleItemRenderer[
-            Offer, str
+        offers_single_item_renderer: JsonSingleItemStringRenderer[
+            Offer
         ] = JsonSingleItemStringRenderer[Offer](),
     ):
         super().__init__()
-        self.offers_list_display = ConsoleListDisplay[Offer](
-            renderer=offers_list_renderer
-        )
-        self.offers_single_item_display = ConsoleSingleItemDisplay[Offer](
+        self.offers_list_display = ConsoleListDisplay(renderer=offers_list_renderer)
+        self.offers_single_item_display = ConsoleSingleItemDisplay(
             renderer=offers_single_item_renderer
         )
 
@@ -62,18 +59,16 @@ DEFAULT_COLUMNS_RENDERING_MAP = {
 class TableOffersDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        offers_list_renderer: BaseListRenderer[Offer, str] = TableListRenderer[Offer](
+        offers_list_renderer: TableListRenderer[Offer] = TableListRenderer[Offer](
             columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP
         ),
-        offers_single_item_renderer: BaseSingleItemRenderer[
-            Offer, str
+        offers_single_item_renderer: TableSingleItemRenderer[
+            Offer
         ] = TableSingleItemRenderer[Offer](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
     ):
         super().__init__()
-        self.offers_list_display = ConsoleListDisplay[Offer](
-            renderer=offers_list_renderer
-        )
-        self.offers_single_item_display = ConsoleSingleItemDisplay[Offer](
+        self.offers_list_display = ConsoleListDisplay(renderer=offers_list_renderer)
+        self.offers_single_item_display = ConsoleSingleItemDisplay(
             renderer=offers_single_item_renderer
         )
 

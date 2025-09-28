@@ -13,7 +13,7 @@ diloco:
   checkpointPath: "checkpoint.pth"
   checkpointInterval: "512"
   device: "cuda"
-  heterogeneous: "false"
+  heterogeneous: "true"
   compressionDecay: "0.9"
   compressionTopk: "32"
   experimentDescription: "DiLoCo distributed training experiment"

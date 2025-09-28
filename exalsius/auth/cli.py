@@ -1,4 +1,3 @@
-import copy
 import logging
 
 import typer
@@ -15,9 +14,6 @@ from exalsius.state import AppState
 from exalsius.utils import commons as utils
 
 logger = logging.getLogger(__name__)
-
-
-deployment_token_app = typer.Typer()
 
 
 def _authorization_workflow(
@@ -154,42 +150,3 @@ def logout(ctx: typer.Context):
 
     logger.debug("Logout successful.")
     display_manager.display_logout_success()
-
-
-@deployment_token_app.command("get")
-def get_deployment_token(
-    ctx: typer.Context,
-):
-    """
-    Requests a new access token and refresh token for deployment and displays the new tokens.
-
-    The new tokens are displayed but not stored in the keyring.
-    """
-    logger.debug("Starting process of requesting deployment tokens.")
-    original_app_state: AppState = utils.get_app_state_from_ctx(ctx)
-    modified_app_state: AppState = copy.deepcopy(original_app_state)
-    modified_app_state.config.auth0.client_id = (
-        modified_app_state.config.auth0_node_agent.client_id
-    )
-    modified_app_state.config.auth0.scope = (
-        modified_app_state.config.auth0_node_agent.scope
-    )
-
-    display_manager: AuthDisplayManager = AuthDisplayManager()
-
-    auth_service: Auth0Service = Auth0Service(config=modified_app_state.config)
-
-    auth_resp, validate_resp = _authorization_workflow(auth_service, display_manager)
-
-    # Sanity check: If the refresh token is present, check if the scope can be used to escalate the scope.
-    if auth_resp.refresh_token:
-        auth_service.scope_escalation_check(
-            refresh_token=auth_resp.refresh_token,
-            current_scope=original_app_state.config.auth0_node_agent.scope,
-            reference_scope=original_app_state.config.auth0.scope,
-        )
-    # Display the deployment token to the user.
-    logger.debug(f"Deployment token request successful for user {validate_resp.email}.")
-    display_manager.display_deployment_token_request_success(
-        access_token=auth_resp.access_token,
-    )

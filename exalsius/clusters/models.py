@@ -3,7 +3,6 @@ from enum import Enum, StrEnum
 from typing import Dict, List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
-from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
@@ -146,10 +145,6 @@ class ClustersDeleteNodeRequestDTO(ClustersBaseRequestDTO):
     node_id: str = Field(
         ..., description="The ID of the node to delete from the cluster"
     )
-
-
-class ListCloudCredentialsRequestDTO(BaseRequestDTO):
-    api: ManagementApi = Field(..., description="The API client")
 
 
 class ClustersDownloadKubeConfigRequestDTO(ClustersBaseRequestDTO):

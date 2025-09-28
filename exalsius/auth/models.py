@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+from requests import HTTPError
 
 from exalsius.core.base.models import BaseRequestDTO
 
@@ -11,50 +12,26 @@ from exalsius.core.base.models import BaseRequestDTO
 
 
 class AuthenticationError(Exception):
-    def __init__(self, message: str):
+    def __init__(self, message: str, error_code: Optional[str] = None):
         super().__init__(message)
-        self.message = message
-
-    def __str__(self) -> str:
-        return f"AuthenticationError: {self.message}"
+        self.message: str = message
+        self.error_code: Optional[str] = error_code
 
 
 class KeyringError(AuthenticationError):
-    def __init__(self, message: str):
-        super().__init__(message)
-
-    def __str__(self) -> str:
-        return f"KeyringError: {self.message}"
+    pass
 
 
-class Auth0APIError(AuthenticationError):
-    def __init__(self, error: str, status_code: int, error_description: str):
-        super().__init__(error)
-        self.error = error
-        self.status_code = status_code
-        self.error_description = error_description
-
-    def __str__(self) -> str:
-        return (
-            f"Auth0APIError: {self.error} "
-            f"(status code: {self.status_code}, "
-            f"error description: {self.error_description})"
-        )
+class Auth0APIError(HTTPError):
+    pass
 
 
 class Auth0AuthenticationError(AuthenticationError):
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
-
-    def __str__(self) -> str:
-        return f"Auth0AuthenticationError: {self.message}"
+    pass
 
 
 class NotLoggedInWarning(Warning):
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
+    pass
 
 
 ######################################
