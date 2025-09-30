@@ -5,7 +5,6 @@ from time import sleep, time
 from typing import Any, Dict, Optional
 
 import keyring
-import requests
 from auth0.authentication.token_verifier import (
     AsymmetricSignatureVerifier,
     TokenVerifier,
@@ -13,26 +12,31 @@ from auth0.authentication.token_verifier import (
 from auth0.exceptions import TokenValidationError
 
 from exalsius.auth.models import (
-    Auth0APIError,
     Auth0AuthenticationDTO,
-    Auth0AuthenticationError,
     Auth0DeviceCodeAuthenticationDTO,
     Auth0FetchDeviceCodeRequestDTO,
     Auth0PollForAuthenticationRequestDTO,
     Auth0RefreshTokenRequestDTO,
     Auth0RevokeTokenRequestDTO,
-    Auth0RevokeTokenStatusDTO,
     Auth0UserInfoDTO,
     Auth0ValidateTokenRequestDTO,
     ClearTokenFromKeyringRequestDTO,
-    KeyringError,
     LoadedTokenDTO,
     LoadTokenFromKeyringRequestDTO,
     StoreTokenOnKeyringRequestDTO,
     TokenKeyringStorageStatusDTO,
 )
 from exalsius.core.base.commands import BaseCommand
-from exalsius.core.commons.commands import PostRequestCommand
+from exalsius.core.base.exceptions import ExalsiusError
+from exalsius.core.commons.commands import (
+    APIError,
+    PostRequestWithoutResponseCommand,
+    PostRequestWithResponseCommand,
+)
+from exalsius.core.commons.deserializer import (
+    DeserializationError,
+    PydanticDeserializer,
+)
 
 
 class KeyringKeys(StrEnum):
@@ -42,7 +46,31 @@ class KeyringKeys(StrEnum):
     REFRESH_TOKEN_KEY = "refresh_token"
 
 
-class Auth0FetchDeviceCodeCommand(PostRequestCommand):
+class Auth0Error(ExalsiusError):
+    def __init__(self, message: str, error_code: Optional[int] = None):
+        super().__init__(message)
+        self.error_code: Optional[int] = error_code
+
+
+class Auth0APIError(APIError):
+    pass
+
+
+class Auth0TimeoutError(Auth0Error):
+    pass
+
+
+class Auth0TokenError(Auth0Error):
+    pass
+
+
+class KeyringError(ExalsiusError):
+    pass
+
+
+class Auth0FetchDeviceCodeCommand(
+    PostRequestWithResponseCommand[Auth0DeviceCodeAuthenticationDTO]
+):
     def __init__(self, request: Auth0FetchDeviceCodeRequestDTO):
         self.request = request
 
@@ -56,19 +84,10 @@ class Auth0FetchDeviceCodeCommand(PostRequestCommand):
             "scope": " ".join(self.request.scope),
         }
 
-    def execute(self) -> Auth0DeviceCodeAuthenticationDTO:
-        try:
-            return self._execute_post_request(Auth0DeviceCodeAuthenticationDTO)
-        except requests.HTTPError as e:
-            raise Auth0APIError(
-                error=e.response.json().get("error", "unknown error"),
-                status_code=e.response.status_code,
-                error_description=e.response.json().get("error_description", str(e)),
-                response=e.response,
-            ) from e
 
-
-class Auth0PollForAuthenticationCommand(PostRequestCommand):
+class Auth0PollForAuthenticationCommand(
+    PostRequestWithResponseCommand[Auth0AuthenticationDTO]
+):
     def __init__(self, request: Auth0PollForAuthenticationRequestDTO):
         self.request = request
 
@@ -82,71 +101,46 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
             "grant_type": self.request.grant_type,
         }
 
-    def _format_error(self, error: requests.HTTPError | Exception) -> str:
-        if isinstance(error, requests.HTTPError):
-            return f"HTTP error: {error.response.status_code} {error.response.json().get('error_description', error.response.json().get('error', str(error)))}"
-        else:
-            return f"unexpected error: {error}"
-
     def execute(self) -> Auth0AuthenticationDTO:
         start_time: float = time()
         retry_count: int = 0
         interval: int = self.request.poll_interval_seconds
-        last_error: Optional[requests.HTTPError | Exception] = None
+        last_error: Optional[APIError] = None
         while True:
             if retry_count >= self.request.retry_limit:
-                raise Auth0AuthenticationError(
+                raise Auth0Error(
                     message=f"failed to authenticate after {self.request.retry_limit} retries. "
-                    f"error: {self._format_error(last_error) if last_error else 'unknown error'}",
-                    error_code=(
-                        str(last_error.response.status_code)
-                        if last_error and isinstance(last_error, requests.HTTPError)
-                        else None
-                    ),
+                    f"error: {last_error.message if last_error else 'unknown error'}",
+                    error_code=last_error.status_code if last_error else None,
                 )
 
             sleep(interval)
             if time() - start_time > self.request.poll_timeout_seconds:
-                raise TimeoutError("polling timed out.")
+                raise Auth0TimeoutError("polling timed out")
             try:
-                result: Auth0AuthenticationDTO = super()._execute_post_request(
-                    Auth0AuthenticationDTO
-                )
+                result: Auth0AuthenticationDTO = super().execute()
                 if result.access_token:
                     break
                 else:
-                    last_error = Exception("auth0 returned an empty access token.")
+                    last_error = APIError(
+                        "auth0 returned an empty access token.",
+                        self._get_url(),
+                    )
                     retry_count += 1
                     continue
 
-            except requests.HTTPError as e:
-                if e.response.status_code == 403:
-                    if "error" in e.response.json():
-                        error = e.response.json()["error"]
-                        if error == "authorization_pending":
-                            continue
-                        else:
-                            raise Auth0AuthenticationError(
-                                message=f"failed to login. reason: {e.response.json().get('error_description', e.response.json().get('error', 'unknown error'))}",
-                                error_code=e.response.json().get("error"),
-                            )
+            except APIError as e:
+                if e.status_code == 403:
+                    if "authorization_pending" in e.message:
+                        continue
                     else:
                         last_error = e
                         retry_count += 1
                         continue
-                if e.response.status_code == 429:
-                    if "error" in e.response.json():
-                        error = e.response.json()["error"]
-                        if error == "slow_down":
-                            interval += 1
-                            continue
-                        else:
-                            raise Auth0APIError(
-                                e.response.json().get("error", "unknown error"),
-                                e.response.status_code,
-                                e.response.json().get("error_description", ""),
-                                response=e.response,
-                            )
+                if e.status_code == 429:
+                    if "slow_down" in e.message:
+                        interval += 1
+                        continue
                     else:
                         last_error = e
                         retry_count += 1
@@ -156,38 +150,52 @@ class Auth0PollForAuthenticationCommand(PostRequestCommand):
                     retry_count += 1
                     continue
             except Exception as e:
-                last_error = e
+                last_error = APIError(
+                    message=f"unexpected error while polling for authentication: {e}",
+                    endpoint=self._get_url(),
+                )
                 retry_count += 1
                 continue
 
         return result
 
 
-class Auth0ValidateTokenCommand(BaseCommand):
-    def __init__(self, request: Auth0ValidateTokenRequestDTO):
-        self.request = request
+class Auth0ValidateTokenCommand(BaseCommand[Auth0UserInfoDTO]):
+    def __init__(
+        self,
+        request: Auth0ValidateTokenRequestDTO,
+        deserializer: PydanticDeserializer[Auth0UserInfoDTO] = PydanticDeserializer(),
+    ):
+        self.request: Auth0ValidateTokenRequestDTO = request
+        self.deserializer: PydanticDeserializer[Auth0UserInfoDTO] = deserializer
 
     def execute(self) -> Auth0UserInfoDTO:
-        jwks_url = f"https://{self.request.domain}/.well-known/jwks.json"
-        issuer = f"https://{self.request.domain}/"
-        sv = AsymmetricSignatureVerifier(jwks_url)
-        tv = TokenVerifier(
-            signature_verifier=sv, issuer=issuer, audience=self.request.client_id
+        jwks_url: str = f"https://{self.request.domain}/.well-known/jwks.json"
+        issuer: str = f"https://{self.request.domain}/"
+        sv: AsymmetricSignatureVerifier = AsymmetricSignatureVerifier(jwks_url)
+        tv: TokenVerifier = TokenVerifier(
+            signature_verifier=sv,
+            issuer=issuer,
+            audience=self.request.client_id,
         )
         try:
             resp: Dict[str, Any] = tv.verify(self.request.id_token)
-            return self._deserialize(resp, Auth0UserInfoDTO)
+            return self.deserializer.deserialize(resp, Auth0UserInfoDTO)
+        except DeserializationError as e:
+            raise Auth0TokenError(
+                message=f"{e}",
+            ) from e
         except TokenValidationError as e:
-            raise Auth0AuthenticationError(
+            raise Auth0TokenError(
                 message=f"failed to validate token: {e}",
-            )
+            ) from e
         except Exception as e:
-            raise Auth0AuthenticationError(
+            raise Auth0TokenError(
                 message=f"unexpected error while validating token: {e}",
-            )
+            ) from e
 
 
-class StoreTokenOnKeyringCommand(BaseCommand):
+class StoreTokenOnKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
     def __init__(self, request: StoreTokenOnKeyringRequestDTO):
         self.request = request
 
@@ -211,11 +219,11 @@ class StoreTokenOnKeyringCommand(BaseCommand):
                     self.request.refresh_token,
                 )
         except Exception as e:
-            raise KeyringError(f"failed to store token on keyring: {e}")
+            raise KeyringError(f"failed to store token on keyring: {e}") from e
         return TokenKeyringStorageStatusDTO(success=True)
 
 
-class LoadTokenFromKeyringCommand(BaseCommand):
+class LoadTokenFromKeyringCommand(BaseCommand[LoadedTokenDTO]):
     def __init__(self, request: LoadTokenFromKeyringRequestDTO):
         self.request = request
 
@@ -243,10 +251,10 @@ class LoadTokenFromKeyringCommand(BaseCommand):
             else:
                 raise KeyringError("failed to load token from keyring.")
         except Exception as e:
-            raise KeyringError(f"failed to load token from keyring: {e}")
+            raise KeyringError(f"failed to load token from keyring: {e}") from e
 
 
-class Auth0RefreshTokenCommand(PostRequestCommand):
+class Auth0RefreshTokenCommand(PostRequestWithResponseCommand[Auth0AuthenticationDTO]):
     def __init__(self, request: Auth0RefreshTokenRequestDTO):
         self.request = request
 
@@ -263,11 +271,8 @@ class Auth0RefreshTokenCommand(PostRequestCommand):
             payload["scope"] = " ".join(self.request.scope)
         return payload
 
-    def execute(self) -> Auth0AuthenticationDTO:
-        return self._execute_post_request(Auth0AuthenticationDTO)
 
-
-class Auth0RevokeTokenCommand(PostRequestCommand):
+class Auth0RevokeTokenCommand(PostRequestWithoutResponseCommand):
     def __init__(self, request: Auth0RevokeTokenRequestDTO):
         self.request = request
 
@@ -281,24 +286,8 @@ class Auth0RevokeTokenCommand(PostRequestCommand):
             "token_type_hint": self.request.token_type_hint,
         }
 
-    def execute(self) -> Auth0RevokeTokenStatusDTO:
-        try:
-            self._execute_post_request_empty_response()
-        except requests.HTTPError as e:
-            raise Auth0APIError(
-                error=e.response.json().get("error", "unknown error"),
-                status_code=e.response.status_code,
-                error_description=e.response.json().get("error_description", ""),
-                response=e.response,
-            ) from e
-        except Exception as e:
-            raise Auth0AuthenticationError(
-                message=f"unexpected error while revoking token: {e}",
-            )
-        return Auth0RevokeTokenStatusDTO(success=True)
 
-
-class ClearTokenFromKeyringCommand(BaseCommand):
+class ClearTokenFromKeyringCommand(BaseCommand[TokenKeyringStorageStatusDTO]):
     def __init__(self, request: ClearTokenFromKeyringRequestDTO):
         self.request = request
 

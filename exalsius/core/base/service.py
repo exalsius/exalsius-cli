@@ -14,7 +14,7 @@ class BaseService:
     def __init__(self, config: AppConfig):
         self.config = config
 
-    def execute_command(self, command: BaseCommand) -> Any:
+    def execute_command(self, command: BaseCommand[Any]) -> Any:
         try:
             return command.execute()
         except Exception as e:

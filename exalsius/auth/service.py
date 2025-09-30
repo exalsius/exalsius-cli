@@ -16,7 +16,6 @@ from exalsius.auth.commands import (
     StoreTokenOnKeyringCommand,
 )
 from exalsius.auth.models import (
-    Auth0APIError,
     Auth0AuthenticationDTO,
     Auth0DeviceCodeAuthenticationDTO,
     Auth0FetchDeviceCodeRequestDTO,

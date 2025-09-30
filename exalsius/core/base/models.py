@@ -9,11 +9,6 @@ class BaseRequestDTO(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class DeserializationError(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
 class ErrorDTO(BaseModel):
     """Error DTO for renderers."""
 

@@ -13,11 +13,6 @@ class ServiceWarning(Warning):
         super().__init__(message)
 
 
-class UnexpectedResponseWarning(ServiceWarning):
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
 class ServiceError(Exception):
     def __init__(
         self,
