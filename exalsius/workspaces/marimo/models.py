@@ -8,13 +8,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from exalsius.workspaces.models import WorkspaceBaseTemplateDTO
 
 
-class JupyterWorkspaceVariablesDTO(BaseSettings):
+class MarimoWorkspaceVariablesDTO(BaseSettings):
     deployment_name: str = Field(..., description="The name of the deployment")
     deployment_image: Optional[str] = Field(
         None, description="The image of the deployment"
-    )
-    notebook_password: str = Field(
-        ..., description="The password of the Jupyter notebook"
     )
     ephemeral_storage_gb: int = Field(
         ...,
@@ -24,11 +21,11 @@ class JupyterWorkspaceVariablesDTO(BaseSettings):
     model_config = SettingsConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class JupyterWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
-    name: ClassVar[str] = "jupyter-notebook-template"
+class MarimoWorkspaceTemplateDTO(WorkspaceBaseTemplateDTO):
+    name: ClassVar[str] = "marimo-workspace-template"
 
-    variables: JupyterWorkspaceVariablesDTO = Field(
-        ..., description="The variables of the jupyter notebook template"
+    variables: MarimoWorkspaceVariablesDTO = Field(
+        ..., description="The variables of the marimo workspace template"
     )
 
     def to_api_model(self) -> WorkspaceTemplate:

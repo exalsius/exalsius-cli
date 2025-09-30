@@ -197,5 +197,8 @@ from exalsius.workspaces.jupyter import (  # noqa: F401, E402; pyright: ignore[r
 from exalsius.workspaces.llminference import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
     cli as llminference_cli,  # pyright: ignore[reportUnusedImport]
 )
+from exalsius.workspaces.marimo import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
+    cli as marimo_cli,  # pyright: ignore[reportUnusedImport]
+)
 
 # isort: on
