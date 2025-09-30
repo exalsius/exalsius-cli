@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import Field
@@ -10,7 +10,9 @@ from exalsius.workspaces.models import WorkspaceBaseTemplateDTO
 
 class DevPodWorkspaceVariablesDTO(BaseSettings):
     deployment_name: str = Field(..., description="The name of the deployment")
-    deployment_image: str = Field(..., description="The image of the deployment")
+    deployment_image: Optional[str] = Field(
+        None, description="The image of the deployment"
+    )
     ephemeral_storage_gb: int = Field(
         ...,
         description="The amount of ephemeral storage in GB to add to the workspace pod",

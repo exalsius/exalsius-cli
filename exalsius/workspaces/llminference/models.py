@@ -10,7 +10,9 @@ from exalsius.workspaces.models import WorkspaceBaseTemplateDTO
 
 class LLMInferenceWorkspaceVariablesDTO(BaseSettings):
     deployment_name: str = Field(..., description="The name of the deployment")
-    deployment_image: str = Field(..., description="The image of the deployment")
+    deployment_image: Optional[str] = Field(
+        None, description="The image of the deployment"
+    )
     huggingface_model: str = Field(
         ..., description="The HuggingFace model ID to use for the workspace"
     )
