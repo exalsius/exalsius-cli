@@ -56,6 +56,12 @@ def deploy_marimo_workspace(
         help="The docker image to use for the workspace",
         show_default=False,
     ),
+    marimo_password: str = typer.Option(
+        ...,
+        "--marimo-password",
+        "-p",
+        help="The password for the Marimo Webinterface",
+    ),
     gpu_count: PositiveInt = typer.Option(
         1,
         "--gpu-count",
@@ -109,6 +115,7 @@ def deploy_marimo_workspace(
         variables=MarimoWorkspaceVariablesDTO(
             deployment_name=name,
             deployment_image=docker_image,
+            token_password=marimo_password,
             ephemeral_storage_gb=ephemeral_storage_gb,
         ),
     )
