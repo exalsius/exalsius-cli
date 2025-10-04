@@ -13,6 +13,9 @@ class MarimoWorkspaceVariablesDTO(BaseSettings):
     deployment_image: Optional[str] = Field(
         None, description="The image of the deployment"
     )
+    token_password: str = Field(
+        ..., description="The password of the Marimo Webinterface"
+    )
     ephemeral_storage_gb: int = Field(
         ...,
         description="The amount of ephemeral storage in GB to add to the workspace pod",
