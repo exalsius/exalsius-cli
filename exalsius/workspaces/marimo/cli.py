@@ -83,7 +83,7 @@ def deploy_marimo_workspace(
     pvc_storage_gb: PositiveInt = typer.Option(
         50,
         "--pvc-storage-gb",
-        "-p",
+        "-s",
         help="The amount of PVC storage in GB to add to the workspace",
     ),
     ephemeral_storage_gb: PositiveInt = typer.Option(
