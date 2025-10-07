@@ -2,25 +2,20 @@ import datetime
 from abc import ABC, abstractmethod
 from typing import ClassVar, Optional
 
-from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.models.hardware import Hardware
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 from pydantic import BaseModel, Field
 
-from exalsius.core.base.models import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequestDTO
 from exalsius.utils import commons
 
 
-class WorkspacesBaseRequestDTO(BaseRequestDTO):
-    api: WorkspacesApi = Field(..., description="The API client")
-
-
-class WorkspacesListRequestDTO(WorkspacesBaseRequestDTO):
+class WorkspacesListRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster")
 
 
-class GetWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
+class GetWorkspaceRequestDTO(BaseRequestDTO):
     workspace_id: str = Field(..., description="The ID of the workspace")
 
 
@@ -50,7 +45,7 @@ class ResourcePoolDTO(BaseModel):
         )
 
 
-class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
+class CreateWorkspaceRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster")
     name: str = Field(..., description="The name of the workspace")
     description: Optional[str] = Field(
@@ -82,7 +77,7 @@ class CreateWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
         )
 
 
-class DeleteWorkspaceRequestDTO(WorkspacesBaseRequestDTO):
+class DeleteWorkspaceRequestDTO(BaseRequestDTO):
     workspace_id: str = Field(..., description="The ID of the workspace")
 
 

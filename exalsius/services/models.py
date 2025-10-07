@@ -1,6 +1,5 @@
 from typing import ClassVar
 
-from exalsius_api_client.api.services_api import ServicesApi
 from exalsius_api_client.models.service_deployment_create_request import (
     ServiceDeploymentCreateRequest,
 )
@@ -9,7 +8,7 @@ from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from exalsius.core.base.models import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequestDTO
 
 
 class BaseServiceTemplateDTO(BaseModel):
@@ -37,15 +36,11 @@ class NvidiaOperatorServiceTemplateDTO(BaseServiceTemplateDTO):
         )
 
 
-class ServicesBaseRequestDTO(BaseRequestDTO):
-    api: ServicesApi = Field(..., description="The API client")
-
-
-class ServicesSingleServiceRequestDTO(ServicesBaseRequestDTO):
+class ServicesSingleServiceRequestDTO(BaseRequestDTO):
     service_id: str = Field(..., description="The ID of the service")
 
 
-class ServicesListRequestDTO(ServicesBaseRequestDTO):
+class ServicesListRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster")
 
 
@@ -57,7 +52,7 @@ class ServicesDeleteRequestDTO(ServicesSingleServiceRequestDTO):
     pass
 
 
-class ServicesDeployRequestDTO(ServicesBaseRequestDTO):
+class ServicesDeployRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster")
     name: str = Field(..., description="The name of the service")
     service_template: BaseServiceTemplateDTO = Field(

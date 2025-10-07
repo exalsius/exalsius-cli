@@ -1,9 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-import requests
 from pydantic import BaseModel, Field
-from requests import HTTPError
 
 from exalsius.core.base.models import BaseRequestDTO
 
@@ -17,29 +15,6 @@ class AuthenticationError(Exception):
         super().__init__(message)
         self.message: str = message
         self.error_code: Optional[str] = error_code
-
-
-class KeyringError(AuthenticationError):
-    pass
-
-
-class Auth0APIError(HTTPError):
-    def __init__(
-        self,
-        error: str,
-        status_code: int,
-        error_description: str,
-        response: Optional[requests.Response] = None,
-    ):
-        self.error = error
-        self.status_code = status_code
-        self.error_description = error_description
-        message = f"[{error}] {status_code}: {error_description}"
-        super().__init__(message, response=response)
-
-
-class Auth0AuthenticationError(AuthenticationError):
-    pass
 
 
 class NotLoggedInWarning(Warning):

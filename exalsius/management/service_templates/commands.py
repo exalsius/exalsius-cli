@@ -1,20 +1,16 @@
-from typing import List
-
-from exalsius_api_client.models.service_template import ServiceTemplate
+from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.models.service_template_list_response import (
     ServiceTemplateListResponse,
 )
 
-from exalsius.core.base.commands import BaseCommand
+from exalsius.core.commons.commands.api import ExalsiusAPICommand
 from exalsius.management.service_templates.models import ListServiceTemplatesRequestDTO
 
 
-class ListServiceTemplatesCommand(BaseCommand):
-    def __init__(self, request: ListServiceTemplatesRequestDTO):
-        self.request: ListServiceTemplatesRequestDTO = request
-
-    def execute(self) -> List[ServiceTemplate]:
-        response: ServiceTemplateListResponse = (
-            self.request.api.list_service_templates()
-        )
-        return response.service_templates
+class ListServiceTemplatesCommand(
+    ExalsiusAPICommand[
+        ManagementApi, ListServiceTemplatesRequestDTO, ServiceTemplateListResponse
+    ]
+):
+    def _execute_api_call(self) -> ServiceTemplateListResponse:
+        return self.api_client.list_service_templates()

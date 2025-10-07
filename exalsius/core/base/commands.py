@@ -1,21 +1,18 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Type
+from typing import Generic, TypeVar
 
-from exalsius.core.base.models import DeserializationError
+from pydantic import BaseModel, ConfigDict
+
+T = TypeVar("T")
 
 
-class BaseCommand(ABC):
-    """Base command with generic return type."""
+class BaseRequestDTO(BaseModel):
+    """Base request DTO that commands receive and use internally to perform commands."""
 
-    def _deserialize(self, raw_data: Dict[str, Any], model: Type[Any]) -> Any:
-        try:
-            return model(**raw_data)
-        except Exception as e:
-            raise DeserializationError(
-                f"Failed to deserialize response {raw_data} with error {e}"
-            )
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
+
+class BaseCommand(Generic[T], ABC):
     @abstractmethod
-    def execute(self) -> Any:
-        """Execute the command and return a Pydantic model or error."""
-        pass
+    def execute(self) -> T:
+        raise NotImplementedError

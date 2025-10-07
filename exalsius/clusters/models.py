@@ -2,7 +2,6 @@ import datetime
 from enum import Enum, StrEnum
 from typing import Dict, List, Optional
 
-from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.base_node import BaseNode
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
@@ -10,7 +9,7 @@ from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
 from exalsius_api_client.models.resource_pool import ResourcePool
 from pydantic import BaseModel, Field
 
-from exalsius.core.base.models import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequestDTO
 
 
 class ClusterType(str, Enum):
@@ -39,23 +38,19 @@ class ClusterLabelValuesTelemetryType(StrEnum):
     DISABLED = "false"
 
 
-class ClustersBaseRequestDTO(BaseRequestDTO):
-    api: ClustersApi = Field(..., description="The API client")
-
-
-class ClustersListRequestDTO(ClustersBaseRequestDTO):
+class ClustersListRequestDTO(BaseRequestDTO):
     status: Optional[str] = Field(..., description="The status of the cluster")
 
 
-class ClustersGetRequestDTO(ClustersBaseRequestDTO):
+class ClustersGetRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster to get")
 
 
-class ClustersDeleteRequestDTO(ClustersBaseRequestDTO):
+class ClustersDeleteRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster to delete")
 
 
-class ClustersCreateRequestDTO(ClustersBaseRequestDTO):
+class ClustersCreateRequestDTO(BaseRequestDTO):
     name: str = Field(description="The name of the cluster")
     cluster_type: ClusterType = Field(
         description="The type of the cluster. - `CLOUD`: Cloud cluster, consisting of cloud instances - `REMOTE`: Remote cluster, consisting of self-managed nodes - `ADOPTED`: Adopted cluster, consisting of an already existing kubernetes cluster - `DOCKER`: Docker cluster, consisting of docker containers (for local testing and development) "
@@ -95,21 +90,21 @@ class ClustersCreateRequestDTO(ClustersBaseRequestDTO):
         )
 
 
-class ClustersDeployRequestDTO(ClustersBaseRequestDTO):
+class ClustersDeployRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster to deploy")
 
 
-class ClustersServicesRequestDTO(ClustersBaseRequestDTO):
+class ClustersServicesRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(
         ..., description="The ID of the cluster to get services for"
     )
 
 
-class ClustersNodesRequestDTO(ClustersBaseRequestDTO):
+class ClustersNodesRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster to get nodes for")
 
 
-class ClustersResourcesRequestDTO(ClustersBaseRequestDTO):
+class ClustersResourcesRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(
         ..., description="The ID of the cluster to get resources for"
     )
@@ -120,7 +115,7 @@ class NodesToAddDTO(BaseModel):
     node_role: str = Field(..., description="The role of the node to add")
 
 
-class ClustersAddNodeRequestDTO(ClustersBaseRequestDTO):
+class ClustersAddNodeRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(..., description="The ID of the cluster to add nodes to")
     nodes_to_add: List[NodesToAddDTO] = Field(
         ..., description="The nodes to add to the cluster"
@@ -138,7 +133,7 @@ class ClustersAddNodeRequestDTO(ClustersBaseRequestDTO):
         )
 
 
-class ClustersDeleteNodeRequestDTO(ClustersBaseRequestDTO):
+class ClustersDeleteNodeRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(
         ..., description="The ID of the cluster to delete a node from"
     )
@@ -147,7 +142,7 @@ class ClustersDeleteNodeRequestDTO(ClustersBaseRequestDTO):
     )
 
 
-class ClustersDownloadKubeConfigRequestDTO(ClustersBaseRequestDTO):
+class ClustersDownloadKubeConfigRequestDTO(BaseRequestDTO):
     cluster_id: str = Field(
         ..., description="The ID of the cluster to download the kube config for"
     )
