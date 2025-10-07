@@ -1,20 +1,20 @@
 from pydantic import Field
 
-from exalsius.management.models import BaseManagementRequestDTO
+from exalsius.core.base.commands import BaseRequestDTO
 
 
-class SSHKeysListRequestDTO(BaseManagementRequestDTO):
+class SSHKeysListRequestDTO(BaseRequestDTO):
     pass
 
 
-class SSHKeysAddRequestDTO(BaseManagementRequestDTO):
+class SSHKeysAddRequestDTO(BaseRequestDTO):
     name: str = Field(..., description="The name of the SSH key")
     private_key_base64: str = Field(..., description="The base64 encoded private key")
 
 
-class SSHKeysDeleteRequestDTO(BaseManagementRequestDTO):
+class SSHKeysDeleteRequestDTO(BaseRequestDTO):
     id: str = Field(..., description="The ID of the SSH key")
 
 
-class ListSshKeysRequestDTO(BaseManagementRequestDTO):
+class ListSshKeysRequestDTO(BaseRequestDTO):
     pass

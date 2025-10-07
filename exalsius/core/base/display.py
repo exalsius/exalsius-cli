@@ -1,4 +1,6 @@
-from typing import List, Protocol
+from typing import List, Optional, Protocol
+
+from pydantic import BaseModel
 
 from exalsius.core.base.render import (
     BaseListRenderer,
@@ -7,6 +9,14 @@ from exalsius.core.base.render import (
     T_RenderInput_Inv,
     T_RenderOutput_Cov,
 )
+
+
+class ErrorDisplayDTO(BaseModel):
+    """Error DTO for renderers."""
+
+    message: str
+    error_type: Optional[str] = None
+    error_code: Optional[str] = None
 
 
 class BaseListDisplay(Protocol[T_RenderInput_Inv, T_RenderOutput_Cov]):

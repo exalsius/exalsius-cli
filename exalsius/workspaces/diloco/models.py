@@ -72,6 +72,15 @@ class DilocoTrainerVariablesDTO(BaseSettings):
     huggingface_token: Optional[str] = Field(
         None, description="The huggingface token", alias="huggingfaceToken"
     )
+    compile_model: bool = Field(
+        False, description="Whether to compile the model", alias="compileModel"
+    )
+    compile_backend: str = Field(
+        ..., description="The backend to use for compilation", alias="compileBackend"
+    )
+    compile_mode: str = Field(
+        ..., description="The mode to use for compilation", alias="compileMode"
+    )
 
     model_config = SettingsConfigDict(
         alias_generator=to_camel, populate_by_name=True, extra="ignore"

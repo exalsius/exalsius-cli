@@ -28,7 +28,7 @@ from exalsius.auth.models import (
 )
 from exalsius.core.base.commands import BaseCommand
 from exalsius.core.base.exceptions import ExalsiusError
-from exalsius.core.commons.commands import (
+from exalsius.core.commons.commands.http import (
     APIError,
     PostRequestWithoutResponseCommand,
     PostRequestWithResponseCommand,
@@ -72,7 +72,7 @@ class Auth0FetchDeviceCodeCommand(
     PostRequestWithResponseCommand[Auth0DeviceCodeAuthenticationDTO]
 ):
     def __init__(self, request: Auth0FetchDeviceCodeRequestDTO):
-        self.request = request
+        self.request: Auth0FetchDeviceCodeRequestDTO = request
 
     def _get_url(self) -> str:
         return f"https://{self.request.domain}/oauth/device/code"
@@ -89,7 +89,7 @@ class Auth0PollForAuthenticationCommand(
     PostRequestWithResponseCommand[Auth0AuthenticationDTO]
 ):
     def __init__(self, request: Auth0PollForAuthenticationRequestDTO):
-        self.request = request
+        self.request: Auth0PollForAuthenticationRequestDTO = request
 
     def _get_url(self) -> str:
         return f"https://{self.request.domain}/oauth/token"
@@ -105,7 +105,7 @@ class Auth0PollForAuthenticationCommand(
         start_time: float = time()
         retry_count: int = 0
         interval: int = self.request.poll_interval_seconds
-        last_error: Optional[APIError] = None
+        last_error: Optional[Auth0APIError] = None
         while True:
             if retry_count >= self.request.retry_limit:
                 raise Auth0Error(
@@ -122,7 +122,7 @@ class Auth0PollForAuthenticationCommand(
                 if result.access_token:
                     break
                 else:
-                    last_error = APIError(
+                    last_error = Auth0APIError(
                         "auth0 returned an empty access token.",
                         self._get_url(),
                     )
@@ -134,7 +134,11 @@ class Auth0PollForAuthenticationCommand(
                     if "authorization_pending" in e.message:
                         continue
                     else:
-                        last_error = e
+                        last_error = Auth0APIError(
+                            message=e.message,
+                            endpoint=self._get_url(),
+                            status_code=e.status_code,
+                        )
                         retry_count += 1
                         continue
                 if e.status_code == 429:
@@ -142,15 +146,23 @@ class Auth0PollForAuthenticationCommand(
                         interval += 1
                         continue
                     else:
-                        last_error = e
+                        last_error = Auth0APIError(
+                            message=e.message,
+                            endpoint=self._get_url(),
+                            status_code=e.status_code,
+                        )
                         retry_count += 1
                         continue
                 else:
-                    last_error = e
+                    last_error = Auth0APIError(
+                        message=e.message,
+                        endpoint=self._get_url(),
+                        status_code=e.status_code,
+                    )
                     retry_count += 1
                     continue
             except Exception as e:
-                last_error = APIError(
+                last_error = Auth0APIError(
                     message=f"unexpected error while polling for authentication: {e}",
                     endpoint=self._get_url(),
                 )

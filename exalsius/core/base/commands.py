@@ -1,11 +1,18 @@
-from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import Generic, TypeVar
 
-from typing import Protocol, TypeVar
+from pydantic import BaseModel, ConfigDict
 
-T_Return_Cov = TypeVar("T_Return_Cov", covariant=True)
+T = TypeVar("T")
 
 
-class BaseCommand(Protocol[T_Return_Cov]):
-    """Base command with generic return type."""
+class BaseRequestDTO(BaseModel):
+    """Base request DTO that commands receive and use internally to perform commands."""
 
-    def execute(self) -> T_Return_Cov: ...
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class BaseCommand(Generic[T], ABC):
+    @abstractmethod
+    def execute(self) -> T | None:
+        raise NotImplementedError

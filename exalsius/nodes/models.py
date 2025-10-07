@@ -1,10 +1,9 @@
 from enum import StrEnum
 from typing import Optional
 
-from exalsius_api_client.api.nodes_api import NodesApi
 from pydantic import Field
 
-from exalsius.core.base.models import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequestDTO
 
 
 class NodeType(StrEnum):
@@ -23,7 +22,7 @@ class CloudProvider(StrEnum):
 
 
 class NodesBaseRequestDTO(BaseRequestDTO):
-    api: NodesApi = Field(..., description="The API client")
+    pass
 
 
 class NodesListRequestDTO(NodesBaseRequestDTO):
