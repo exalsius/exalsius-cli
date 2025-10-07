@@ -14,5 +14,5 @@ class BaseRequestDTO(BaseModel):
 
 class BaseCommand(Generic[T], ABC):
     @abstractmethod
-    def execute(self) -> T | None:
+    def execute(self) -> T:
         raise NotImplementedError

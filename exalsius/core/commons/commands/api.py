@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Generic, Optional, TypeVar
 
 from exalsius_api_client.exceptions import ApiException
 
-from exalsius.core.base.commands import BaseCommand
+from exalsius.core.base.commands import BaseCommand, BaseRequestDTO
 from exalsius.core.base.exceptions import ExalsiusError
 
 T_API_Type = TypeVar("T_API_Type")
 T_Return_Type = TypeVar("T_Return_Type")
+T_Request_DTO = TypeVar("T_Request_DTO", bound=BaseRequestDTO)
 
 
 class ExalsiusAPICommandError(ExalsiusError):
@@ -24,14 +27,19 @@ class ExalsiusAPICommandError(ExalsiusError):
 
 
 class ExalsiusAPICommand(
-    BaseCommand[T_Return_Type], Generic[T_API_Type, T_Return_Type]
+    BaseCommand[T_Return_Type], Generic[T_API_Type, T_Request_DTO, T_Return_Type]
 ):
-    def __init__(self, api_client: T_API_Type):
+    def __init__(self, api_client: T_API_Type, request: T_Request_DTO):
         self._api_client: T_API_Type = api_client
+        self._request: T_Request_DTO = request
 
     @property
     def api_client(self) -> T_API_Type:
         return self._api_client
+
+    @property
+    def request(self) -> T_Request_DTO:
+        return self._request
 
     def execute(self) -> T_Return_Type:
         try:

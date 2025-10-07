@@ -1,3 +1,4 @@
+from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
@@ -26,94 +27,87 @@ from exalsius.clusters.models import (
     ClustersNodesRequestDTO,
     ClustersResourcesRequestDTO,
 )
-from exalsius.core.base.commands import BaseCommand
+from exalsius.core.commons.commands.api import ExalsiusAPICommand
 
 
-class ListClustersCommand(BaseCommand):
+class ListClustersCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersListRequestDTO, ClustersListResponse]
+):
     def __init__(self, request: ClustersListRequestDTO):
         self.request: ClustersListRequestDTO = request
 
-    def execute(self) -> ClustersListResponse:
-        return self.request.api.list_clusters(self.request.status)
+    def _execute_api_call(self) -> ClustersListResponse:
+        return self.api_client.list_clusters(self.request.status)
 
 
-class GetClusterCommand(BaseCommand):
-    def __init__(self, request: ClustersGetRequestDTO):
-        self.request: ClustersGetRequestDTO = request
-
-    def execute(self) -> ClusterResponse:
-        return self.request.api.describe_cluster(self.request.cluster_id)
-
-
-class DeleteClusterCommand(BaseCommand):
-    def __init__(self, request: ClustersDeleteRequestDTO):
-        self.request: ClustersDeleteRequestDTO = request
-
-    def execute(self) -> ClusterDeleteResponse:
-        return self.request.api.delete_cluster(self.request.cluster_id)
+class GetClusterCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersGetRequestDTO, ClusterResponse]
+):
+    def _execute_api_call(self) -> ClusterResponse:
+        return self.api_client.describe_cluster(self.request.cluster_id)
 
 
-class CreateClusterCommand(BaseCommand):
-    def __init__(
-        self,
-        request: ClustersCreateRequestDTO,
-    ):
-        self.request: ClustersCreateRequestDTO = request
-
-    def execute(self) -> ClusterCreateResponse:
-        return self.request.api.create_cluster(self.request.to_api_model())
+class DeleteClusterCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersDeleteRequestDTO, ClusterDeleteResponse]
+):
+    def _execute_api_call(self) -> ClusterDeleteResponse:
+        return self.api_client.delete_cluster(self.request.cluster_id)
 
 
-class DeployClusterCommand(BaseCommand):
-    def __init__(self, request: ClustersDeployRequestDTO):
-        self.request: ClustersDeployRequestDTO = request
-
-    def execute(self) -> ClusterDeployResponse:
-        return self.request.api.deploy_cluster(self.request.cluster_id)
-
-
-class GetClusterNodesCommand(BaseCommand):
-    def __init__(self, request: ClustersNodesRequestDTO):
-        self.request: ClustersNodesRequestDTO = request
-
-    def execute(self) -> ClusterNodesResponse:
-        return self.request.api.get_nodes(self.request.cluster_id)
+class CreateClusterCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersCreateRequestDTO, ClusterCreateResponse]
+):
+    def _execute_api_call(self) -> ClusterCreateResponse:
+        return self.api_client.create_cluster(self.request.to_api_model())
 
 
-class AddClusterNodeCommand(BaseCommand):
-    def __init__(
-        self,
-        request: ClustersAddNodeRequestDTO,
-    ):
-        self.request: ClustersAddNodeRequestDTO = request
+class DeployClusterCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersDeployRequestDTO, ClusterDeployResponse]
+):
+    def _execute_api_call(self) -> ClusterDeployResponse:
+        return self.api_client.deploy_cluster(self.request.cluster_id)
 
-    def execute(self) -> ClusterNodesResponse:
-        return self.request.api.add_nodes(
+
+class GetClusterNodesCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersNodesRequestDTO, ClusterNodesResponse]
+):
+    def _execute_api_call(self) -> ClusterNodesResponse:
+        return self.api_client.get_nodes(self.request.cluster_id)
+
+
+class AddClusterNodeCommand(
+    ExalsiusAPICommand[ClustersApi, ClustersAddNodeRequestDTO, ClusterNodesResponse]
+):
+    def _execute_api_call(self) -> ClusterNodesResponse:
+        return self.api_client.add_nodes(
             self.request.cluster_id, self.request.to_api_model()
         )
 
 
-class DeleteClusterNodeCommand(BaseCommand):
-    def __init__(self, request: ClustersDeleteNodeRequestDTO):
-        self.request: ClustersDeleteNodeRequestDTO = request
-
-    def execute(self) -> ClusterNodeRemoveResponse:
-        return self.request.api.delete_node_from_cluster(
+class DeleteClusterNodeCommand(
+    ExalsiusAPICommand[
+        ClustersApi, ClustersDeleteNodeRequestDTO, ClusterNodeRemoveResponse
+    ]
+):
+    def _execute_api_call(self) -> ClusterNodeRemoveResponse:
+        return self.api_client.delete_node_from_cluster(
             self.request.cluster_id, self.request.node_id
         )
 
 
-class GetClusterResourcesCommand(BaseCommand):
-    def __init__(self, request: ClustersResourcesRequestDTO):
-        self.request: ClustersResourcesRequestDTO = request
+class GetClusterResourcesCommand(
+    ExalsiusAPICommand[
+        ClustersApi, ClustersResourcesRequestDTO, ClusterResourcesListResponse
+    ]
+):
+    def _execute_api_call(self) -> ClusterResourcesListResponse:
+        return self.api_client.get_cluster_resources(self.request.cluster_id)
 
-    def execute(self) -> ClusterResourcesListResponse:
-        return self.request.api.get_cluster_resources(self.request.cluster_id)
 
-
-class DownloadKubeConfigCommand(BaseCommand):
-    def __init__(self, request: ClustersDownloadKubeConfigRequestDTO):
-        self.request: ClustersDownloadKubeConfigRequestDTO = request
-
-    def execute(self) -> ClusterKubeconfigResponse:
-        return self.request.api.get_cluster_kubeconfig(self.request.cluster_id)
+class DownloadKubeConfigCommand(
+    ExalsiusAPICommand[
+        ClustersApi, ClustersDownloadKubeConfigRequestDTO, ClusterKubeconfigResponse
+    ]
+):
+    def _execute_api_call(self) -> ClusterKubeconfigResponse:
+        return self.api_client.get_cluster_kubeconfig(self.request.cluster_id)
