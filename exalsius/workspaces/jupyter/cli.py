@@ -49,11 +49,12 @@ def deploy_jupyter_workspace(
         show_default=False,
         callback=utils.validate_kubernetes_name,
     ),
-    docker_image: str = typer.Option(
-        "tensorflow/tensorflow:2.18.0-gpu-jupyter",
+    docker_image: Optional[str] = typer.Option(
+        None,
         "--docker-image",
         "-i",
         help="The docker image to use for the workspace",
+        show_default=False,
     ),
     jupyter_password: str = typer.Option(
         ...,
@@ -82,7 +83,7 @@ def deploy_jupyter_workspace(
     pvc_storage_gb: PositiveInt = typer.Option(
         50,
         "--pvc-storage-gb",
-        "-p",
+        "-s",
         help="The amount of PVC storage in GB to add to the workspace",
     ),
     ephemeral_storage_gb: PositiveInt = typer.Option(

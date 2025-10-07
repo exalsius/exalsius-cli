@@ -46,11 +46,12 @@ def deploy_llm_inference_workspace(
         show_default=False,
         callback=utils.validate_kubernetes_name,
     ),
-    docker_image: str = typer.Option(
-        "rayproject/ray-ml:2.46.0.0e19ea",
+    docker_image: Optional[str] = typer.Option(
+        None,
         "--docker-image",
         "-i",
         help="The docker image to use for the workspace",
+        show_default=False,
     ),
     huggingface_model: str = typer.Option(
         "microsoft/phi-4",

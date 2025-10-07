@@ -14,15 +14,15 @@ from exalsius.workspaces.cli import (
     poll_workspace_creation,
     workspaces_deploy_app,
 )
-from exalsius.workspaces.devpod.models import DevPodWorkspaceVariablesDTO
-from exalsius.workspaces.devpod.service import DevPodWorkspacesService
 from exalsius.workspaces.display import TableWorkspacesDisplayManager
+from exalsius.workspaces.marimo.models import MarimoWorkspaceVariablesDTO
+from exalsius.workspaces.marimo.service import MarimoWorkspacesService
 from exalsius.workspaces.models import (
     ResourcePoolDTO,
     WorkspaceAccessInformationDTO,
 )
 
-logger: logging.Logger = logging.getLogger("cli.workspaces.devpod")
+logger: logging.Logger = logging.getLogger("cli.workspaces.marimo")
 
 
 @workspaces_deploy_app.callback(invoke_without_command=True)
@@ -30,19 +30,19 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
 ):
     """
-    Manage DevPod workspaces.
+    Manage Marimo workspaces.
     """
     utils.help_if_no_subcommand(ctx)
 
 
-@workspaces_deploy_app.command("devpod", help="Deploy a DevPod workspace")
-def deploy_devpod_workspace(
+@workspaces_deploy_app.command("marimo", help="Deploy a Marimo workspace")
+def deploy_marimo_workspace(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
         help="The ID of the cluster to deploy the service to"
     ),
     name: str = typer.Option(
-        utils.generate_random_name(prefix="exls-dev-pod"),
+        utils.generate_random_name(prefix="exls-marimo"),
         "--name",
         "-n",
         help="The name of the workspace to add. If not provided, a random name will be generated. It must be a valid kubernetes-formatted name.",
@@ -55,6 +55,12 @@ def deploy_devpod_workspace(
         "-i",
         help="The docker image to use for the workspace",
         show_default=False,
+    ),
+    marimo_password: str = typer.Option(
+        ...,
+        "--marimo-password",
+        "-p",
+        help="The password for the Marimo Webinterface",
     ),
     gpu_count: PositiveInt = typer.Option(
         1,
@@ -74,24 +80,24 @@ def deploy_devpod_workspace(
         "-m",
         help="The amount of memory in GB to add to the workspace",
     ),
+    pvc_storage_gb: PositiveInt = typer.Option(
+        50,
+        "--pvc-storage-gb",
+        "-s",
+        help="The amount of PVC storage in GB to add to the workspace",
+    ),
     ephemeral_storage_gb: PositiveInt = typer.Option(
         50,
         "--ephemeral-storage-gb",
         "-e",
         help="The amount of ephemeral storage in GB to add to the workspace",
     ),
-    pvc_storage_gb: PositiveInt = typer.Option(
-        50,
-        "--pvc-storage-gb",
-        "-p",
-        help="The amount of PVC storage in GB to add to the workspace",
-    ),
 ):
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
     access_token: str = utils.get_access_token_from_ctx(ctx)
     config: AppConfig = utils.get_config_from_ctx(ctx)
-    service: DevPodWorkspacesService = DevPodWorkspacesService(config, access_token)
+    service: MarimoWorkspacesService = MarimoWorkspacesService(config, access_token)
 
     resources: ResourcePoolDTO = ResourcePoolDTO(
         gpu_count=gpu_count,
@@ -102,13 +108,14 @@ def deploy_devpod_workspace(
         storage_gb=pvc_storage_gb,
     )
 
-    workspace_id: str = service.create_devpod_workspace(
+    workspace_id: str = service.create_marimo_workspace(
         cluster_id=cluster_id,
         name=name,
         resources=resources,
-        variables=DevPodWorkspaceVariablesDTO(
+        variables=MarimoWorkspaceVariablesDTO(
             deployment_name=name,
             deployment_image=docker_image,
+            token_password=marimo_password,
             ephemeral_storage_gb=ephemeral_storage_gb,
         ),
     )
