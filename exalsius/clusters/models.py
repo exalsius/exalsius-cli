@@ -20,6 +20,12 @@ class ClusterType(str, Enum):
     DOCKER = "DOCKER"
 
 
+class GPUType(str, Enum):
+    NVIDIA = "nvidia"
+    AMD = "amd"
+    NONE = "none"
+
+
 class ClusterLabels(StrEnum):
     GPU_TYPE = "cluster.exalsius.ai/gpu-type"
     WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
@@ -28,6 +34,7 @@ class ClusterLabels(StrEnum):
 
 class ClusterLabelValuesGPUType(StrEnum):
     NVIDIA = "nvidia"
+    AMD = "amd"
 
 
 class ClusterLabelValuesWorkloadType(StrEnum):
@@ -159,3 +166,76 @@ class ClusterNodeDTO(BaseNode):
 
 class ClusterResourcesDTO(ResourcePool):
     node_id: str = Field(..., description="The ID of the node")
+
+
+class ClusterConfigNodeDTO(BaseModel):
+    node_id: str = Field(..., description="Node ID")
+    role: str = Field(
+        default="WORKER",
+        description="Node role: WORKER or CONTROL_PLANE"
+    )
+
+
+class ClusterConfigFile(BaseModel):
+    name: str = Field(description="Cluster name")
+    cluster_type: ClusterType = Field(
+        default=ClusterType.REMOTE,
+        description="Cluster type: REMOTE, CLOUD, ADOPTED, or DOCKER"
+    )
+    gpu_type: GPUType = Field(
+        default=GPUType.NVIDIA,
+        description="GPU type: nvidia, amd, or none"
+    )
+    diloco_enabled: bool = Field(
+        default=False,
+        description="Enable Diloco/Volcano workload support"
+    )
+    telemetry_enabled: bool = Field(
+        default=False,
+        description="Enable telemetry"
+    )
+    nodes: Optional[List[ClusterConfigNodeDTO]] = Field(
+        default=None,
+        description="Nodes to add to the cluster"
+    )
+    deploy: bool = Field(
+        default=False,
+        description="Automatically deploy after creation"
+    )
+    
+    # Backward compatibility field - will be removed in future version
+    gpu_operator_enabled: Optional[bool] = Field(
+        default=None,
+        description="[DEPRECATED] Use gpu_type instead. Install GPU operator (NVIDIA drivers)"
+    )
+
+
+def load_cluster_config_from_file(file_path: str) -> ClusterConfigFile:
+    """Load and validate cluster config from YAML or JSON file."""
+    import yaml
+    from pathlib import Path
+    
+    path = Path(file_path)
+    if not path.exists():
+        raise ValueError(f"Config file not found: {file_path}")
+    
+    with open(path, "r") as f:
+        if path.suffix in [".yaml", ".yml"]:
+            data = yaml.safe_load(f)
+        elif path.suffix == ".json":
+            import json
+            data = json.load(f)
+        else:
+            raise ValueError(f"Unsupported file format: {path.suffix}. Use .yaml, .yml, or .json")
+    
+    # Handle backward compatibility: convert gpu_operator_enabled to gpu_type
+    if "gpu_operator_enabled" in data and "gpu_type" not in data:
+        # Migrate old boolean field to new enum field
+        if data["gpu_operator_enabled"]:
+            data["gpu_type"] = GPUType.NVIDIA.value
+        else:
+            data["gpu_type"] = GPUType.NONE.value
+        # Remove the old field to avoid confusion
+        del data["gpu_operator_enabled"]
+    
+    return ClusterConfigFile(**data)
