@@ -224,3 +224,24 @@ class BaseTableDisplayManager(BaseDisplayManager):
             success_renderer=success_renderer,
             error_renderer=error_renderer,
         )
+
+
+class BaseInteractiveDisplay(BaseDisplayManager):
+    """Base class for interactive CLI flows with Rich UI components."""
+
+    def __init__(self):
+        super().__init__(
+            info_renderer=RichTextRenderer(),
+            success_renderer=RichTextSuccessMessageRenderer(),
+            error_renderer=RichTextErrorMessageRenderer(),
+        )
+        self.console = Console(theme=custom_theme)
+
+    def display_welcome(self, title: str, description: str):
+        """Display welcome message for interactive mode."""
+        self.console.print(f"\n[bold custom]{title}[/bold custom]\n")
+        self.display_info(description)
+
+    def display_section(self, title: str):
+        """Display a section header in interactive flow."""
+        self.console.print(f"\n[bold custom]{title}[/bold custom]")
