@@ -6,9 +6,11 @@ from exalsius_api_client.models.base_node import BaseNode
 from exalsius.config import AppConfig
 from exalsius.core.base.models import ErrorDTO
 from exalsius.core.commons.models import ServiceError
-from exalsius.nodes.display import TableNodesDisplayManager
+from exalsius.management.ssh_keys.service import SshKeysService
+from exalsius.nodes.display import NodeInteractiveDisplay, TableNodesDisplayManager
 from exalsius.nodes.models import CloudProvider, NodeType
 from exalsius.nodes.service import NodeService
+from exalsius.offers.service import OffersService
 from exalsius.utils import commons as utils
 
 nodes_app = typer.Typer()
@@ -178,3 +180,39 @@ def import_offer(
         raise typer.Exit(1)
 
     display_manager.display_success(f"Nodes {node_ids} imported successfully")
+
+
+@nodes_app.command("import", help="Import a node interactively")
+def import_node_interactive(ctx: typer.Context):
+    """Import a node through interactive prompts."""
+    from exalsius.nodes.interactive import NodeInteractiveFlow
+
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+
+    # Initialize services
+    node_service = NodeService(config, access_token)
+    ssh_keys_service = SshKeysService(config, access_token)
+    offers_service = OffersService(config, access_token)
+    display_manager = NodeInteractiveDisplay()
+
+    # Create and run the interactive flow
+    flow = NodeInteractiveFlow(
+        node_service=node_service,
+        ssh_keys_service=ssh_keys_service,
+        offers_service=offers_service,
+        display_manager=display_manager,
+    )
+
+    try:
+        imported_node_ids = flow.run()
+        if not imported_node_ids:
+            display_manager.display_info("No nodes were imported.")
+    except KeyboardInterrupt:
+        display_manager.display_info("\nImport cancelled by user.")
+        raise typer.Exit(0)
+    except Exception as e:
+        display_manager.display_error(
+            ErrorDTO(message=f"Unexpected error during import: {e}")
+        )
+        raise typer.Exit(1)
