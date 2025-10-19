@@ -51,6 +51,7 @@ from exalsius.clusters.models import (
     ClustersNodesRequestDTO,
     ClustersResourcesRequestDTO,
     ClusterType,
+    GPUType,
     NodesToAddDTO,
 )
 from exalsius.config import AppConfig
@@ -150,7 +151,7 @@ class ClustersService(BaseServiceWithAuth):
         self,
         name: str,
         cluster_type: ClusterType,
-        no_gpu: bool,
+        gpu_type: GPUType,
         diloco: bool,
         telemetry_enabled: bool,
         colony_id: Optional[str] = None,
@@ -160,8 +161,14 @@ class ClustersService(BaseServiceWithAuth):
         worker_node_ids: Optional[List[str]] = None,
     ) -> str:
         cluster_labels: Dict[str, str] = {}
-        if not no_gpu:
+
+        # Handle GPU type labels
+        if gpu_type == GPUType.NVIDIA:
             cluster_labels[ClusterLabels.GPU_TYPE] = ClusterLabelValuesGPUType.NVIDIA
+        elif gpu_type == GPUType.AMD:
+            cluster_labels[ClusterLabels.GPU_TYPE] = ClusterLabelValuesGPUType.AMD
+        # For GPUType.NONE, no GPU label is added
+
         if diloco:
             cluster_labels[ClusterLabels.WORKLOAD_TYPE] = (
                 ClusterLabelValuesWorkloadType.VOLCANO
