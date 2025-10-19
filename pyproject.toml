@@ -17,6 +17,7 @@ dependencies = [
     "keyring>=25.6.0",
     "qrcode[pil]>=8.2",
     "coolname>=2.2.0",
+    "questionary>=2.0.0",
 ]
 
 [tool.setuptools.packages.find]
