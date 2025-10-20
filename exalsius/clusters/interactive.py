@@ -46,83 +46,96 @@ class ClusterInteractiveFlow:
 
     def run(self) -> Optional[str]:
         """Main orchestration method, returns cluster_id or None."""
-        self.display_manager.display_welcome(
-            "🚀 Cluster Creation - Interactive Mode",
-            "This will guide you through creating a new cluster.\n",
-        )
+        try:
+            self.display_manager.display_welcome(
+                "🚀 Cluster Creation - Interactive Mode",
+                "This will guide you through creating a new cluster.\n",
+            )
 
-        # Step 1: Cluster Configuration
-        self.display_manager.display_section("📋 Step 1: Cluster Configuration")
-        self._prompt_cluster_config()
+            # Step 1: Cluster Configuration
+            self.display_manager.display_section("📋 Step 1: Cluster Configuration")
+            self._prompt_cluster_config()
 
-        # Step 2: Node Selection
-        self.display_manager.display_section("🖥️  Step 2: Node Selection")
-        self._prompt_node_selection()
+            # Step 2: Node Selection
+            self.display_manager.display_section("🖥️  Step 2: Node Selection")
+            self._prompt_node_selection()
 
-        if self.config.node_ids:
-            # Step 3: Node Roles
-            self.display_manager.display_section("👔 Step 3: Node Roles")
-            self._prompt_node_roles()
+            if self.config.node_ids:
+                # Step 3: Node Roles
+                self.display_manager.display_section("👔 Step 3: Node Roles")
+                self._prompt_node_roles()
 
-        # Step 4: Summary & Confirmation
-        self.display_manager.display_section("📊 Summary")
-        if not self._display_summary():
+            # Step 4: Summary & Confirmation
+            self.display_manager.display_section("📊 Summary")
+            if not self._display_summary():
+                return None
+
+            # Create cluster
+            cluster_id = self._create_cluster()
+
+            if cluster_id:
+                # Step 5: Deployment
+                self.display_manager.display_section("🚀 Deployment")
+                self._prompt_deployment(cluster_id)
+
+                # Step 6: Save configuration to file
+                self._save_config_to_file(cluster_id)
+
+            return cluster_id
+        except KeyboardInterrupt:
+            self.display_manager.display_info("\nCluster creation cancelled by user.")
             return None
-
-        # Create cluster
-        cluster_id = self._create_cluster()
-
-        if cluster_id:
-            # Step 5: Deployment
-            self.display_manager.display_section("🚀 Deployment")
-            self._prompt_deployment(cluster_id)
-
-            # Step 6: Save configuration to file
-            self._save_config_to_file(cluster_id)
-
-        return cluster_id
 
     def _prompt_cluster_config(self) -> None:
         """Collect cluster configuration via prompts."""
-        self.config.name = questionary.text(
+        name = questionary.text(
             "Cluster name:", default=utils.generate_random_name(prefix="exls-cluster")
         ).ask()
+        if name is None:
+            raise KeyboardInterrupt("Cluster creation cancelled by user.")
+        self.config.name = name
 
-        self.config.cluster_type = ClusterType(
-            questionary.select(
-                "Cluster type:",
-                choices=[
-                    questionary.Choice(
-                        "Remote (self-managed nodes)", ClusterType.REMOTE
-                    ),
-                    questionary.Choice("Cloud (cloud instances)", ClusterType.CLOUD),
-                    questionary.Choice(
-                        "Adopted (existing k8s cluster)", ClusterType.ADOPTED
-                    ),
-                ],
-                default=ClusterType.REMOTE,
-            ).ask()
-        )
+        cluster_type = questionary.select(
+            "Cluster type:",
+            choices=[
+                questionary.Choice("Remote (self-managed nodes)", ClusterType.REMOTE),
+                questionary.Choice("Cloud (cloud instances)", ClusterType.CLOUD),
+                questionary.Choice(
+                    "Adopted (existing k8s cluster)", ClusterType.ADOPTED
+                ),
+            ],
+            default=ClusterType.REMOTE,
+        ).ask()
+        if cluster_type is None:
+            raise KeyboardInterrupt("Cluster creation cancelled by user.")
+        self.config.cluster_type = ClusterType(cluster_type)
 
-        self.config.gpu_type = GPUType(
-            questionary.select(
-                "GPU type:",
-                choices=[
-                    questionary.Choice("NVIDIA (default)", GPUType.NVIDIA),
-                    questionary.Choice("AMD", GPUType.AMD),
-                    questionary.Choice("None (no GPU support)", GPUType.NONE),
-                ],
-                default=GPUType.NVIDIA,
-            ).ask()
-        )
+        gpu_type = questionary.select(
+            "GPU type:",
+            choices=[
+                questionary.Choice("NVIDIA (default)", GPUType.NVIDIA),
+                questionary.Choice("AMD", GPUType.AMD),
+                questionary.Choice("None (no GPU support)", GPUType.NONE),
+            ],
+            default=GPUType.NVIDIA,
+        ).ask()
+        if gpu_type is None:
+            raise KeyboardInterrupt("Cluster creation cancelled by user.")
+        self.config.gpu_type = GPUType(gpu_type)
 
-        self.config.diloco_enabled = questionary.confirm(
+        diloco_enabled = questionary.confirm(
             "Enable Diloco/Volcano workload support?", default=False
         ).ask()
+        if diloco_enabled is None:
+            raise KeyboardInterrupt("Cluster creation cancelled by user.")
+        self.config.diloco_enabled = diloco_enabled
 
-        self.config.telemetry_enabled = questionary.confirm(
+        telemetry_enabled = questionary.confirm(
             "Enable telemetry?", default=False
         ).ask()
+        if telemetry_enabled is None:
+            raise KeyboardInterrupt("Cluster creation cancelled by user.")
+        self.config.telemetry_enabled = telemetry_enabled
 
     def _prompt_node_selection(self) -> None:
         """Show available nodes and collect selections."""
@@ -178,6 +191,8 @@ class ClusterInteractiveFlow:
                 ],
                 default="WORKER",
             ).ask()
+            if role is None:
+                raise KeyboardInterrupt("Cluster creation cancelled by user.")
 
             self.config.node_roles[node_id] = role
 
@@ -185,9 +200,12 @@ class ClusterInteractiveFlow:
         """Show summary and confirm creation."""
         self.display_manager.display_cluster_creation_summary(self.config)
 
-        return questionary.confirm(
+        result = questionary.confirm(
             "Create cluster with these settings?", default=True
         ).ask()
+        if result is None:
+            raise KeyboardInterrupt("Cluster creation cancelled by user.")
+        return result
 
     def _create_cluster(self) -> str:
         """Create cluster via service."""
@@ -223,6 +241,8 @@ class ClusterInteractiveFlow:
         should_deploy = questionary.confirm(
             "Would you like to deploy the cluster now?", default=True
         ).ask()
+        if should_deploy is None:
+            raise KeyboardInterrupt("Deployment cancelled by user.")
 
         if should_deploy:
             try:

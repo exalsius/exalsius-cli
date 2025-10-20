@@ -1,6 +1,6 @@
 import datetime
 from enum import Enum, StrEnum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.base_node import BaseNode
@@ -8,7 +8,7 @@ from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRe
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
 from exalsius_api_client.models.resource_pool import ResourcePool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from exalsius.core.base.models import BaseRequestDTO
 
@@ -201,6 +201,19 @@ class ClusterConfigFile(BaseModel):
         description="[DEPRECATED] Use gpu_type instead. Install GPU operator (NVIDIA drivers)",
     )
 
+    @field_validator("gpu_type", mode="before")
+    @classmethod
+    def validate_gpu_type(cls, v: Any) -> GPUType:
+        if isinstance(v, str):
+            try:
+                return GPUType(v.lower())
+            except ValueError:
+                # Handle invalid GPU type values gracefully
+                raise ValueError(
+                    f"Invalid GPU type: {v}. Must be one of: {', '.join([gt.value for gt in GPUType])}"
+                )
+        return v
+
 
 def load_cluster_config_from_file(file_path: str) -> ClusterConfigFile:
     """Load and validate cluster config from YAML or JSON file."""
@@ -212,6 +225,7 @@ def load_cluster_config_from_file(file_path: str) -> ClusterConfigFile:
     if not path.exists():
         raise ValueError(f"Config file not found: {file_path}")
 
+    data: Any
     with open(path, "r") as f:
         if path.suffix in [".yaml", ".yml"]:
             data = yaml.safe_load(f)
@@ -224,14 +238,13 @@ def load_cluster_config_from_file(file_path: str) -> ClusterConfigFile:
                 f"Unsupported file format: {path.suffix}. Use .yaml, .yml, or .json"
             )
 
-    # Handle backward compatibility: convert gpu_operator_enabled to gpu_type
-    if "gpu_operator_enabled" in data and "gpu_type" not in data:
-        # Migrate old boolean field to new enum field
-        if data["gpu_operator_enabled"]:
-            data["gpu_type"] = GPUType.NVIDIA.value
-        else:
-            data["gpu_type"] = GPUType.NONE.value
-        # Remove the old field to avoid confusion
-        del data["gpu_operator_enabled"]
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid or empty config file: {file_path}")
 
-    return ClusterConfigFile(**data)
+    # Type assertion to help the type checker understand the structure
+    config_data: Dict[str, Any] = data  # pyright: ignore[reportUnknownVariableType]
+
+    try:
+        return ClusterConfigFile(**config_data)
+    except (ValueError, TypeError, ValidationError) as e:
+        raise ValueError(f"Invalid cluster configuration: {e}")
