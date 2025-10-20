@@ -50,6 +50,7 @@ class NodeInteractiveFlow:
         self.offers_service = offers_service
         self.display_manager = display_manager
         self.config = NodeInteractiveConfig()
+        self.session_imported_node_ids: List[str] = []
         self.available_ssh_keys: List[SshKeysListResponseSshKeysInner] = []
         self.available_offers: List[Offer] = []
 
@@ -93,15 +94,15 @@ class NodeInteractiveFlow:
                 break
 
         # Final summary
-        if self.config.imported_node_ids:
+        if self.session_imported_node_ids:
             self.display_manager.display_success(
-                f"Import session completed! Total nodes imported: {len(self.config.imported_node_ids)}"
+                f"Import session completed! Total nodes imported: {len(self.session_imported_node_ids)}"
             )
             self.display_manager.display_info(
-                f"Imported node IDs: {', '.join(self.config.imported_node_ids)}"
+                f"Imported node IDs: {', '.join(self.session_imported_node_ids)}"
             )
 
-        return self.config.imported_node_ids
+        return self.session_imported_node_ids
 
     def _prompt_import_type(self) -> None:
         """Ask user to choose between SSH and Cloud Offer import."""
@@ -150,7 +151,7 @@ class NodeInteractiveFlow:
                         message="No SSH keys available. Please add an SSH key first."
                     )
                 )
-                return
+                raise KeyboardInterrupt("Import cancelled: No SSH keys available.")
 
             self._select_ssh_key()
         except KeyboardInterrupt:
@@ -182,13 +183,26 @@ class NodeInteractiveFlow:
                 raise KeyboardInterrupt("Import cancelled by user")
             self.config.hostname = hostname
 
-            amount_str = questionary.text(
-                "Amount of nodes to import:", default="1"
-            ).ask()
-            if amount_str is None:
-                raise KeyboardInterrupt("Import cancelled by user")
+            while True:
+                amount_str = questionary.text(
+                    "Amount of nodes to import:", default="1"
+                ).ask()
+                if amount_str is None:
+                    raise KeyboardInterrupt("Import cancelled by user")
 
-            self.config.amount = int(amount_str)
+                try:
+                    amount = int(amount_str)
+                    if amount > 0:
+                        self.config.amount = amount
+                        break
+                    else:
+                        self.display_manager.display_error(
+                            ErrorDTO(message="Please enter a positive integer.")
+                        )
+                except ValueError:
+                    self.display_manager.display_error(
+                        ErrorDTO(message="Please enter a valid integer.")
+                    )
         except KeyboardInterrupt:
             raise
 
@@ -265,7 +279,9 @@ class NodeInteractiveFlow:
                 self.display_manager.display_error(
                     ErrorDTO(message="No offers found with the specified filters.")
                 )
-                return
+                raise KeyboardInterrupt(
+                    "Import cancelled: no offers found with the specified filters."
+                )
 
             # Display offers and let user select
             self.display_manager.display_available_offers(self.available_offers)
@@ -309,7 +325,7 @@ class NodeInteractiveFlow:
                     username=self.config.username,
                     ssh_key_id=self.config.ssh_key_id,
                 )
-                self.config.imported_node_ids.append(node_id)
+                self.session_imported_node_ids.append(node_id)
                 self.display_manager.display_success(
                     f"SSH node {node_id} imported successfully!"
                 )
@@ -320,7 +336,7 @@ class NodeInteractiveFlow:
                     offer_id=self.config.offer_id,
                     amount=self.config.amount,
                 )
-                self.config.imported_node_ids.extend(node_ids)
+                self.session_imported_node_ids.extend(node_ids)
                 self.display_manager.display_success(
                     f"Cloud nodes {', '.join(node_ids)} imported successfully!"
                 )
