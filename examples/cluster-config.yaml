@@ -1,0 +1,22 @@
+# Example cluster configuration file
+# Usage: exls clusters create --config examples/cluster-config.yaml
+
+name: my-production-cluster
+cluster_type: REMOTE  # Options: REMOTE, CLOUD, ADOPTED, DOCKER
+
+# Cluster features
+gpu_type: nvidia  # Options: nvidia, amd, none
+diloco_enabled: false
+telemetry_enabled: true
+
+# Nodes to add (optional)
+nodes:
+  - node_id: 915ce4e2-d7ac-45a6-908c-6be5a37e0e67
+    role: CONTROL_PLANE
+  - node_id: 12b3b4ae-8866-4aec-a616-6ada01363a0e
+    role: WORKER
+  - node_id: 49ce20c5-5cef-4aca-a1ea-1904fb771ec3
+    role: WORKER
+
+# Auto-deploy after creation
+deploy: false
