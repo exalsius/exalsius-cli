@@ -21,7 +21,10 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["exalsius*"] 
+include = ["exalsius*"]
+
+[tool.setuptools.package-data]
+"exalsius" = ["workspaces/**/*.yml", "workspaces/**/*.yaml"]
 
 [project.scripts]
 exls = "exalsius.app:app" 
