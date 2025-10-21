@@ -1,7 +1,5 @@
 from typing import List
 
-from exalsius_api_client.models.offer import Offer
-
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -17,17 +15,18 @@ from exalsius.core.commons.render.table import (
     TableSingleItemRenderer,
     get_column,
 )
+from exalsius.offers.dtos import OfferDTO
 
 
 class JsonOffersDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
-        offers_list_renderer: JsonListStringRenderer[Offer] = JsonListStringRenderer[
-            Offer
+        offers_list_renderer: JsonListStringRenderer[OfferDTO] = JsonListStringRenderer[
+            OfferDTO
         ](),
         offers_single_item_renderer: JsonSingleItemStringRenderer[
-            Offer
-        ] = JsonSingleItemStringRenderer[Offer](),
+            OfferDTO
+        ] = JsonSingleItemStringRenderer[OfferDTO](),
     ):
         super().__init__()
         self.offers_list_display = ConsoleListDisplay(renderer=offers_list_renderer)
@@ -35,10 +34,10 @@ class JsonOffersDisplayManager(BaseJsonDisplayManager):
             renderer=offers_single_item_renderer
         )
 
-    def display_offers(self, data: List[Offer]):
+    def display_offers(self, data: List[OfferDTO]):
         self.offers_list_display.display(data)
 
-    def display_offer(self, data: Offer):
+    def display_offer(self, data: OfferDTO):
         self.offers_single_item_display.display(data)
 
 
@@ -46,12 +45,12 @@ DEFAULT_COLUMNS_RENDERING_MAP = {
     "id": get_column("ID", no_wrap=True),
     "gpu_type": get_column("GPU"),
     "gpu_count": get_column("Qty"),
-    "cloud_provider": get_column("Cloud"),
+    "provider": get_column("Cloud"),
     "instance_type": get_column("Instance Type"),
     "gpu_memory_mib": get_column("GPU Mem (MiB)"),
     "num_vcpus": get_column("vCPUs"),
     "main_memory_mib": get_column("Host Mem (MiB)"),
-    "hourly_cost": get_column("Hourly Cost"),
+    "price_per_hour": get_column("Hourly Cost"),
     "region": get_column("Region"),
 }
 
@@ -59,12 +58,14 @@ DEFAULT_COLUMNS_RENDERING_MAP = {
 class TableOffersDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        offers_list_renderer: TableListRenderer[Offer] = TableListRenderer[Offer](
+        offers_list_renderer: TableListRenderer[OfferDTO] = TableListRenderer[OfferDTO](
             columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP
         ),
         offers_single_item_renderer: TableSingleItemRenderer[
-            Offer
-        ] = TableSingleItemRenderer[Offer](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
+            OfferDTO
+        ] = TableSingleItemRenderer[OfferDTO](
+            columns_map=DEFAULT_COLUMNS_RENDERING_MAP
+        ),
     ):
         super().__init__()
         self.offers_list_display = ConsoleListDisplay(renderer=offers_list_renderer)
@@ -72,8 +73,8 @@ class TableOffersDisplayManager(BaseTableDisplayManager):
             renderer=offers_single_item_renderer
         )
 
-    def display_offers(self, data: List[Offer]):
+    def display_offers(self, data: List[OfferDTO]):
         self.offers_list_display.display(data)
 
-    def display_offer(self, data: Offer):
+    def display_offer(self, data: OfferDTO):
         self.offers_single_item_display.display(data)

@@ -1,145 +1,89 @@
 import time
-from datetime import datetime
-from typing import Any, List, Optional
+from typing import List
 
-from exalsius_api_client.api.workspaces_api import WorkspacesApi
-from exalsius_api_client.exceptions import ApiException
-from exalsius_api_client.models.workspace import Workspace
-from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
-from exalsius_api_client.models.workspace_delete_response import WorkspaceDeleteResponse
-from exalsius_api_client.models.workspace_response import WorkspaceResponse
-from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
-
-from exalsius.config import AppConfig
-from exalsius.core.base.commands import BaseCommand
-from exalsius.core.base.service import BaseServiceWithAuth
-from exalsius.core.commons.models import ServiceError, ServiceWarning
-from exalsius.workspaces.commands import (
-    CreateWorkspaceCommand,
-    DeleteWorkspaceCommand,
-    GetWorkspaceCommand,
-    ListWorkspacesCommand,
-)
-from exalsius.workspaces.models import (
-    CreateWorkspaceRequestDTO,
-    DeleteWorkspaceRequestDTO,
-    GetWorkspaceRequestDTO,
-    ResourcePoolDTO,
-    WorkspaceBaseTemplateDTO,
-    WorkspacesListRequestDTO,
-)
-
-WORKSPACES_API_ERROR_TYPE: str = "WorkspacesApiError"
+from exalsius.clusters.domain import Cluster
+from exalsius.clusters.gateway.base import ClustersGateway
+from exalsius.config import AppConfig, ConfigWorkspaceCreationPolling
+from exalsius.core.commons.decorators import handle_service_errors
+from exalsius.core.commons.factories import GatewayFactory
+from exalsius.workspaces.domain import Workspace, WorkspaceFilterParams
+from exalsius.workspaces.dtos import ListWorkspacesRequestDTO, WorkspaceDTO
+from exalsius.workspaces.gateway.base import WorkspacesGateway
 
 
-class WorkspacesService(BaseServiceWithAuth):
-    def __init__(self, config: AppConfig, access_token: str):
-        super().__init__(config, access_token)
-        self.workspaces_api: WorkspacesApi = WorkspacesApi(self.api_client)
-
-    def _execute_command(self, command: BaseCommand) -> Any:
-        try:
-            return command.execute()
-        except ApiException as e:
-            raise ServiceError(
-                message=f"api error while executing command {command.__class__.__name__}: {e.body}",  # pyright: ignore[reportUnknownMemberType]
-                error_code=(
-                    str(
-                        e.status  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-                    )
-                    if e.status  # pyright: ignore[reportUnknownMemberType]
-                    else None
-                ),
-                error_type=WORKSPACES_API_ERROR_TYPE,
-            )
-        except Exception as e:
-            raise ServiceError(
-                message=f"unexpected error while executing command {command.__class__.__name__}: {e}",
-                error_type=WORKSPACES_API_ERROR_TYPE,
-            )
-
-    def list_workspaces(self, cluster_id: str) -> List[Workspace]:
-        command: ListWorkspacesCommand = ListWorkspacesCommand(
-            WorkspacesListRequestDTO(
-                api=self.workspaces_api,
-                cluster_id=cluster_id,
-            )
-        )
-        response: WorkspacesListResponse = self._execute_command(command)
-        return response.workspaces
-
-    def get_workspace(self, workspace_id: str) -> Workspace:
-        command: GetWorkspaceCommand = GetWorkspaceCommand(
-            GetWorkspaceRequestDTO(
-                api=self.workspaces_api,
-                workspace_id=workspace_id,
-            )
-        )
-        response: WorkspaceResponse = self._execute_command(command)
-        return response.workspace
-
-    def _create_workspace(
+class WorkspacesService:
+    def __init__(
         self,
-        cluster_id: str,
-        name: str,
-        resources: ResourcePoolDTO,
-        workspace_template: WorkspaceBaseTemplateDTO,
-        to_be_deleted_at: Optional[datetime] = None,
-        description: Optional[str] = None,
-    ) -> str:
-        command: CreateWorkspaceCommand = CreateWorkspaceCommand(
-            request=CreateWorkspaceRequestDTO(
-                api=self.workspaces_api,
-                cluster_id=cluster_id,
-                name=name,
-                resources=resources,
-                template=workspace_template,
-                to_be_deleted_at=to_be_deleted_at,
-                description=description,
-            )
+        workspace_creation_polling_config: ConfigWorkspaceCreationPolling,
+        workspaces_gateway: WorkspacesGateway,
+        clusters_gateway: ClustersGateway,
+    ):
+        self.workspace_creation_polling_config: ConfigWorkspaceCreationPolling = (
+            workspace_creation_polling_config
         )
-        response: WorkspaceCreateResponse = self._execute_command(command)
-        return response.workspace_id
+        self.workspaces_gateway: WorkspacesGateway = workspaces_gateway
+        self.clusters_gateway: ClustersGateway = clusters_gateway
 
-    def delete_workspace(self, workspace_id: str) -> str:
-        command: DeleteWorkspaceCommand = DeleteWorkspaceCommand(
-            DeleteWorkspaceRequestDTO(
-                api=self.workspaces_api,
-                workspace_id=workspace_id,
-            )
+    @handle_service_errors("listing workspaces")
+    def list_workspaces(self, request: ListWorkspacesRequestDTO) -> List[WorkspaceDTO]:
+        workspace_filter_params: WorkspaceFilterParams = WorkspaceFilterParams(
+            cluster_id=request.cluster_id
         )
-        response: WorkspaceDeleteResponse = self._execute_command(command)
-        return response.workspace_id
+        workspaces: List[Workspace] = self.workspaces_gateway.list(
+            workspace_filter_params=workspace_filter_params
+        )
 
-    def poll_workspace_creation(
-        self,
-        workspace_id: str,
-    ) -> Workspace:
-        # TODO: We generally need to improve the user feedback on what exactly happened / is happening.
-        timeout = self.config.workspace_creation_polling.timeout_seconds
+        cluster: Cluster = self.clusters_gateway.get(cluster_id=request.cluster_id)
+
+        return [
+            WorkspaceDTO.from_domain(workspace=w, cluster=cluster) for w in workspaces
+        ]
+
+    @handle_service_errors("getting workspace")
+    def get_workspace(self, workspace_id: str) -> WorkspaceDTO:
+        workspace: Workspace = self.workspaces_gateway.get(workspace_id=workspace_id)
+        cluster: Cluster = self.clusters_gateway.get(cluster_id=workspace.cluster_id)
+        return WorkspaceDTO.from_domain(workspace=workspace, cluster=cluster)
+
+    @handle_service_errors("deleting workspace")
+    def delete_workspace(self, workspace_id: str) -> None:
+        self.workspaces_gateway.delete(workspace_id=workspace_id)
+
+    @handle_service_errors("polling workspace creation")
+    def poll_workspace_creation(self, workspace_id: str) -> WorkspaceDTO:
+        timeout = self.workspace_creation_polling_config.timeout_seconds
         polling_interval = (
-            self.config.workspace_creation_polling.polling_interval_seconds
+            self.workspace_creation_polling_config.polling_interval_seconds
         )
         start_time = time.time()
 
-        workspace: Optional[Workspace] = None
         while time.time() - start_time < timeout:
-            workspace = self.get_workspace(workspace_id)
-            if workspace.workspace_status == "RUNNING":
-                break
-            if workspace.workspace_status == "FAILED":
-                raise ServiceWarning(
-                    f"workspace {workspace.name} ({workspace_id}) creation failed. "
-                    + f"Status of workspace: {workspace.workspace_status}"
+            workspace_dto: WorkspaceDTO = self.get_workspace(workspace_id=workspace_id)
+            if workspace_dto.workspace_status == "RUNNING":
+                return workspace_dto
+            if workspace_dto.workspace_status == "FAILED":
+                # Re-raising as a service error would be better but let's stick to the original logic for now
+                raise Exception(
+                    f"workspace {workspace_dto.workspace_name} ({workspace_id}) creation failed. "
+                    + f"Status of workspace: {workspace_dto.workspace_status}"
                 )
 
             time.sleep(polling_interval)
         else:
-            # Edge case the timeout is reached before the workspace is polled. Should not happen.
-            if not workspace:
-                workspace = self.get_workspace(workspace_id)
             raise TimeoutError(
                 f"workspace {workspace_id} did not become active in time."
             )
 
-        return workspace
+
+def get_workspaces_service(config: AppConfig, access_token: str) -> WorkspacesService:
+    gateway_factory: GatewayFactory = GatewayFactory(
+        config=config,
+        access_token=access_token,
+    )
+    workspaces_gateway: WorkspacesGateway = gateway_factory.create_workspaces_gateway()
+    clusters_gateway: ClustersGateway = gateway_factory.create_clusters_gateway()
+    return WorkspacesService(
+        workspace_creation_polling_config=config.workspace_creation_polling,
+        workspaces_gateway=workspaces_gateway,
+        clusters_gateway=clusters_gateway,
+    )

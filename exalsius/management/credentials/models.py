@@ -1,5 +1,5 @@
-from exalsius.core.base.commands import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequest
 
 
-class ListCredentialsRequestDTO(BaseRequestDTO):
+class ListCredentialsRequestDTO(BaseRequest):
     pass

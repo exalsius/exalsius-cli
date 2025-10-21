@@ -10,8 +10,8 @@ from exalsius.core.base.display import (
     BaseListDisplay,
     BaseSingleItemDisplay,
     BaseSpinnerDisplay,
+    ErrorDisplayModel,
 )
-from exalsius.core.base.models import ErrorDTO
 from exalsius.core.base.render import (
     BaseListRenderer,
     BaseSingleItemRenderer,
@@ -141,7 +141,7 @@ class BaseDisplayManager:
         self,
         info_renderer: BaseSingleItemRenderer[str, str],
         success_renderer: BaseSingleItemRenderer[str, str],
-        error_renderer: BaseSingleItemRenderer[ErrorDTO, str],
+        error_renderer: BaseSingleItemRenderer[ErrorDisplayModel, str],
         confirmation_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(),
         spinner_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(
             render_config=TextRenderConfig(bold=True, color="custom")
@@ -155,7 +155,7 @@ class BaseDisplayManager:
                 renderer=success_renderer,
             )
         )
-        self.error_display: BaseSingleItemDisplay[ErrorDTO, str] = (
+        self.error_display: BaseSingleItemDisplay[ErrorDisplayModel, str] = (
             ConsoleSingleItemDisplay(
                 renderer=error_renderer,
             )
@@ -175,7 +175,7 @@ class BaseDisplayManager:
     def display_success(self, message: str):
         self.success_display.display(message)
 
-    def display_error(self, error: ErrorDTO):
+    def display_error(self, error: ErrorDisplayModel):
         self.error_display.display(error)
 
     def display_confirmation(self, message: str) -> bool:
@@ -198,8 +198,8 @@ class BaseJsonDisplayManager(BaseDisplayManager):
             message_key="message"
         ),
         error_renderer: BaseSingleItemRenderer[
-            ErrorDTO, str
-        ] = JsonSingleItemStringRenderer[ErrorDTO](),
+            ErrorDisplayModel, str
+        ] = JsonSingleItemStringRenderer[ErrorDisplayModel](),
     ):
         super().__init__(
             info_renderer=info_renderer,
@@ -216,7 +216,7 @@ class BaseTableDisplayManager(BaseDisplayManager):
             str, str
         ] = RichTextSuccessMessageRenderer(),
         error_renderer: BaseSingleItemRenderer[
-            ErrorDTO, str
+            ErrorDisplayModel, str
         ] = RichTextErrorMessageRenderer(),
     ):
         super().__init__(

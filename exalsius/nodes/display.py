@@ -1,9 +1,5 @@
 from typing import List
 
-from exalsius_api_client.models.base_node import BaseNode
-from exalsius_api_client.models.cloud_node import CloudNode
-from exalsius_api_client.models.self_managed_node import SelfManagedNode
-
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -19,23 +15,24 @@ from exalsius.core.commons.render.table import (
     TableSingleItemRenderer,
     get_column,
 )
+from exalsius.nodes.dtos import CloudNodeDTO, NodeDTO, SelfManagedNodeDTO
 
 
 class JsonNodesDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
         cloud_nodes_list_renderer: JsonListStringRenderer[
-            CloudNode
-        ] = JsonListStringRenderer[CloudNode](),
+            CloudNodeDTO
+        ] = JsonListStringRenderer[CloudNodeDTO](),
         self_managed_nodes_list_renderer: JsonListStringRenderer[
-            SelfManagedNode
-        ] = JsonListStringRenderer[SelfManagedNode](),
+            SelfManagedNodeDTO
+        ] = JsonListStringRenderer[SelfManagedNodeDTO](),
         cloud_nodes_single_item_renderer: JsonSingleItemStringRenderer[
-            CloudNode
-        ] = JsonSingleItemStringRenderer[CloudNode](),
+            CloudNodeDTO
+        ] = JsonSingleItemStringRenderer[CloudNodeDTO](),
         self_managed_nodes_single_item_renderer: JsonSingleItemStringRenderer[
-            SelfManagedNode
-        ] = JsonSingleItemStringRenderer[SelfManagedNode](),
+            SelfManagedNodeDTO
+        ] = JsonSingleItemStringRenderer[SelfManagedNodeDTO](),
     ):
         super().__init__()
         self.cloud_nodes_list_display = ConsoleListDisplay(
@@ -51,20 +48,20 @@ class JsonNodesDisplayManager(BaseJsonDisplayManager):
             renderer=self_managed_nodes_single_item_renderer
         )
 
-    def display_nodes(self, data: List[BaseNode]):
-        cloud_nodes = [node for node in data if isinstance(node, CloudNode)]
+    def display_nodes(self, data: List[NodeDTO]):
+        cloud_nodes = [node for node in data if isinstance(node, CloudNodeDTO)]
         self_managed_nodes = [
-            node for node in data if isinstance(node, SelfManagedNode)
+            node for node in data if isinstance(node, SelfManagedNodeDTO)
         ]
         if cloud_nodes:
             self.cloud_nodes_list_display.display(cloud_nodes)
         if self_managed_nodes:
             self.self_managed_nodes_list_display.display(self_managed_nodes)
 
-    def display_node(self, data: BaseNode):
-        if isinstance(data, CloudNode):
+    def display_node(self, data: NodeDTO):
+        if isinstance(data, CloudNodeDTO):
             self.cloud_nodes_single_item_display.display(data)
-        elif isinstance(data, SelfManagedNode):
+        elif isinstance(data, SelfManagedNodeDTO):
             self.self_managed_nodes_single_item_display.display(data)
 
 
@@ -90,22 +87,22 @@ DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP = {
 class TableNodesDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        cloud_nodes_list_renderer: TableListRenderer[CloudNode] = TableListRenderer[
-            CloudNode
+        cloud_nodes_list_renderer: TableListRenderer[CloudNodeDTO] = TableListRenderer[
+            CloudNodeDTO
         ](columns_rendering_map=DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP),
         self_managed_nodes_list_renderer: TableListRenderer[
-            SelfManagedNode
-        ] = TableListRenderer[SelfManagedNode](
+            SelfManagedNodeDTO
+        ] = TableListRenderer[SelfManagedNodeDTO](
             columns_rendering_map=DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP
         ),
         cloud_nodes_single_item_renderer: TableSingleItemRenderer[
-            CloudNode
-        ] = TableSingleItemRenderer[CloudNode](
+            CloudNodeDTO
+        ] = TableSingleItemRenderer[CloudNodeDTO](
             columns_map=DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP
         ),
         self_managed_nodes_single_item_renderer: TableSingleItemRenderer[
-            SelfManagedNode
-        ] = TableSingleItemRenderer[SelfManagedNode](
+            SelfManagedNodeDTO
+        ] = TableSingleItemRenderer[SelfManagedNodeDTO](
             columns_map=DEFAULT_SELF_MANAGED_NODE_COLUMNS_RENDERING_MAP
         ),
     ):
@@ -123,19 +120,19 @@ class TableNodesDisplayManager(BaseTableDisplayManager):
             renderer=self_managed_nodes_single_item_renderer
         )
 
-    def display_nodes(self, data: List[BaseNode]):
-        cloud_nodes = [node for node in data if isinstance(node, CloudNode)]
+    def display_nodes(self, data: List[NodeDTO]):
+        cloud_nodes = [node for node in data if isinstance(node, CloudNodeDTO)]
         if cloud_nodes:
             self.cloud_nodes_list_display.display(cloud_nodes)
 
         self_managed_nodes = [
-            node for node in data if isinstance(node, SelfManagedNode)
+            node for node in data if isinstance(node, SelfManagedNodeDTO)
         ]
         if self_managed_nodes:
             self.self_managed_nodes_list_display.display(self_managed_nodes)
 
-    def display_node(self, data: BaseNode):
-        if isinstance(data, CloudNode):
+    def display_node(self, data: NodeDTO):
+        if isinstance(data, CloudNodeDTO):
             self.cloud_nodes_single_item_display.display(data)
-        elif isinstance(data, SelfManagedNode):
+        elif isinstance(data, SelfManagedNodeDTO):
             self.self_managed_nodes_single_item_display.display(data)

@@ -1,38 +1,44 @@
 from datetime import datetime
 from typing import Optional
 
-from exalsius_api_client.api.workspaces_api import WorkspacesApi
-
 from exalsius.config import AppConfig
-from exalsius.workspaces.jupyter.models import (
-    JupyterWorkspaceTemplateDTO,
-    JupyterWorkspaceVariablesDTO,
+from exalsius.core.commons.decorators import handle_service_errors
+from exalsius.workspaces.domain import (
+    CreateWorkspaceParams,
+    Resources,
+    WorkspaceTemplate,
 )
-from exalsius.workspaces.models import (
-    ResourcePoolDTO,
-)
+from exalsius.workspaces.dtos import ResourcePoolDTO
 from exalsius.workspaces.service import WorkspacesService
 
 
 class JupyterWorkspacesService(WorkspacesService):
     def __init__(self, config: AppConfig, access_token: str):
         super().__init__(config, access_token)
-        self.workspaces_api: WorkspacesApi = WorkspacesApi(self.api_client)
 
+    @handle_service_errors("creating jupyter workspace")
     def create_jupyter_workspace(
         self,
         cluster_id: str,
         name: str,
         resources: ResourcePoolDTO,
-        variables: JupyterWorkspaceVariablesDTO,
+        variables: dict,
         description: Optional[str] = None,
         to_be_deleted_at: Optional[datetime] = None,
     ) -> str:
-        return self._create_workspace(
+        resources_domain = Resources(sdk_model=resources.to_api_model())
+
+        template_domain = WorkspaceTemplate(
+            name="jupyter-notebook-template",
+            variables=variables,
+        )
+
+        create_params = CreateWorkspaceParams(
             cluster_id=cluster_id,
             name=name,
-            resources=resources,
-            workspace_template=JupyterWorkspaceTemplateDTO(variables=variables),
+            resources=resources_domain,
+            template=template_domain,
             description=description,
             to_be_deleted_at=to_be_deleted_at,
         )
+        return self.workspaces_gateway.create(create_params)

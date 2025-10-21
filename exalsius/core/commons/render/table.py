@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, Generic, List, Optional
+import functools
+import logging
+from typing import Any, Dict, Generic, List, Optional
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -15,6 +17,21 @@ from exalsius.core.base.render import (
     T_RenderInput_Contra,
     T_RenderInput_Inv,
 )
+
+
+def _get_nested_attribute(obj: Any, attr: str, default: Any = "") -> Any:
+    """
+    Safely retrieves a nested attribute from an object using dot notation.
+    For example, for an attribute `a.b.c`, it will try to get `obj.a.b.c`.
+    If any attribute in the chain does not exist, it returns the default value.
+    """
+    try:
+        return functools.reduce(getattr, attr.split("."), obj)
+    except (AttributeError, TypeError) as e:
+        logging.error(
+            f"Error getting nested attribute {attr} from {obj} - Returning default value: {default} - Error: {e}"
+        )
+        return default
 
 
 class TableListRenderer(
@@ -53,7 +70,7 @@ class TableListRenderer(
 
         for item_data in data:
             row_values = [
-                str(getattr(item_data, key, ""))
+                str(_get_nested_attribute(item_data, key))
                 for key in self.columns_rendering_map.keys()
             ]
             table.add_row(*row_values)
@@ -87,7 +104,7 @@ class TableSingleItemRenderer(
         table.add_column("Value")
 
         for key in self.columns_map.keys():
-            value = str(getattr(data, key, ""))
+            value = str(_get_nested_attribute(data, key))
             table.add_row(self.columns_map[key].header, value)
 
         return table

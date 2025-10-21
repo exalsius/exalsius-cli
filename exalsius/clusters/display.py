@@ -1,8 +1,10 @@
 from typing import List
 
-from exalsius_api_client.models.cluster import Cluster
-
-from exalsius.clusters.models import ClusterNodeDTO, ClusterResourcesDTO
+from exalsius.clusters.dtos import (
+    ClusterDTO,
+    ClusterNodeDTO,
+    ClusterNodeResourcesDTO,
+)
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -25,18 +27,18 @@ from exalsius.core.commons.render.table import (
 class JsonClusterDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
-        cluster_list_renderer: JsonListStringRenderer[Cluster] = JsonListStringRenderer[
-            Cluster
-        ](),
+        cluster_list_renderer: JsonListStringRenderer[
+            ClusterDTO
+        ] = JsonListStringRenderer[ClusterDTO](),
         cluster_single_item_renderer: JsonSingleItemStringRenderer[
-            Cluster
-        ] = JsonSingleItemStringRenderer[Cluster](),
+            ClusterDTO
+        ] = JsonSingleItemStringRenderer[ClusterDTO](),
         cluster_nodes_list_renderer: JsonListStringRenderer[
             ClusterNodeDTO
         ] = JsonListStringRenderer[ClusterNodeDTO](),
         cluster_resources_list_renderer: JsonListStringRenderer[
-            ClusterResourcesDTO
-        ] = JsonListStringRenderer[ClusterResourcesDTO](),
+            ClusterNodeResourcesDTO
+        ] = JsonListStringRenderer[ClusterNodeResourcesDTO](),
     ):
         super().__init__()
         self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
@@ -50,16 +52,16 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager):
             renderer=cluster_resources_list_renderer
         )
 
-    def display_clusters(self, data: List[Cluster]):
+    def display_clusters(self, data: List[ClusterDTO]):
         self.cluster_list_display.display(data)
 
-    def display_cluster(self, data: Cluster):
+    def display_cluster(self, data: ClusterDTO):
         self.cluster_single_item_display.display(data)
 
     def display_cluster_nodes(self, data: List[ClusterNodeDTO]):
         self.cluster_nodes_list_display.display(data)
 
-    def display_cluster_resources(self, data: List[ClusterResourcesDTO]):
+    def display_cluster_resources(self, data: List[ClusterNodeResourcesDTO]):
         self.cluster_resources_list_display.display(data)
 
 
@@ -72,38 +74,42 @@ DEFAULT_COLUMNS_RENDERING_MAP = {
 }
 
 DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP = {
-    "id": get_column("ID", no_wrap=True),
-    "role": get_column("Role"),
-    "hostname": get_column("Hostname"),
+    "node_hostname": get_column("Hostname"),
+    "node_role": get_column("Role"),
+    "node_status": get_column("Status"),
+    "node_ip_address": get_column("IP Address"),
 }
 
 DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP = {
-    "node_id": get_column("Node ID", no_wrap=True),
-    "gpu_type": get_column("GPU Type"),
-    "gpu_count": get_column("GPU Count"),
-    "cpu_cores": get_column("CPU Cores"),
-    "memory_gb": get_column("Memory GB"),
-    "storage_gb": get_column("Storage GB"),
+    "cluster_name": get_column("Cluster Name"),
+    "node_hostname": get_column("Node Hostname"),
+    "free_resources.gpu_type": get_column("GPU Type"),
+    "free_resources.gpu_count": get_column("GPU Count"),
+    "free_resources.cpu": get_column("CPU Cores"),
+    "free_resources.memory": get_column("Memory GB"),
+    "free_resources.storage": get_column("Storage GB"),
 }
 
 
 class TableClusterDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        cluster_list_renderer: TableListRenderer[Cluster] = TableListRenderer[Cluster](
-            columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP
-        ),
+        cluster_list_renderer: TableListRenderer[ClusterDTO] = TableListRenderer[
+            ClusterDTO
+        ](columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP),
         cluster_single_item_renderer: TableSingleItemRenderer[
-            Cluster
-        ] = TableSingleItemRenderer[Cluster](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
+            ClusterDTO
+        ] = TableSingleItemRenderer[ClusterDTO](
+            columns_map=DEFAULT_COLUMNS_RENDERING_MAP
+        ),
         cluster_nodes_list_renderer: TableListRenderer[
             ClusterNodeDTO
         ] = TableListRenderer[ClusterNodeDTO](
             columns_rendering_map=DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP
         ),
         cluster_resources_list_renderer: TableListRenderer[
-            ClusterResourcesDTO
-        ] = TableListRenderer[ClusterResourcesDTO](
+            ClusterNodeResourcesDTO
+        ] = TableListRenderer[ClusterNodeResourcesDTO](
             columns_rendering_map=DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP
         ),
     ):
@@ -119,14 +125,14 @@ class TableClusterDisplayManager(BaseTableDisplayManager):
             renderer=cluster_resources_list_renderer
         )
 
-    def display_clusters(self, data: List[Cluster]):
+    def display_clusters(self, data: List[ClusterDTO]):
         self.cluster_list_display.display(data)
 
-    def display_cluster(self, data: Cluster):
+    def display_cluster(self, data: ClusterDTO):
         self.cluster_single_item_display.display(data)
 
     def display_cluster_nodes(self, data: List[ClusterNodeDTO]):
         self.cluster_nodes_list_display.display(data)
 
-    def display_cluster_resources(self, data: List[ClusterResourcesDTO]):
+    def display_cluster_resources(self, data: List[ClusterNodeResourcesDTO]):
         self.cluster_resources_list_display.display(data)

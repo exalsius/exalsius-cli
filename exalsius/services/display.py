@@ -1,7 +1,5 @@
 from typing import Dict, List
 
-from exalsius_api_client.models.service import Service
-
 from exalsius.core.commons.display import (
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
@@ -18,17 +16,18 @@ from exalsius.core.commons.render.table import (
     TableSingleItemRenderer,
     get_column,
 )
+from exalsius.services.dtos import ServiceDTO
 
 
 class JsonServicesDisplayManager(BaseJsonDisplayManager):
     def __init__(
         self,
         services_list_renderer: JsonListStringRenderer[
-            Service
-        ] = JsonListStringRenderer[Service](),
+            ServiceDTO
+        ] = JsonListStringRenderer[ServiceDTO](),
         services_single_item_renderer: JsonSingleItemStringRenderer[
-            Service
-        ] = JsonSingleItemStringRenderer[Service](),
+            ServiceDTO
+        ] = JsonSingleItemStringRenderer[ServiceDTO](),
     ):
         super().__init__()
         self.services_list_display = ConsoleListDisplay(renderer=services_list_renderer)
@@ -36,16 +35,17 @@ class JsonServicesDisplayManager(BaseJsonDisplayManager):
             renderer=services_single_item_renderer
         )
 
-    def display_services(self, services: List[Service]):
+    def display_services(self, services: List[ServiceDTO]):
         self.services_list_display.display(services)
 
-    def display_service(self, service: Service):
+    def display_service(self, service: ServiceDTO):
         self.services_single_item_display.display(service)
 
 
 DEFAULT_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": get_column("ID", no_wrap=True),
     "name": get_column("Name"),
+    "cluster_id": get_column("Cluster ID"),
     "service_template": get_column("Service Template"),
     "created_at": get_column("Created At"),
 }
@@ -54,12 +54,14 @@ DEFAULT_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
 class TableServicesDisplayManager(BaseTableDisplayManager):
     def __init__(
         self,
-        services_list_renderer: TableListRenderer[Service] = TableListRenderer[Service](
-            columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP
-        ),
+        services_list_renderer: TableListRenderer[ServiceDTO] = TableListRenderer[
+            ServiceDTO
+        ](columns_rendering_map=DEFAULT_COLUMNS_RENDERING_MAP),
         services_single_item_renderer: TableSingleItemRenderer[
-            Service
-        ] = TableSingleItemRenderer[Service](columns_map=DEFAULT_COLUMNS_RENDERING_MAP),
+            ServiceDTO
+        ] = TableSingleItemRenderer[ServiceDTO](
+            columns_map=DEFAULT_COLUMNS_RENDERING_MAP
+        ),
     ):
         super().__init__()
         self.services_list_display = ConsoleListDisplay(renderer=services_list_renderer)
@@ -67,8 +69,8 @@ class TableServicesDisplayManager(BaseTableDisplayManager):
             renderer=services_single_item_renderer
         )
 
-    def display_services(self, services: List[Service]):
+    def display_services(self, services: List[ServiceDTO]):
         self.services_list_display.display(services)
 
-    def display_service(self, service: Service):
+    def display_service(self, service: ServiceDTO):
         self.services_single_item_display.display(service)

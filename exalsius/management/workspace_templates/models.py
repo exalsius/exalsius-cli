@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
 
-from exalsius.core.base.commands import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequest
 
 
-class ListWorkspaceTemplatesRequestDTO(BaseRequestDTO):
+class ListWorkspaceTemplatesRequestDTO(BaseRequest):
     pass
 
 

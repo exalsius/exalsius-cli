@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional, Type, TypeVar, Union
 import requests
 from pydantic import BaseModel
 
-from exalsius.core.base.commands import BaseCommand
-from exalsius.core.base.exceptions import ExalsiusError, ExalsiusWarning
+from exalsius.core.base.commands import BaseCommand, CommandError
+from exalsius.core.base.exceptions import ExalsiusWarning
 from exalsius.core.commons.deserializer import (
     DeserializationError,
     PydanticDeserializer,
@@ -15,9 +15,18 @@ T_SerOutput = TypeVar("T_SerOutput", bound=BaseModel)
 T_SerOutput_Nullable = TypeVar("T_SerOutput_Nullable", bound=Union[BaseModel, None])
 
 
-class NetworkError(ExalsiusError):
-    def __init__(self, message: str):
+class HTTPCommandError(CommandError):
+    def __init__(
+        self,
+        message: str,
+        endpoint: str,
+        status: Optional[int] = None,
+        retryable: bool = False,
+    ):
         super().__init__(message)
+        self.endpoint: str = endpoint
+        self.status: Optional[int] = status
+        self.retryable: bool = retryable
 
 
 class UnexpectedHttpResponseWarning(ExalsiusWarning):
@@ -25,22 +34,19 @@ class UnexpectedHttpResponseWarning(ExalsiusWarning):
         super().__init__(message)
 
 
-class AuthenticationError(ExalsiusError):
-    def __init__(self, message: str):
-        super().__init__(message)
+class AuthenticationError(HTTPCommandError):
+    def __init__(self, message: str, endpoint: str):
+        super().__init__(message, endpoint, status=401, retryable=False)
 
 
-class ResourceNotFoundError(ExalsiusError):
+class ResourceNotFoundError(HTTPCommandError):
     def __init__(self, resource_type: str, endpoint: str):
-        super().__init__(f"{resource_type} not found at {endpoint}")
-
-
-class APIError(ExalsiusError):
-    def __init__(self, message: str, endpoint: str, status_code: Optional[int] = None):
-        super().__init__(message)
-        self.message: str = message
-        self.endpoint: str = endpoint
-        self.status_code: Optional[int] = status_code
+        super().__init__(
+            f"{resource_type} not found at {endpoint}",
+            endpoint,
+            status=404,
+            retryable=False,
+        )
 
 
 class BasePostRequestCommand(BaseCommand[T_SerOutput_Nullable]):
@@ -67,23 +73,28 @@ class BasePostRequestCommand(BaseCommand[T_SerOutput_Nullable]):
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 401:
                 raise AuthenticationError(
-                    f"Invalid or expired credentials for {url}"
+                    f"invalid or expired credentials for {url}",
+                    url,
                 ) from e
             elif e.response.status_code == 404:
-                raise ResourceNotFoundError("resource", url) from e
+                raise ResourceNotFoundError("resource not found", url) from e
             else:
-                raise APIError(
-                    f"Error making POST request to {url}: {e.response.text}",
+                raise HTTPCommandError(
+                    f"error making POST request to {url}: {e.response}",
                     url,
                     e.response.status_code,
                 ) from e
         except DeserializationError as e:
-            raise APIError(
-                f"Error deserializing response from {url}: {e}",
+            raise HTTPCommandError(
+                f"error deserializing response from {url}: {e}",
                 url,
             ) from e
         except Exception as e:
-            raise APIError(f"Error making POST request to {url}: {e}", url) from e
+            raise HTTPCommandError(
+                f"unexpected error making POST request to {url}: {e}",
+                url,
+                retryable=True,
+            ) from e
 
 
 class PostRequestWithResponseCommand(BasePostRequestCommand[T_SerOutput]):
@@ -116,7 +127,6 @@ class PostRequestWithoutResponseCommand(BasePostRequestCommand[None]):
     def execute(self) -> None:
         response: requests.Response = self._make_post_request()
 
-        # Optionally validate 204 status if that's your API contract
         if response.content and response.headers.get("Content-Length") != "0":
             raise UnexpectedHttpResponseWarning(
                 f"unexpected response from post request to {self._get_url()}: "

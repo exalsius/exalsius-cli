@@ -1,19 +1,19 @@
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import List, Union
 
 import typer
-from exalsius_api_client.models.workspace import Workspace
 
 from exalsius.config import AppConfig
-from exalsius.core.base.models import ErrorDTO
-from exalsius.core.commons.models import ServiceError, ServiceWarning
+from exalsius.core.base.display import ErrorDisplayModel
+from exalsius.core.base.service import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.workspaces.display import (
     JsonWorkspacesDisplayManager,
     TableWorkspacesDisplayManager,
 )
-from exalsius.workspaces.service import WorkspacesService
+from exalsius.workspaces.dtos import ListWorkspacesRequestDTO, WorkspaceDTO
+from exalsius.workspaces.service import WorkspacesService, get_workspaces_service
 
 logger = logging.getLogger("cli.workspaces")
 
@@ -23,9 +23,15 @@ workspaces_deploy_app = typer.Typer()
 workspaces_app.add_typer(workspaces_deploy_app, name="deploy")
 
 
-class DisplayFormat(str, Enum):
-    table = "table"
-    json = "json"
+class DisplayFormat(StrEnum):
+    TABLE = "table"
+    JSON = "json"
+
+
+def _get_workspaces_service(ctx: typer.Context) -> WorkspacesService:
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    return get_workspaces_service(config, access_token)
 
 
 @workspaces_app.callback(invoke_without_command=True)
@@ -45,7 +51,7 @@ def list_workspaces(
         help="The ID of the cluster to list the workspaces for"
     ),
     format: DisplayFormat = typer.Option(
-        DisplayFormat.table,
+        DisplayFormat.TABLE,
         "-f",
         "--format",
         help="The format to display the workspaces in",
@@ -56,24 +62,18 @@ def list_workspaces(
         TableWorkspacesDisplayManager, JsonWorkspacesDisplayManager
     ] = (
         TableWorkspacesDisplayManager()
-        if format == DisplayFormat.table
+        if format == DisplayFormat.TABLE
         else JsonWorkspacesDisplayManager()
     )
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = WorkspacesService(config, access_token)
+    service = _get_workspaces_service(ctx)
 
     try:
-        workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
-    except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
+        workspaces: List[WorkspaceDTO] = service.list_workspaces(
+            ListWorkspacesRequestDTO(cluster_id=cluster_id)
         )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
     display_manager.display_workspaces(workspaces)
 
@@ -85,7 +85,7 @@ def get_workspace(
         help="The ID of the workspace to get",
     ),
     format: DisplayFormat = typer.Option(
-        DisplayFormat.table,
+        DisplayFormat.TABLE,
         "-f",
         "--format",
         help="The format to display the workspace in",
@@ -96,24 +96,16 @@ def get_workspace(
         TableWorkspacesDisplayManager, JsonWorkspacesDisplayManager
     ] = (
         TableWorkspacesDisplayManager()
-        if format == DisplayFormat.table
+        if format == DisplayFormat.TABLE
         else JsonWorkspacesDisplayManager()
     )
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = WorkspacesService(config, access_token)
+    service = _get_workspaces_service(ctx)
 
     try:
-        workspace: Workspace = service.get_workspace(workspace_id)
+        workspace: WorkspaceDTO = service.get_workspace(workspace_id)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
-        )
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
     display_manager.display_workspace(workspace)
 
@@ -127,34 +119,24 @@ def delete_workspace(
 ):
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = WorkspacesService(config, access_token)
+    service = _get_workspaces_service(ctx)
 
     try:
-        deleted_workspace_id: str = service.delete_workspace(workspace_id=workspace_id)
+        service.delete_workspace(workspace_id=workspace_id)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
-        )
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
-    display_manager.display_success(
-        f"Workspace {deleted_workspace_id} deleted successfully."
-    )
+    display_manager.display_success(f"Workspace {workspace_id} deleted successfully.")
 
 
 def poll_workspace_creation(
     workspace_id: str,
     service: WorkspacesService,
     display_manager: TableWorkspacesDisplayManager,
-) -> Workspace:
+) -> WorkspaceDTO:
     display_manager.spinner_display.start_display("Creating workspace...")
     try:
-        workspace: Workspace = service.poll_workspace_creation(
+        workspace: WorkspaceDTO = service.poll_workspace_creation(
             workspace_id=workspace_id
         )
     except TimeoutError as e:
@@ -165,16 +147,7 @@ def poll_workspace_creation(
         )
         raise typer.Exit(1)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
-        )
-        raise typer.Exit(1)
-    except ServiceWarning as e:
-        display_manager.display_info(str(e))
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
     finally:
         display_manager.spinner_display.stop_display()

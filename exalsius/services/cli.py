@@ -1,16 +1,27 @@
 from typing import List
 
 import typer
-from exalsius_api_client.models.service import Service
 
 from exalsius.config import AppConfig
-from exalsius.core.base.models import ErrorDTO
-from exalsius.core.commons.models import ServiceError
+from exalsius.core.base.display import ErrorDisplayModel
+from exalsius.core.base.service import ServiceError
+from exalsius.core.commons.factories import GatewayFactory
 from exalsius.services.display import TableServicesDisplayManager
+from exalsius.services.dtos import ServiceDTO, ServiceListRequestDTO
 from exalsius.services.service import ServicesService
 from exalsius.utils import commons as utils
 
 services_app = typer.Typer()
+
+
+def _get_services_service(ctx: typer.Context) -> ServicesService:
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+
+    gateway_factory = GatewayFactory(config, access_token)
+    services_gateway = gateway_factory.create_services_gateway()
+
+    return ServicesService(services_gateway)
 
 
 @services_app.callback(invoke_without_command=True)
@@ -33,20 +44,14 @@ def list_services(
     """
     display_manager: TableServicesDisplayManager = TableServicesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service: ServicesService = ServicesService(config, access_token)
+    service: ServicesService = _get_services_service(ctx)
 
     try:
-        services: List[Service] = service.list_services(cluster_id)
-    except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
+        services: List[ServiceDTO] = service.list_services(
+            ServiceListRequestDTO(cluster_id=cluster_id)
         )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     display_manager.display_services(services)
@@ -62,23 +67,15 @@ def get_service(
     """
     display_manager: TableServicesDisplayManager = TableServicesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service_service: ServicesService = ServicesService(config, access_token)
+    service: ServicesService = _get_services_service(ctx)
 
     try:
-        service: Service = service_service.get_service(service_id)
+        service_obj: ServiceDTO = service.get_service(service_id)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
-        )
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    display_manager.display_service(service)
+    display_manager.display_service(service_obj)
 
 
 @services_app.command("delete", help="Delete a service of a cluster")
@@ -91,20 +88,12 @@ def delete_service(
     """
     display_manager: TableServicesDisplayManager = TableServicesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service_service: ServicesService = ServicesService(config, access_token)
+    service: ServicesService = _get_services_service(ctx)
 
     try:
-        deleted_service_id: str = service_service.delete_service(service_id)
+        deleted_service_id: str = service.delete_service(service_id)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_type=e.error_type,
-                error_code=e.error_code,
-            )
-        )
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     display_manager.display_success(

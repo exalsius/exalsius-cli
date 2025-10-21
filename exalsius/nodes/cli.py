@@ -1,17 +1,29 @@
-from typing import List
+from typing import List, Optional
 
 import typer
-from exalsius_api_client.models.base_node import BaseNode
 
 from exalsius.config import AppConfig
-from exalsius.core.base.models import ErrorDTO
-from exalsius.core.commons.models import ServiceError
+from exalsius.core.base.display import ErrorDisplayModel
+from exalsius.core.base.service import ServiceError
 from exalsius.nodes.display import TableNodesDisplayManager
-from exalsius.nodes.models import CloudProvider, NodeType
-from exalsius.nodes.service import NodeService
+from exalsius.nodes.domain import CloudProvider
+from exalsius.nodes.dtos import (
+    NodeDTO,
+    NodesImportFromOfferRequestDTO,
+    NodesImportSSHRequestDTO,
+    NodesListRequestDTO,
+    NodeTypeDTO,
+)
+from exalsius.nodes.service import NodeService, get_node_service
 from exalsius.utils import commons as utils
 
 nodes_app = typer.Typer()
+
+
+def _get_node_service(ctx: typer.Context) -> NodeService:
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    return get_node_service(config, access_token)
 
 
 @nodes_app.callback(invoke_without_command=True)
@@ -27,30 +39,24 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 @nodes_app.command("list", help="List all nodes in the node pool.")
 def list_nodes(
     ctx: typer.Context,
-    node_type: NodeType = typer.Option(
+    node_type: Optional[NodeTypeDTO] = typer.Option(
         None, "--node-type", "-t", help="The type of node to list"
     ),
-    provider: CloudProvider = typer.Option(
+    provider: Optional[CloudProvider] = typer.Option(
         None, "--provider", "-p", help="The provider of the node to list"
     ),
 ):
     """List all nodes in the node pool"""
     display_manager = TableNodesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = NodeService(config, access_token)
+    service: NodeService = _get_node_service(ctx)
 
     try:
-        nodes: List[BaseNode] = service.list_nodes(node_type, provider)
-    except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_code=e.error_code,
-                error_type=e.error_type,
-            )
+        nodes: List[NodeDTO] = service.list_nodes(
+            NodesListRequestDTO(node_type=node_type, provider=provider)
         )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     display_manager.display_nodes(nodes)
@@ -64,20 +70,12 @@ def get_node(
     """Get a node in the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = NodeService(config, access_token)
+    service: NodeService = _get_node_service(ctx)
 
     try:
-        node: BaseNode = service.get_node(node_id)
+        node: NodeDTO = service.get_node(node_id)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_code=e.error_code,
-                error_type=e.error_type,
-            )
-        )
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     display_manager.display_node(node)
@@ -91,20 +89,12 @@ def delete_node(
     """Delete a node in the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = NodeService(config, access_token)
+    service: NodeService = _get_node_service(ctx)
 
     try:
         service.delete_node(node_id)
     except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_code=e.error_code,
-                error_type=e.error_type,
-            )
-        )
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     display_manager.display_success(f"Node {node_id} deleted successfully")
@@ -124,23 +114,23 @@ def import_ssh(
     """Import a self-managed node into the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = NodeService(config, access_token)
+    service: NodeService = _get_node_service(ctx)
 
     try:
-        node_id: str = service.import_ssh_node(hostname, endpoint, username, ssh_key_id)
-    except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_code=e.error_code,
-                error_type=e.error_type,
+        node: NodeDTO = service.import_ssh_node(
+            NodesImportSSHRequestDTO(
+                hostname=hostname,
+                endpoint=endpoint,
+                username=username,
+                ssh_key_id=ssh_key_id,
             )
         )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    display_manager.display_success(f"Node {node_id} imported successfully")
+    display_manager.display_success(f"Node {node.hostname} imported successfully")
+    display_manager.display_node(node)
 
 
 @nodes_app.command(
@@ -161,20 +151,19 @@ def import_offer(
     """Import a node from an offer into the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service = NodeService(config, access_token)
+    service: NodeService = _get_node_service(ctx)
 
     try:
-        node_ids: List[str] = service.import_from_offer(hostname, offer_id, amount)
-    except ServiceError as e:
-        display_manager.display_error(
-            ErrorDTO(
-                message=e.message,
-                error_code=e.error_code,
-                error_type=e.error_type,
+        nodes: List[NodeDTO] = service.import_from_offer(
+            NodesImportFromOfferRequestDTO(
+                hostname=hostname,
+                offer_id=offer_id,
+                amount=amount,
             )
         )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    display_manager.display_success(f"Nodes {node_ids} imported successfully")
+    display_manager.display_success(f"Nodes {nodes} imported successfully")
+    display_manager.display_nodes(nodes)

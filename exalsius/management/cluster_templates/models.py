@@ -1,5 +1,5 @@
-from exalsius.core.base.commands import BaseRequestDTO
+from exalsius.core.base.commands import BaseRequest
 
 
-class ListClusterTemplatesRequestDTO(BaseRequestDTO):
+class ListClusterTemplatesRequestDTO(BaseRequest):
     pass

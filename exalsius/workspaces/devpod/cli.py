@@ -1,28 +1,34 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import typer
-from exalsius_api_client.models.workspace import Workspace
-from exalsius_api_client.models.workspace_access_information import (
-    WorkspaceAccessInformation,
-)
 from pydantic import PositiveInt
 
 from exalsius.config import AppConfig
+from exalsius.core.base.display import ErrorDisplayModel
+from exalsius.core.base.service import ServiceError
 from exalsius.utils import commons as utils
-from exalsius.workspaces.cli import (
-    poll_workspace_creation,
-    workspaces_deploy_app,
+from exalsius.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
+from exalsius.workspaces.devpod.dtos import DeployDevPodWorkspaceRequestDTO
+from exalsius.workspaces.devpod.service import (
+    DevPodWorkspacesService,
+    get_devpod_workspaces_service,
 )
-from exalsius.workspaces.devpod.models import DevPodWorkspaceVariablesDTO
-from exalsius.workspaces.devpod.service import DevPodWorkspacesService
 from exalsius.workspaces.display import TableWorkspacesDisplayManager
-from exalsius.workspaces.models import (
-    ResourcePoolDTO,
-    WorkspaceAccessInformationDTO,
+from exalsius.workspaces.dtos import (
+    WorkspaceDTO,
+    WorkspaceResourcesRequestDTO,
 )
 
 logger: logging.Logger = logging.getLogger("cli.workspaces.devpod")
+
+
+def get_devpod_workspaces_service_from_ctx(
+    ctx: typer.Context,
+) -> DevPodWorkspacesService:
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    return get_devpod_workspaces_service(config=config, access_token=access_token)
 
 
 @workspaces_deploy_app.callback(invoke_without_command=True)
@@ -89,57 +95,41 @@ def deploy_devpod_workspace(
 ):
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service: DevPodWorkspacesService = DevPodWorkspacesService(config, access_token)
+    service: DevPodWorkspacesService = get_devpod_workspaces_service_from_ctx(ctx)
 
-    resources: ResourcePoolDTO = ResourcePoolDTO(
-        gpu_count=gpu_count,
-        gpu_type=None,
-        gpu_vendor=None,
-        cpu_cores=cpu_cores,
-        memory_gb=memory_gb,
-        storage_gb=pvc_storage_gb,
+    deploy_devpod_workspace_request: DeployDevPodWorkspaceRequestDTO = (
+        DeployDevPodWorkspaceRequestDTO(
+            cluster_id=cluster_id,
+            name=name,
+            docker_image=docker_image,
+            resources=WorkspaceResourcesRequestDTO(
+                gpu_count=gpu_count,
+                gpu_type=None,
+                gpu_vendor=None,
+                cpu_cores=cpu_cores,
+                memory_gb=memory_gb,
+                pvc_storage_gb=pvc_storage_gb,
+                ephemeral_storage_gb=ephemeral_storage_gb,
+            ),
+            to_be_deleted_at=None,
+        )
     )
 
-    workspace_id: str = service.create_devpod_workspace(
-        cluster_id=cluster_id,
-        name=name,
-        resources=resources,
-        variables=DevPodWorkspaceVariablesDTO(
-            deployment_name=name,
-            deployment_image=docker_image,
-            ephemeral_storage_gb=ephemeral_storage_gb,
-        ),
-    )
+    try:
+        workspace_id: str = service.deploy_devpod_workspace(
+            request=deploy_devpod_workspace_request,
+        )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
+        raise typer.Exit(1)
 
-    workspace: Workspace = poll_workspace_creation(
+    workspace: WorkspaceDTO = poll_workspace_creation(
         display_manager=display_manager,
         service=service,
         workspace_id=workspace_id,
     )
 
-    access_infos: Optional[List[WorkspaceAccessInformation]] = (
-        workspace.access_information
-    )
-    if not access_infos or len(access_infos) == 0:
-        display_manager.display_success(
-            f"workspace {workspace.name} ({workspace_id}) created successfully"
-        )
-        raise typer.Exit(0)
-
-    access_info_dtos: List[WorkspaceAccessInformationDTO] = []
-    for access_info in access_infos:
-        access_info_dtos.append(
-            WorkspaceAccessInformationDTO(
-                workspace_id=workspace_id,
-                access_type=access_info.access_type,
-                access_endpoint=f"{access_info.access_protocol.lower()}://{access_info.external_ip}:{access_info.port_number}",
-            )
-        )
-
     display_manager.display_success(
-        f"workspace {workspace.name} ({workspace_id}) created successfully."
+        f"workspace {workspace.workspace_name} ({workspace.workspace_id}) created successfully."
     )
-    display_manager.display_info("Access information:")
-    display_manager.display_workspace_access_info(access_info_dtos)
+    display_manager.display_workspace(workspace)

@@ -4,24 +4,27 @@ from typing import Any, Optional
 
 import typer
 import yaml
-from exalsius_api_client.models.workspace import Workspace
 from pydantic import PositiveInt
 
 from exalsius.config import AppConfig
+from exalsius.core.base.display import ErrorDisplayModel
+from exalsius.core.base.service import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
-from exalsius.workspaces.diloco.models import (
-    DilocoTrainerVariablesDTO,
-    DilocoWorkspaceVariablesDTO,
-)
 from exalsius.workspaces.diloco.service import DilocoWorkspacesService
 from exalsius.workspaces.display import TableWorkspacesDisplayManager
-from exalsius.workspaces.models import ResourcePoolDTO
+from exalsius.workspaces.dtos import ResourcePoolDTO, WorkspaceDTO
 
 logger: logging.Logger = logging.getLogger("cli.workspaces.diloco")
 
 
 DEFAULT_DILCO_CONFIG_FILE = Path(__file__).parent / "default_config.yml"
+
+
+def get_diloco_workspaces_service(ctx: typer.Context) -> DilocoWorkspacesService:
+    config: AppConfig = utils.get_config_from_ctx(ctx)
+    access_token: str = utils.get_access_token_from_ctx(ctx)
+    return DilocoWorkspacesService(config, access_token)
 
 
 @workspaces_deploy_app.callback(invoke_without_command=True)
@@ -118,9 +121,7 @@ def deploy_diloco_workspace(
 ):
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    service: DilocoWorkspacesService = DilocoWorkspacesService(config, access_token)
+    service: DilocoWorkspacesService = get_diloco_workspaces_service(ctx)
 
     with open(diloco_config_file, "r") as f:
         config_data: dict[str, Any] = yaml.safe_load(f)
@@ -128,22 +129,18 @@ def deploy_diloco_workspace(
     diloco_config_from_file: dict[str, Any] = config_data.get("diloco", {})
 
     cli_args: dict[str, Optional[str]] = {
-        "wandb_user_key": wandb_user_key,
-        "wandb_project_name": wandb_project_name,
-        "wandb_group": wandb_group,
-        "huggingface_token": huggingface_token,
+        "wandbUserKey": wandb_user_key,
+        "wandbProjectName": wandb_project_name,
+        "wandbGroup": wandb_group,
+        "huggingfaceToken": huggingface_token,
     }
     cli_args_provided: dict[str, Any] = {
         k: v for k, v in cli_args.items() if v is not None
     }
-    if "wandb_user_key" in cli_args_provided:
-        cli_args_provided["wandb_logging"] = True
+    if "wandbUserKey" in cli_args_provided:
+        cli_args_provided["wandbLogging"] = True
 
     merged_config: dict[str, Any] = {**diloco_config_from_file, **cli_args_provided}
-
-    diloco_trainer_variables: DilocoTrainerVariablesDTO = (
-        DilocoTrainerVariablesDTO.model_validate(merged_config)
-    )
 
     resources: ResourcePoolDTO = ResourcePoolDTO(
         gpu_count=gpu_count_per_node,
@@ -154,19 +151,25 @@ def deploy_diloco_workspace(
         storage_gb=1,  # diloco workspaces do not support PVC storage, this will be ignored
     )
 
-    workspace_id: str = service.create_diloco_workspace(
-        cluster_id=cluster_id,
-        name=name,
-        resources=resources,
-        variables=DilocoWorkspaceVariablesDTO(
-            deployment_name=name,
-            nodes=nodes,
-            ephemeral_storage_gb=ephemeral_storage_gb_per_node,
-            diloco=diloco_trainer_variables,
-        ),
-    )
+    variables = {
+        "deploymentName": name,
+        "nodes": nodes,
+        "ephemeralStorageGb": ephemeral_storage_gb_per_node,
+        "diloco": merged_config,
+    }
 
-    workspace: Workspace = poll_workspace_creation(
+    try:
+        workspace_id: str = service.create_diloco_workspace(
+            cluster_id=cluster_id,
+            name=name,
+            resources=resources,
+            variables=variables,
+        )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
+        raise typer.Exit(1)
+
+    workspace: WorkspaceDTO = poll_workspace_creation(
         display_manager=display_manager,
         service=service,
         workspace_id=workspace_id,
