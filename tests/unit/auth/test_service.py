@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from pytest_mock import MockerFixture
 
-from exalsius.auth.commands import (
+from exls.auth.commands import (
     Auth0FetchDeviceCodeCommand,
     Auth0PollForAuthenticationCommand,
     Auth0RefreshTokenCommand,
@@ -14,16 +14,16 @@ from exalsius.auth.commands import (
     LoadTokenFromKeyringCommand,
     StoreTokenOnKeyringCommand,
 )
-from exalsius.auth.models import (
+from exls.auth.models import (
     Auth0AuthenticationDTO,
     Auth0DeviceCodeAuthenticationDTO,
     Auth0UserInfoDTO,
     LoadedTokenDTO,
     NotLoggedInWarning,
 )
-from exalsius.auth.service import Auth0Service
-from exalsius.config import AppConfig, Auth0Config
-from exalsius.core.commons.models import ServiceError
+from exls.auth.service import Auth0Service
+from exls.config import AppConfig, Auth0Config
+from exls.core.commons.models import ServiceError
 
 
 class TestAuth0Service:

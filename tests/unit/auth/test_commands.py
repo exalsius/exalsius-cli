@@ -5,7 +5,7 @@ import pytest
 import requests
 from auth0.exceptions import TokenValidationError
 
-from exalsius.auth.commands import (
+from exls.auth.commands import (
     Auth0FetchDeviceCodeCommand,
     Auth0PollForAuthenticationCommand,
     Auth0RefreshTokenCommand,
@@ -16,7 +16,7 @@ from exalsius.auth.commands import (
     LoadTokenFromKeyringCommand,
     StoreTokenOnKeyringCommand,
 )
-from exalsius.auth.models import (
+from exls.auth.models import (
     Auth0APIError,
     Auth0AuthenticationDTO,
     Auth0AuthenticationError,

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from rich.console import Console
 
-from exalsius.auth.display import AuthDisplayManager
+from exls.auth.display import AuthDisplayManager
 
 
 def _get_printed_output(mock_console: MagicMock) -> str:

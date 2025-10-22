@@ -1,5 +1,5 @@
 [project]
-name = "exalsius"
+name = "exls"
 version = "0.3.0"
 description = "The exalsius CLI"
 readme = "README.md"
@@ -21,10 +21,10 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["exalsius*"] 
+include = ["exls*"] 
 
 [project.scripts]
-exls = "exalsius.app:app" 
+exls = "exls.app:app" 
 
 [build-system]
 requires = ["setuptools"]
