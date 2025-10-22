@@ -38,11 +38,13 @@ class WorkspaceDTO(BaseModel):
             workspace_name=workspace.name,
             workspace_status=workspace.workspace_status,
             workspace_created_at=workspace.created_at,
-            workspace_access_information=WorkspaceAccessInformationDTO.from_domain(
-                access_information, workspace.id
-            )
-            if access_information
-            else None,
+            workspace_access_information=(
+                WorkspaceAccessInformationDTO.from_domain(
+                    access_information, workspace.id
+                )
+                if access_information
+                else None
+            ),
         )
 
 

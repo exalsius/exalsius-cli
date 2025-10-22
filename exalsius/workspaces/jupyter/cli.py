@@ -10,19 +10,22 @@ from exalsius.core.base.service import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
 from exalsius.workspaces.display import TableWorkspacesDisplayManager
-from exalsius.workspaces.dtos import (
-    ResourcePoolDTO,
-    WorkspaceDTO,
+from exalsius.workspaces.dtos import WorkspaceDTO, WorkspaceResourcesRequestDTO
+from exalsius.workspaces.jupyter.dtos import DeployJupyterWorkspaceRequestDTO
+from exalsius.workspaces.jupyter.service import (
+    JupyterWorkspacesService,
+    get_jupyter_workspaces_service,
 )
-from exalsius.workspaces.jupyter.service import JupyterWorkspacesService
 
 logger: logging.Logger = logging.getLogger("cli.workspaces.jupyter")
 
 
-def get_jupyter_workspaces_service(ctx: typer.Context) -> JupyterWorkspacesService:
+def get_jupyter_workspaces_service_from_ctx(
+    ctx: typer.Context,
+) -> JupyterWorkspacesService:
     config: AppConfig = utils.get_config_from_ctx(ctx)
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    return JupyterWorkspacesService(config, access_token)
+    return get_jupyter_workspaces_service(config=config, access_token=access_token)
 
 
 @workspaces_deploy_app.callback(invoke_without_command=True)
@@ -95,30 +98,30 @@ def deploy_jupyter_workspace(
 ):
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
-    service: JupyterWorkspacesService = get_jupyter_workspaces_service(ctx)
+    service: JupyterWorkspacesService = get_jupyter_workspaces_service_from_ctx(ctx)
 
-    resources: ResourcePoolDTO = ResourcePoolDTO(
-        gpu_count=gpu_count,
-        gpu_type=None,
-        gpu_vendor=None,
-        cpu_cores=cpu_cores,
-        memory_gb=memory_gb,
-        storage_gb=pvc_storage_gb,
-    )
-
-    variables = {
-        "deploymentName": name,
-        "deploymentImage": docker_image,
-        "notebookPassword": jupyter_password,
-        "ephemeralStorageGb": ephemeral_storage_gb,
-    }
-
-    try:
-        workspace_id: str = service.create_jupyter_workspace(
+    deploy_jupyter_workspace_request: DeployJupyterWorkspaceRequestDTO = (
+        DeployJupyterWorkspaceRequestDTO(
             cluster_id=cluster_id,
             name=name,
-            resources=resources,
-            variables=variables,
+            docker_image=docker_image,
+            jupyter_password=jupyter_password,
+            resources=WorkspaceResourcesRequestDTO(
+                gpu_count=gpu_count,
+                gpu_type=None,
+                gpu_vendor=None,
+                cpu_cores=cpu_cores,
+                memory_gb=memory_gb,
+                pvc_storage_gb=pvc_storage_gb,
+                ephemeral_storage_gb=ephemeral_storage_gb,
+            ),
+            to_be_deleted_at=None,
+        )
+    )
+
+    try:
+        workspace_id: str = service.deploy_jupyter_workspace(
+            request_dto=deploy_jupyter_workspace_request,
         )
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
@@ -130,18 +133,7 @@ def deploy_jupyter_workspace(
         workspace_id=workspace_id,
     )
 
-    access_infos = workspace.access_information
-    if not access_infos or len(access_infos) == 0:
-        display_manager.display_success(
-            f"workspace {workspace.name} ({workspace_id}) created successfully"
-        )
-        raise typer.Exit(0)
-
-    for access_info in access_infos:
-        access_info.workspace_id = workspace_id
-
     display_manager.display_success(
-        f"workspace {workspace.name} ({workspace_id}) created successfully."
+        f"workspace {workspace.workspace_name} ({workspace.workspace_id}) created successfully."
     )
-    display_manager.display_info("Access information:")
-    display_manager.display_workspace_access_info(access_infos)
+    display_manager.display_workspace(workspace)

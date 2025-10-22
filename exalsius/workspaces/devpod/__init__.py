@@ -1,4 +1,6 @@
-from exalsius.workspaces.devpod import mappers
-from exalsius.workspaces.devpod.cli import devpod_cli
+from exalsius.workspaces.devpod.cli import deploy_devpod_workspace
+from exalsius.workspaces.devpod.mappers import _
 
-__all__ = ["devpod_cli", "mappers"]
+from . import cli, models, service
+
+__all__ = ["cli", "service", "models", "deploy_devpod_workspace", "_"]

@@ -10,21 +10,24 @@ from exalsius.core.base.service import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
 from exalsius.workspaces.display import TableWorkspacesDisplayManager
-from exalsius.workspaces.dtos import (
-    ResourcePoolDTO,
-    WorkspaceDTO,
+from exalsius.workspaces.dtos import WorkspaceDTO, WorkspaceResourcesRequestDTO
+from exalsius.workspaces.llminference.dtos import DeployLLMInferenceWorkspaceRequestDTO
+from exalsius.workspaces.llminference.service import (
+    LLMInferenceWorkspacesService,
+    get_llm_inference_workspaces_service,
 )
-from exalsius.workspaces.llminference.service import LLMInferenceWorkspacesService
 
 logger: logging.Logger = logging.getLogger("cli.workspaces.llm-inference")
 
 
-def get_llm_inference_workspaces_service(
+def get_llm_inference_workspaces_service_from_ctx(
     ctx: typer.Context,
 ) -> LLMInferenceWorkspacesService:
     config: AppConfig = utils.get_config_from_ctx(ctx)
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    return LLMInferenceWorkspacesService(config, access_token)
+    return get_llm_inference_workspaces_service(
+        config=config, access_token=access_token
+    )
 
 
 @workspaces_deploy_app.callback(invoke_without_command=True)
@@ -64,7 +67,7 @@ def deploy_llm_inference_workspace(
         "-m",
         help="The HuggingFace model to use",
     ),
-    huggingface_token: str = typer.Option(
+    huggingface_token: Optional[str] = typer.Option(
         ...,
         "--huggingface-token",
         "-t",
@@ -129,76 +132,43 @@ def deploy_llm_inference_workspace(
         help="The amount of ephemeral storage in GB to add to the workspace",
     ),
 ):
-    # Check sanity of GPU parameters
-    if gpu_count < num_model_replicas * gpu_per_actor:
-        raise typer.BadParameter(
-            "The total number of GPUs (`gpu-count`) must be greater than or equal to "
-            "the number of model replicas (`num-model-replicas`) multiplied by "
-            "the number of GPUs per replica (`gpu-per-actor`)."
-        )
-    if gpu_count > num_model_replicas * gpu_per_actor:
-        logger.warning(
-            "The total number of GPUs (`gpu-count`) is greater than the number of model replicas (`num-model-replicas`) "
-            "multiplied by the number of GPUs per replica (`gpu-per-actor`). "
-            "This means that some GPUs will be unused."
-        )
-
-    # Check sanity of CPU parameters
-    if cpu_cores < num_model_replicas * cpu_per_actor:
-        raise typer.BadParameter(
-            "The total number of CPUs (`cpu-cores`) must be greater than or equal to "
-            "the number of model replicas (`num-model-replicas`) multiplied by "
-            "the number of CPUs per replica (`cpu-per-actor`)."
-        )
-    if cpu_cores > num_model_replicas * cpu_per_actor:
-        logger.warning(
-            "The total number of CPUs (`cpu-cores`) is greater than the number of model replicas (`num-model-replicas`) "
-            "multiplied by the number of CPUs per replica (`cpu-per-actor`). "
-            "This means that some CPUs will be unused."
-        )
-
-    # Check pipeline and tensor parallelism sanity
-    if gpu_count < num_model_replicas * pipeline_parallel_size * tensor_parallel_size:
-        raise typer.BadParameter(
-            "The total number of GPUs (`gpu-count`) must be greater than or equal to "
-            "the number of model replicas (`num-model-replicas`) multiplied by "
-            "the number of pipeline parallel replicas (`pipeline-parallel-size`) multiplied by "
-            "the number of tensor parallel replicas (`tensor-parallel-size`)."
-        )
-
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
-    service: LLMInferenceWorkspacesService = get_llm_inference_workspaces_service(ctx)
+    service: LLMInferenceWorkspacesService = (
+        get_llm_inference_workspaces_service_from_ctx(ctx)
+    )
 
-    resources: ResourcePoolDTO = ResourcePoolDTO(
+    resources = WorkspaceResourcesRequestDTO(
         gpu_count=gpu_count,
         gpu_type=None,
         gpu_vendor=None,
         cpu_cores=cpu_cores,
         memory_gb=memory_gb_per_actor,
-        storage_gb=1,  # llm inference workspaces do not support PVC storage, this will be ignored
+        pvc_storage_gb=1,  # llm inference workspaces do not support PVC storage, this will be ignored
+        ephemeral_storage_gb=ephemeral_storage_gb_per_actor,
     )
 
-    variables = {
-        "deploymentName": name,
-        "deploymentImage": docker_image,
-        "huggingfaceModel": huggingface_model,
-        "huggingfaceToken": huggingface_token,
-        "numModelReplicas": num_model_replicas,
-        "runtimeEnvironmentPipPackages": pip_dependencies,
-        "tensorParallelSize": tensor_parallel_size,
-        "pipelineParallelSize": pipeline_parallel_size,
-        "cpuPerActor": cpu_per_actor,
-        "gpuPerActor": gpu_per_actor,
-        "ephemeralStorageGb": ephemeral_storage_gb_per_actor,
-    }
+    deploy_llm_inference_workspace_request = DeployLLMInferenceWorkspaceRequestDTO(
+        cluster_id=cluster_id,
+        name=name,
+        resources=resources,
+        docker_image=docker_image,
+        huggingface_model=huggingface_model,
+        huggingface_token=huggingface_token,
+        num_model_replicas=num_model_replicas,
+        tensor_parallel_size=tensor_parallel_size,
+        pipeline_parallel_size=pipeline_parallel_size,
+        pip_dependencies=pip_dependencies,
+        gpu_per_actor=gpu_per_actor,
+        cpu_per_actor=cpu_per_actor,
+        memory_gb_per_actor=memory_gb_per_actor,
+        ephemeral_storage_gb_per_actor=ephemeral_storage_gb_per_actor,
+        to_be_deleted_at=None,
+    )
 
     try:
-        workspace_id: str = service.create_llm_inference_workspace(
-            cluster_id=cluster_id,
-            name=name,
-            resources=resources,
-            variables=variables,
+        workspace_id: str = service.deploy_llm_inference_workspace(
+            request_dto=deploy_llm_inference_workspace_request,
         )
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
@@ -210,18 +180,7 @@ def deploy_llm_inference_workspace(
         workspace_id=workspace_id,
     )
 
-    access_infos = workspace.access_information
-    if not access_infos or len(access_infos) == 0:
-        display_manager.display_success(
-            f"workspace {workspace.name} ({workspace_id}) created successfully"
-        )
-        raise typer.Exit(0)
-
-    for access_info in access_infos:
-        access_info.workspace_id = workspace_id
-
     display_manager.display_success(
-        f"workspace {workspace.name} ({workspace_id}) created successfully."
+        f"workspace {workspace.workspace_name} ({workspace.workspace_id}) created successfully."
     )
-    display_manager.display_info("Access information:")
-    display_manager.display_workspace_access_info(access_infos)
+    display_manager.display_workspace(workspace)

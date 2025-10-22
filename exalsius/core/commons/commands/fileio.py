@@ -18,8 +18,8 @@ class FileIOCommandError(CommandError):
 
 
 class WriteYamlFileCommand(BaseCommand[None]):
-    def __init__(self, file_path: str, content: str):
-        self._file_path: str = file_path
+    def __init__(self, file_path: Path, content: str):
+        self._file_path: Path = file_path
         self._content: str = content
 
     def execute(self) -> None:
@@ -32,9 +32,73 @@ class WriteYamlFileCommand(BaseCommand[None]):
             file_dir.mkdir(parents=True, exist_ok=True)
             with open(self._file_path, "w") as file:
                 file.write(yaml_pretty)
-        except Exception as e:
+        except FileNotFoundError as e:
+            raise FileIOCommandError(
+                message=f"File not found: {self._file_path}",
+                file_path=str(self._file_path),
+                retryable=False,
+            ) from e
+        except PermissionError as e:
+            raise FileIOCommandError(
+                message=f"Permission denied: {self._file_path}",
+                file_path=str(self._file_path),
+                retryable=False,
+            ) from e
+        except yaml.YAMLError as e:
+            raise FileIOCommandError(
+                message=f"Failed to parse YAML file: {e}",
+                file_path=str(self._file_path),
+                retryable=False,
+            ) from e
+        except OSError as e:
             raise FileIOCommandError(
                 message=f"Failed to write YAML file: {e}",
-                file_path=self._file_path,
+                file_path=str(self._file_path),
+                retryable=True,
+            ) from e
+        except Exception as e:
+            raise FileIOCommandError(
+                message=f"Unexpected error while writing YAML file: {e}",
+                file_path=str(self._file_path),
+                retryable=True,
+            ) from e
+
+
+class ReadYamlFileCommand(BaseCommand[dict[str, Any]]):
+    def __init__(self, file_path: Path):
+        self._file_path: Path = file_path
+
+    def execute(self) -> dict[str, Any]:
+        try:
+            with open(self._file_path, "r") as file:
+                return yaml.safe_load(file)
+        except FileNotFoundError as e:
+            raise FileIOCommandError(
+                message=f"File not found: {self._file_path}",
+                file_path=str(self._file_path),
+                retryable=False,
+            ) from e
+        except PermissionError as e:
+            raise FileIOCommandError(
+                message=f"Permission denied: {self._file_path}",
+                file_path=str(self._file_path),
+                retryable=False,
+            ) from e
+        except yaml.YAMLError as e:
+            raise FileIOCommandError(
+                message=f"Failed to parse YAML file: {e}",
+                file_path=str(self._file_path),
+                retryable=False,
+            ) from e
+        except OSError as e:
+            raise FileIOCommandError(
+                message=f"Failed to read YAML file: {e}",
+                file_path=str(self._file_path),
+                retryable=True,
+            ) from e
+        except Exception as e:
+            raise FileIOCommandError(
+                message=f"Unexpected error while reading YAML file: {e}",
+                file_path=str(self._file_path),
                 retryable=True,
             ) from e

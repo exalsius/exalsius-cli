@@ -10,19 +10,22 @@ from exalsius.core.base.service import ServiceError
 from exalsius.utils import commons as utils
 from exalsius.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
 from exalsius.workspaces.display import TableWorkspacesDisplayManager
-from exalsius.workspaces.dtos import (
-    ResourcePoolDTO,
-    WorkspaceDTO,
+from exalsius.workspaces.dtos import WorkspaceDTO, WorkspaceResourcesRequestDTO
+from exalsius.workspaces.marimo.dtos import DeployMarimoWorkspaceRequestDTO
+from exalsius.workspaces.marimo.service import (
+    MarimoWorkspacesService,
+    get_marimo_workspaces_service,
 )
-from exalsius.workspaces.marimo.service import MarimoWorkspacesService
 
 logger: logging.Logger = logging.getLogger("cli.workspaces.marimo")
 
 
-def get_marimo_workspaces_service(ctx: typer.Context) -> MarimoWorkspacesService:
+def get_marimo_workspaces_service_from_ctx(
+    ctx: typer.Context,
+) -> MarimoWorkspacesService:
     config: AppConfig = utils.get_config_from_ctx(ctx)
     access_token: str = utils.get_access_token_from_ctx(ctx)
-    return MarimoWorkspacesService(config, access_token)
+    return get_marimo_workspaces_service(config=config, access_token=access_token)
 
 
 @workspaces_deploy_app.callback(invoke_without_command=True)
@@ -61,6 +64,8 @@ def deploy_marimo_workspace(
         "--marimo-password",
         "-p",
         help="The password for the Marimo Webinterface",
+        prompt=True,
+        hide_input=True,
     ),
     gpu_count: PositiveInt = typer.Option(
         1,
@@ -95,30 +100,30 @@ def deploy_marimo_workspace(
 ):
     display_manager: TableWorkspacesDisplayManager = TableWorkspacesDisplayManager()
 
-    service: MarimoWorkspacesService = get_marimo_workspaces_service(ctx)
+    service: MarimoWorkspacesService = get_marimo_workspaces_service_from_ctx(ctx)
 
-    resources: ResourcePoolDTO = ResourcePoolDTO(
-        gpu_count=gpu_count,
-        gpu_type=None,
-        gpu_vendor=None,
-        cpu_cores=cpu_cores,
-        memory_gb=memory_gb,
-        storage_gb=pvc_storage_gb,
-    )
-
-    variables = {
-        "deploymentName": name,
-        "deploymentImage": docker_image,
-        "tokenPassword": marimo_password,
-        "ephemeralStorageGb": ephemeral_storage_gb,
-    }
-
-    try:
-        workspace_id: str = service.create_marimo_workspace(
+    deploy_marimo_workspace_request: DeployMarimoWorkspaceRequestDTO = (
+        DeployMarimoWorkspaceRequestDTO(
             cluster_id=cluster_id,
             name=name,
-            resources=resources,
-            variables=variables,
+            docker_image=docker_image,
+            marimo_password=marimo_password,
+            resources=WorkspaceResourcesRequestDTO(
+                gpu_count=gpu_count,
+                gpu_type=None,
+                gpu_vendor=None,
+                cpu_cores=cpu_cores,
+                memory_gb=memory_gb,
+                pvc_storage_gb=pvc_storage_gb,
+                ephemeral_storage_gb=ephemeral_storage_gb,
+            ),
+            to_be_deleted_at=None,
+        )
+    )
+
+    try:
+        workspace_id: str = service.deploy_marimo_workspace(
+            request_dto=deploy_marimo_workspace_request,
         )
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
@@ -130,18 +135,7 @@ def deploy_marimo_workspace(
         workspace_id=workspace_id,
     )
 
-    access_infos = workspace.access_information
-    if not access_infos or len(access_infos) == 0:
-        display_manager.display_success(
-            f"workspace {workspace.name} ({workspace_id}) created successfully"
-        )
-        raise typer.Exit(0)
-
-    for access_info in access_infos:
-        access_info.workspace_id = workspace_id
-
     display_manager.display_success(
-        f"workspace {workspace.name} ({workspace_id}) created successfully."
+        f"workspace {workspace.workspace_name} ({workspace.workspace_id}) created successfully."
     )
-    display_manager.display_info("Access information:")
-    display_manager.display_workspace_access_info(access_infos)
+    display_manager.display_workspace(workspace)

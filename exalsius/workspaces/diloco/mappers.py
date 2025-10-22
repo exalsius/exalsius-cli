@@ -4,12 +4,12 @@ from exalsius_api_client.models.hardware import Hardware
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 
-from exalsius.workspaces.devpod.domain import DeployDevPodWorkspaceParams
+from exalsius.workspaces.diloco.domain import DeployDilocoWorkspaceParams
 from exalsius.workspaces.gateway.mappers import to_create_request
 
 
-@to_create_request.register(DeployDevPodWorkspaceParams)
-def _(params: DeployDevPodWorkspaceParams) -> WorkspaceCreateRequest:
+@to_create_request.register(DeployDilocoWorkspaceParams)
+def _(params: DeployDilocoWorkspaceParams) -> WorkspaceCreateRequest:
     resources: Hardware = Hardware(
         gpu_count=params.resources.gpu_count,
         gpu_type=params.resources.gpu_type,
@@ -21,11 +21,11 @@ def _(params: DeployDevPodWorkspaceParams) -> WorkspaceCreateRequest:
 
     variables: Dict[str, Any] = {
         "deploymentName": params.name,
+        "nodes": params.nodes,
+        "diloco": {**params.diloco_config},
     }
-    if params.docker_image is not None:
-        variables["deploymentImage"] = params.docker_image
-    if params.resources.ephemeral_storage_gb is not None:
-        variables["ephemeralStorageGb"] = params.resources.ephemeral_storage_gb
+    if params.ephemeral_storage_gb_per_node is not None:
+        variables["ephemeralStorageGb"] = params.ephemeral_storage_gb_per_node
 
     template: WorkspaceTemplate = WorkspaceTemplate(
         name=params.template_id,

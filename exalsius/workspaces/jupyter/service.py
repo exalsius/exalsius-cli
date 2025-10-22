@@ -1,44 +1,36 @@
-from datetime import datetime
-from typing import Optional
-
+from exalsius.clusters.gateway.base import ClustersGateway
 from exalsius.config import AppConfig
 from exalsius.core.commons.decorators import handle_service_errors
-from exalsius.workspaces.domain import (
-    CreateWorkspaceParams,
-    Resources,
-    WorkspaceTemplate,
-)
-from exalsius.workspaces.dtos import ResourcePoolDTO
+from exalsius.core.commons.factories import GatewayFactory
+from exalsius.workspaces.gateway.base import WorkspacesGateway
+from exalsius.workspaces.jupyter.domain import DeployJupyterWorkspaceParams
+from exalsius.workspaces.jupyter.dtos import DeployJupyterWorkspaceRequestDTO
 from exalsius.workspaces.service import WorkspacesService
 
 
 class JupyterWorkspacesService(WorkspacesService):
-    def __init__(self, config: AppConfig, access_token: str):
-        super().__init__(config, access_token)
-
     @handle_service_errors("creating jupyter workspace")
-    def create_jupyter_workspace(
+    def deploy_jupyter_workspace(
         self,
-        cluster_id: str,
-        name: str,
-        resources: ResourcePoolDTO,
-        variables: dict,
-        description: Optional[str] = None,
-        to_be_deleted_at: Optional[datetime] = None,
+        request_dto: DeployJupyterWorkspaceRequestDTO,
     ) -> str:
-        resources_domain = Resources(sdk_model=resources.to_api_model())
-
-        template_domain = WorkspaceTemplate(
-            name="jupyter-notebook-template",
-            variables=variables,
+        deploy_params: DeployJupyterWorkspaceParams = (
+            DeployJupyterWorkspaceParams.from_request_dto(request_dto=request_dto)
         )
+        return self.workspaces_gateway.deploy(deploy_params=deploy_params)
 
-        create_params = CreateWorkspaceParams(
-            cluster_id=cluster_id,
-            name=name,
-            resources=resources_domain,
-            template=template_domain,
-            description=description,
-            to_be_deleted_at=to_be_deleted_at,
-        )
-        return self.workspaces_gateway.create(create_params)
+
+def get_jupyter_workspaces_service(
+    config: AppConfig, access_token: str
+) -> JupyterWorkspacesService:
+    gateway_factory: GatewayFactory = GatewayFactory(
+        config=config,
+        access_token=access_token,
+    )
+    workspaces_gateway: WorkspacesGateway = gateway_factory.create_workspaces_gateway()
+    clusters_gateway: ClustersGateway = gateway_factory.create_clusters_gateway()
+    return JupyterWorkspacesService(
+        workspace_creation_polling_config=config.workspace_creation_polling,
+        workspaces_gateway=workspaces_gateway,
+        clusters_gateway=clusters_gateway,
+    )

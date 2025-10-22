@@ -29,7 +29,9 @@ class GatewayFactory:
     def _create_api_client(self) -> ApiClient:
         client_config: Configuration = Configuration(host=self._config.backend_host)
         api_client: ApiClient = ApiClient(configuration=client_config)
-        api_client.set_default_header("Authorization", f"Bearer {self._access_token}")  # pyright: ignore[reportUnknownMemberType]
+        api_client.set_default_header(
+            "Authorization", f"Bearer {self._access_token}"
+        )  # pyright: ignore[reportUnknownMemberType]
         return api_client
 
     def create_nodes_gateway(self) -> NodesGateway:

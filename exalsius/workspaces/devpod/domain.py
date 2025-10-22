@@ -12,7 +12,7 @@ from exalsius.workspaces.domain import (
 
 
 class DeployDevPodWorkspaceParams(DeployWorkspaceParams):
-    template_id: str = ClassVar[str]("vscode-devcontainer")
+    template_id: str = ClassVar[str]("vscode-devcontainer-template")
     docker_image: Optional[StrictStr] = None
 
     @classmethod

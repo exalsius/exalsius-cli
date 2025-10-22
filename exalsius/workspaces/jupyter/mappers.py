@@ -4,12 +4,12 @@ from exalsius_api_client.models.hardware import Hardware
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_template import WorkspaceTemplate
 
-from exalsius.workspaces.devpod.domain import DeployDevPodWorkspaceParams
 from exalsius.workspaces.gateway.mappers import to_create_request
+from exalsius.workspaces.jupyter.domain import DeployJupyterWorkspaceParams
 
 
-@to_create_request.register(DeployDevPodWorkspaceParams)
-def _(params: DeployDevPodWorkspaceParams) -> WorkspaceCreateRequest:
+@to_create_request.register(DeployJupyterWorkspaceParams)
+def _(params: DeployJupyterWorkspaceParams) -> WorkspaceCreateRequest:
     resources: Hardware = Hardware(
         gpu_count=params.resources.gpu_count,
         gpu_type=params.resources.gpu_type,
@@ -21,6 +21,7 @@ def _(params: DeployDevPodWorkspaceParams) -> WorkspaceCreateRequest:
 
     variables: Dict[str, Any] = {
         "deploymentName": params.name,
+        "notebookPassword": params.jupyter_password,
     }
     if params.docker_image is not None:
         variables["deploymentImage"] = params.docker_image
