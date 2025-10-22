@@ -2,81 +2,15 @@ import logging
 
 import typer
 
-from exls.auth.display import AuthDisplayManager
-from exls.auth.models import (
-    Auth0AuthenticationDTO,
-    Auth0UserInfoDTO,
-    NotLoggedInWarning,
-)
-from exls.auth.service import Auth0Service
-from exls.core.commons.models import ServiceError, ServiceWarning
-from exls.state import AppState
+from exls.auth.display import TableAuthDisplayManager
+from exls.auth.dtos import UserInfoDTO
+from exls.auth.service import Auth0Service, NotLoggedInWarning, get_auth_service
+from exls.config import AppConfig
+from exls.core.base.display import ErrorDisplayModel
+from exls.core.base.service import ServiceError, ServiceWarning
 from exls.utils import commons as utils
 
 logger = logging.getLogger(__name__)
-
-
-def _authorization_workflow(
-    auth_service: Auth0Service,
-    display_manager: AuthDisplayManager,
-) -> tuple[Auth0AuthenticationDTO, Auth0UserInfoDTO]:
-    # Start the device code authentication flow. Get the device code.
-    logger.debug("Fetching device code.")
-    try:
-        resp = auth_service.fetch_device_code()
-    except ServiceError as e:
-        logger.error(f"Failed to fetch device code: {e.message}")
-        display_manager.display_authentication_error(e.message)
-        raise typer.Exit(1)
-
-    # Display the device code to the user and wait for them to authenticate.
-    # The CLI will poll for the authentication response.
-    logger.debug("Device code received. Waiting for user authentication.")
-    if utils.is_interactive():
-        # In an interactive session, attempt to open the verification URL in the user's browser.
-        if auth_service.open_browser_for_device_code_authentication(
-            uri=resp.verification_uri_complete
-        ):
-            logger.debug("Opened browser for authentication.")
-            display_manager.display_device_code_polling_started_via_browser(
-                verification_uri_complete=resp.verification_uri_complete,
-                user_code=resp.user_code,
-            )
-        else:
-            logger.debug("Could not open browser. Displaying URL.")
-            display_manager.display_device_code_polling_started(
-                verification_uri_complete=resp.verification_uri_complete,
-                user_code=resp.user_code,
-            )
-    else:
-        # In a non-interactive session, display the URL and code for the user to handle manually.
-        logger.debug("Non-interactive session. Displaying URL.")
-        display_manager.display_device_code_polling_started(
-            verification_uri_complete=resp.verification_uri_complete,
-            user_code=resp.user_code,
-        )
-
-    # Poll for the authentication response from the authentication server.
-    logger.debug("Polling for authentication.")
-    try:
-        auth_resp = auth_service.poll_for_authentication(resp.device_code)
-    except KeyboardInterrupt:
-        logger.warning("User cancelled authentication polling.")
-        display_manager.display_device_code_polling_cancelled()
-        raise typer.Exit(0)
-    logger.debug("Authentication successful.")
-
-    # If the authentication is successful, validate the received ID token.
-    logger.debug("Validating token.")
-    try:
-        validate_resp = auth_service.validate_token(auth_resp.id_token)
-    except ServiceError as e:
-        logger.error(f"Token validation failed: {e.message}")
-        display_manager.display_authentication_error(e.message)
-        raise typer.Exit(1)
-
-    logger.debug("Token is valid.")
-    return auth_resp, validate_resp
 
 
 def login(
@@ -90,35 +24,27 @@ def login(
     for the authentication to complete. Upon success, the tokens are stored
     securely in the system's keyring for subsequent CLI calls.
     """
-    logger.debug("Starting login process.")
-    app_state: AppState = utils.get_app_state_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
 
-    display_manager: AuthDisplayManager = AuthDisplayManager()
+    display_manager: TableAuthDisplayManager = TableAuthDisplayManager()
 
-    auth_service: Auth0Service = Auth0Service(config=app_state.config)
+    auth_service: Auth0Service = get_auth_service(config)
 
-    auth_resp, validate_resp = _authorization_workflow(auth_service, display_manager)
-
-    # Store the tokens on the system's keyring for future access.
-    logger.debug("Storing token on keyring.")
     try:
-        auth_service.store_token_on_keyring(
-            token=auth_resp.access_token,
-            expires_in=auth_resp.expires_in,
-            refresh_token=auth_resp.refresh_token,
+        user: UserInfoDTO = auth_service.login()
+        display_manager.display_success("Logged in successfully!")
+        display_manager.display_user_info(user=user)
+    except ServiceWarning as w:
+        display_manager.display_info(str(w))
+        raise typer.Exit(0)
+    except KeyboardInterrupt:
+        display_manager.display_info(
+            "User cancelled authentication polling via Ctrl+C."
         )
+        raise typer.Exit(0)
     except ServiceError as e:
-        logger.error(f"Failed to store token on keyring: {e.message}")
-        display_manager.display_authentication_error(e.message)
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
-
-    logger.debug("Token stored successfully.")
-
-    # Display the authentication success message to the user.
-    logger.debug(f"Login successful for user {validate_resp.email}.")
-    display_manager.display_authentication_success(
-        validate_resp.email, validate_resp.sub
-    )
 
 
 def logout(ctx: typer.Context):
@@ -128,25 +54,22 @@ def logout(ctx: typer.Context):
     This command removes the user's authentication tokens from the system's
     keyring, effectively logging them out of the Exalsius CLI.
     """
-    logger.debug("Starting logout process.")
-    app_state: AppState = utils.get_app_state_from_ctx(ctx)
+    config: AppConfig = utils.get_config_from_ctx(ctx)
 
-    display_manager: AuthDisplayManager = AuthDisplayManager()
+    display_manager: TableAuthDisplayManager = TableAuthDisplayManager()
 
-    auth_service: Auth0Service = Auth0Service(config=app_state.config)
+    auth_service: Auth0Service = get_auth_service(config)
 
-    logger.debug("Attempting to log out.")
     try:
         auth_service.logout()
     except NotLoggedInWarning:
-        display_manager.display_not_logged_in()
+        display_manager.display_info("You are not logged in.")
         raise typer.Exit(0)
     except ServiceWarning as w:
-        logger.debug(str(w))
+        display_manager.display_info(str(w))
+        raise typer.Exit(0)
     except ServiceError as e:
-        logger.error(f"Failed to log out: {e.message}")
-        display_manager.display_authentication_error(e.message)
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    logger.debug("Logout successful.")
-    display_manager.display_logout_success()
+    display_manager.display_success("Logged out successfully")

@@ -7,6 +7,9 @@ from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.configuration import Configuration
 
+from exls.auth.gateway.auth0 import Auth0Gateway
+from exls.auth.gateway.base import AuthGateway, TokenStorageGateway
+from exls.auth.gateway.keyring import KeyringTokenStorageGateway
 from exls.clusters.gateway.base import ClustersGateway
 from exls.clusters.gateway.sdk import ClustersGatewaySdk
 from exls.config import AppConfig
@@ -47,59 +50,83 @@ from exls.workspaces.common.gateway.sdk import WorkspacesGatewaySdk
 
 
 class GatewayFactory:
-    def __init__(self, config: AppConfig, access_token: str):
+    def __init__(self, config: AppConfig):
         self._config = config
-        self._access_token = access_token
-        self._api_client = self._create_api_client()
 
-    def _create_api_client(self) -> ApiClient:
+    def _create_api_client(self, access_token: str) -> ApiClient:
         client_config: Configuration = Configuration(host=self._config.backend_host)
         api_client: ApiClient = ApiClient(configuration=client_config)
-        api_client.set_default_header("Authorization", f"Bearer {self._access_token}")  # pyright: ignore[reportUnknownMemberType]
+        api_client.set_default_header(  # type: ignore[reportUnknownMemberType]
+            "Authorization", f"Bearer {access_token}"
+        )
         return api_client
 
-    def create_nodes_gateway(self) -> NodesGateway:
-        nodes_api: NodesApi = NodesApi(self._api_client)
-        return NodesGatewaySdk(nodes_api)
+    def create_auth_gateway(self) -> AuthGateway:
+        return Auth0Gateway()
 
-    def create_offers_gateway(self) -> OffersGateway:
-        offers_api: OffersApi = OffersApi(self._api_client)
-        return OffersGatewaySdk(offers_api)
-
-    def create_services_gateway(self) -> ServicesGateway:
-        services_api: ServicesApi = ServicesApi(self._api_client)
-        return ServicesGatewaySdk(services_api)
-
-    def create_clusters_gateway(self) -> ClustersGateway:
-        clusters_api: ClustersApi = ClustersApi(self._api_client)
-        return ClustersGatewaySdk(clusters_api)
-
-    def create_workspaces_gateway(self) -> WorkspacesGateway:
-        workspaces_api: WorkspacesApi = WorkspacesApi(self._api_client)
-        return WorkspacesGatewaySdk(workspaces_api)
-
-    def create_cluster_templates_gateway(self) -> ClusterTemplatesGateway:
-        management_api: ManagementApi = ManagementApi(self._api_client)
-        return ClusterTemplatesGatewaySdk(management_api=management_api)
-
-    def create_credentials_gateway(self) -> CredentialsGateway:
-        management_api: ManagementApi = ManagementApi(self._api_client)
-        return CredentialsGatewaySdk(management_api=management_api)
-
-    def create_service_templates_gateway(self) -> ServiceTemplatesGateway:
-        management_api: ManagementApi = ManagementApi(self._api_client)
-        return ServiceTemplatesGatewaySdk(management_api=management_api)
-
-    def create_ssh_keys_gateway(self) -> SshKeysGateway:
-        management_api: ManagementApi = ManagementApi(self._api_client)
-        return SshKeysGatewaySdk(management_api)
-
-    def create_workspace_templates_gateway(self) -> WorkspaceTemplatesGateway:
-        management_api: ManagementApi = ManagementApi(self._api_client)
-        return WorkspaceTemplatesGatewaySdk(management_api)
+    def create_token_storage_gateway(self) -> TokenStorageGateway:
+        return KeyringTokenStorageGateway()
 
     def create_yaml_fileio_gateway(self) -> YamlFileIOGateway:
         return YamlFileIOGateway()
 
     def create_string_fileio_gateway(self) -> StringFileIOGateway:
         return StringFileIOGateway()
+
+    def create_nodes_gateway(self, access_token: str) -> NodesGateway:
+        nodes_api: NodesApi = NodesApi(self._create_api_client(access_token))
+        return NodesGatewaySdk(nodes_api)
+
+    def create_offers_gateway(self, access_token: str) -> OffersGateway:
+        offers_api: OffersApi = OffersApi(self._create_api_client(access_token))
+        return OffersGatewaySdk(offers_api)
+
+    def create_services_gateway(self, access_token: str) -> ServicesGateway:
+        services_api: ServicesApi = ServicesApi(self._create_api_client(access_token))
+        return ServicesGatewaySdk(services_api)
+
+    def create_clusters_gateway(self, access_token: str) -> ClustersGateway:
+        clusters_api: ClustersApi = ClustersApi(self._create_api_client(access_token))
+        return ClustersGatewaySdk(clusters_api)
+
+    def create_workspaces_gateway(self, access_token: str) -> WorkspacesGateway:
+        workspaces_api: WorkspacesApi = WorkspacesApi(
+            self._create_api_client(access_token)
+        )
+        return WorkspacesGatewaySdk(workspaces_api)
+
+    def create_cluster_templates_gateway(
+        self, access_token: str
+    ) -> ClusterTemplatesGateway:
+        management_api: ManagementApi = ManagementApi(
+            self._create_api_client(access_token)
+        )
+        return ClusterTemplatesGatewaySdk(management_api=management_api)
+
+    def create_credentials_gateway(self, access_token: str) -> CredentialsGateway:
+        management_api: ManagementApi = ManagementApi(
+            self._create_api_client(access_token)
+        )
+        return CredentialsGatewaySdk(management_api=management_api)
+
+    def create_service_templates_gateway(
+        self, access_token: str
+    ) -> ServiceTemplatesGateway:
+        management_api: ManagementApi = ManagementApi(
+            self._create_api_client(access_token)
+        )
+        return ServiceTemplatesGatewaySdk(management_api=management_api)
+
+    def create_ssh_keys_gateway(self, access_token: str) -> SshKeysGateway:
+        management_api: ManagementApi = ManagementApi(
+            self._create_api_client(access_token)
+        )
+        return SshKeysGatewaySdk(management_api)
+
+    def create_workspace_templates_gateway(
+        self, access_token: str
+    ) -> WorkspaceTemplatesGateway:
+        management_api: ManagementApi = ManagementApi(
+            self._create_api_client(access_token)
+        )
+        return WorkspaceTemplatesGatewaySdk(management_api)

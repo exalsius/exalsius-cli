@@ -2,7 +2,7 @@ from functools import wraps
 from typing import Any, Callable
 
 from exls.core.base.commands import CommandError
-from exls.core.base.service import ServiceError
+from exls.core.base.service import ServiceError, ServiceWarning
 
 
 def handle_service_errors(operation_name: str) -> Callable[..., Any]:
@@ -18,6 +18,8 @@ def handle_service_errors(operation_name: str) -> Callable[..., Any]:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
+            except ServiceWarning as e:
+                raise e
             except ServiceError as e:
                 raise e
             except CommandError as e:

@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from exls.core.base.commands import BaseCommand, CommandError
 from exls.core.base.exceptions import ExalsiusWarning
 from exls.core.commons.deserializer import (
-    DeserializationError,
     PydanticDeserializer,
 )
 
@@ -20,33 +19,18 @@ class HTTPCommandError(CommandError):
         self,
         message: str,
         endpoint: str,
-        status: Optional[int] = None,
-        retryable: bool = False,
+        status: int,
+        error_body: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.endpoint: str = endpoint
-        self.status: Optional[int] = status
-        self.retryable: bool = retryable
+        self.status: int = status
+        self.error_body: Optional[Dict[str, Any]] = error_body
 
 
 class UnexpectedHttpResponseWarning(ExalsiusWarning):
     def __init__(self, message: str):
         super().__init__(message)
-
-
-class AuthenticationError(HTTPCommandError):
-    def __init__(self, message: str, endpoint: str):
-        super().__init__(message, endpoint, status=401, retryable=False)
-
-
-class ResourceNotFoundError(HTTPCommandError):
-    def __init__(self, resource_type: str, endpoint: str):
-        super().__init__(
-            f"{resource_type} not found at {endpoint}",
-            endpoint,
-            status=404,
-            retryable=False,
-        )
 
 
 class BasePostRequestCommand(BaseCommand[T_SerOutput_Nullable]):
@@ -71,29 +55,15 @@ class BasePostRequestCommand(BaseCommand[T_SerOutput_Nullable]):
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 401:
-                raise AuthenticationError(
-                    f"invalid or expired credentials for {url}",
-                    url,
-                ) from e
-            elif e.response.status_code == 404:
-                raise ResourceNotFoundError("resource not found", url) from e
-            else:
-                raise HTTPCommandError(
-                    f"error making POST request to {url}: {e.response}",
-                    url,
-                    e.response.status_code,
-                ) from e
-        except DeserializationError as e:
             raise HTTPCommandError(
-                f"error deserializing response from {url}: {e}",
-                url,
+                message=f"error making POST request to {url}: {e}",
+                endpoint=url,
+                status=e.response.status_code,
+                error_body=e.response.json(),
             ) from e
         except Exception as e:
-            raise HTTPCommandError(
-                f"unexpected error making POST request to {url}: {e}",
-                url,
-                retryable=True,
+            raise CommandError(
+                message=f"unexpected error making POST request to {url}: {e}"
             ) from e
 
 

@@ -6,13 +6,15 @@ import typer
 from exls import (
     __version__,
     clusters,
+)
+from exls import config as cli_config
+from exls import (
     management,
     nodes,
     offers,
     services,
     workspaces,
 )
-from exls import config as cli_config
 from exls.auth.cli import login, logout
 from exls.auth.service import Auth0Service
 from exls.core.base.service import ServiceError

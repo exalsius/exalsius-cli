@@ -1,256 +1,175 @@
 import logging
-import subprocess
-import sys
-import webbrowser
-from datetime import datetime, timedelta
-from typing import Any, List, Optional
+from typing import Callable
 
-from exls.auth.commands import (
-    Auth0FetchDeviceCodeCommand,
-    Auth0PollForAuthenticationCommand,
-    Auth0RefreshTokenCommand,
-    Auth0RevokeTokenCommand,
-    Auth0ValidateTokenCommand,
-    ClearTokenFromKeyringCommand,
-    LoadTokenFromKeyringCommand,
-    StoreTokenOnKeyringCommand,
+from exls.auth.domain import (
+    DeviceCode,
+    FetchDeviceCodeParams,
+    LoadedToken,
+    PollForAuthenticationParams,
+    RefreshTokenParams,
+    RevokeTokenParams,
+    Token,
+    User,
+    ValidateTokenParams,
 )
-from exls.auth.models import (
-    Auth0AuthenticationDTO,
-    Auth0DeviceCodeAuthenticationDTO,
-    Auth0FetchDeviceCodeRequestDTO,
-    Auth0PollForAuthenticationRequestDTO,
-    Auth0RefreshTokenRequestDTO,
-    Auth0RevokeTokenRequestDTO,
-    Auth0UserInfoDTO,
-    Auth0ValidateTokenRequestDTO,
-    AuthenticationError,
-    ClearTokenFromKeyringRequestDTO,
-    LoadedTokenDTO,
-    LoadTokenFromKeyringRequestDTO,
-    NotLoggedInWarning,
-    StoreTokenOnKeyringRequestDTO,
+from exls.auth.dtos import (
+    AcquiredAccessTokenDTO,
+    DeviceCodeAuthenticationDTO,
+    RefreshTokenRequestDTO,
+    UserInfoDTO,
 )
+from exls.auth.gateway.base import AuthGateway, TokenStorageGateway
 from exls.config import AppConfig, Auth0Config
-from exls.core.base.commands import BaseCommand
-from exls.core.base.service import BaseService
-from exls.core.commons.models import ServiceError, ServiceWarning
+from exls.core.base.service import ServiceError, ServiceWarning
+from exls.core.commons.decorators import handle_service_errors
+from exls.core.commons.factories import GatewayFactory
 
 logger = logging.getLogger(__name__)
 
-AUTHENTICATION_ERROR_TYPE: str = "AuthenticationError"
+
+class NotLoggedInWarning(ServiceWarning):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message: str = message
 
 
-# This is needed to prevent output messages to stdout and stderr when the browser is opened.
-class _SilentBrowser(webbrowser.BackgroundBrowser):
-    def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool:
+class Auth0Service:
+    def __init__(
+        self,
+        config: AppConfig,
+        auth_gateway: AuthGateway,
+        token_storage_gateway: TokenStorageGateway,
+    ):
+        self.auth_gateway: AuthGateway = auth_gateway
+        self.token_storage_gateway: TokenStorageGateway = token_storage_gateway
+        self.auth0_config: Auth0Config = config.auth0
+
+    def _fetch_device_code(self) -> DeviceCode:
+        params = FetchDeviceCodeParams.from_config(self.auth0_config)
+
+        device_code: DeviceCode = self.auth_gateway.fetch_device_code(
+            params=params,
+        )
+        return device_code
+
+    def _poll_for_authentication(self, device_code: DeviceCode) -> Token:
+        params: PollForAuthenticationParams = (
+            PollForAuthenticationParams.from_device_code_and_config(
+                device_code=device_code,
+                config=self.auth0_config,
+            )
+        )
+
+        token: Token = self.auth_gateway.poll_for_authentication(
+            params=params,
+        )
+        return token
+
+    def _validate_token(self, token: Token) -> User:
+        params: ValidateTokenParams = ValidateTokenParams.from_token_and_config(
+            token=token,
+            config=self.auth0_config,
+        )
+        user: User = self.auth_gateway.validate_token(params=params)
+        return user
+
+    @handle_service_errors("logging in")
+    def login(
+        self,
+        display_device_code_handler: Callable[[DeviceCodeAuthenticationDTO], None],
+    ) -> UserInfoDTO:
         try:
-            subprocess.Popen(
-                [self.name, url],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            return True
-        except Exception as e:
-            logging.debug(f"Could not open browser: {e}")
-            return False
+            # 1. Fetch the device code.
+            device_code: DeviceCode = self._fetch_device_code()
 
-
-# This is needed to prevent output messages to stdout and stderr when the browser is opened.
-def _register_silent_browser() -> bool:
-    try:
-        if sys.platform == "darwin":  # macOS
-            webbrowser.register("silent", None, _SilentBrowser("open"), preferred=True)
-        elif sys.platform == "win32":  # Windows
-            webbrowser.register("silent", None, _SilentBrowser("start"), preferred=True)
-        elif sys.platform.startswith("linux"):  # Linux
-            webbrowser.register(
-                "silent", None, _SilentBrowser("xdg-open"), preferred=True
-            )
-        else:
-            logging.debug("Unsupported platform. Could not register silent browser.")
-            return False
-    except Exception as e:
-        logging.debug(f"Could not register silent browser: {e}")
-        return False
-    return True
-
-
-class Auth0Service(BaseService):
-    def __init__(self, config: AppConfig):
-        super().__init__(config)
-        self.config: Auth0Config = config.auth0
-
-    def _execute_command(self, command: BaseCommand) -> Any:
-        try:
-            return command.execute()
-        except Auth0APIError as e:
-            raise ServiceError(
-                message=f"auth0 api error while executing command {command.__class__.__name__}: {e.response.json().get('error', 'unknown error')}",
-                error_code=(
-                    str(e.response.status_code) if e.response.status_code else None
-                ),
-                error_type=AUTHENTICATION_ERROR_TYPE,
-            )
-        except AuthenticationError as e:
-            raise ServiceError(
-                message=f"authentication error while executing command {command.__class__.__name__}: {e.message}",
-                error_code=str(e.error_code) if e.error_code else None,
-                error_type=AUTHENTICATION_ERROR_TYPE,
-            )
-        except Warning as w:
-            raise ServiceWarning(str(w))
-        except Exception as e:
-            raise ServiceError(
-                message=f"unexpected error while executing command {command.__class__.__name__}: {str(e)}",
-                error_type=AUTHENTICATION_ERROR_TYPE,
+            # 2. Display the device code to the user.
+            display_device_code_handler(
+                DeviceCodeAuthenticationDTO.from_domain(device_code)
             )
 
-    def fetch_device_code(
-        self,
-    ) -> Auth0DeviceCodeAuthenticationDTO:
-        req = Auth0FetchDeviceCodeRequestDTO(
-            domain=self.config.domain,
-            client_id=self.config.client_id,
-            audience=self.config.audience,
-            scope=self.config.scope,
-            algorithms=self.config.algorithms,
+            # 3. Poll for the authentication response.
+            token: Token = self._poll_for_authentication(device_code)
+
+            # 4. Validate the token.
+            user: User = self._validate_token(token)
+
+            # 5. Store the token on the keyring.
+            self.token_storage_gateway.store_token(token=token)
+
+            return UserInfoDTO.from_domain(user=user, token=token)
+        except KeyboardInterrupt:
+            raise ServiceWarning("User cancelled authentication polling.")
+
+    def _load_token_from_keyring(self) -> LoadedToken:
+        loaded_token: LoadedToken = self.token_storage_gateway.load_token(
+            self.auth0_config.client_id
         )
-        return self._execute_command(Auth0FetchDeviceCodeCommand(request=req))
+        return loaded_token
 
-    def poll_for_authentication(
-        self,
-        device_code: str,
-    ) -> Auth0AuthenticationDTO:
-        req = Auth0PollForAuthenticationRequestDTO(
-            domain=self.config.domain,
-            client_id=self.config.client_id,
-            device_code=device_code,
-            grant_type=self.config.device_code_grant_type,
-            poll_interval_seconds=self.config.device_code_poll_interval_seconds,
-            poll_timeout_seconds=self.config.device_code_poll_timeout_seconds,
-            retry_limit=self.config.device_code_retry_limit,
-        )
-        return self._execute_command(Auth0PollForAuthenticationCommand(request=req))
+    def _refresh_access_token(self, params: RefreshTokenParams) -> UserInfoDTO:
+        token: Token = self.auth_gateway.refresh_access_token(params=params)
 
-    def validate_token(self, id_token: str) -> Auth0UserInfoDTO:
-        req = Auth0ValidateTokenRequestDTO(
-            domain=self.config.domain,
-            client_id=self.config.client_id,
-            id_token=id_token,
-        )
-        return self._execute_command(Auth0ValidateTokenCommand(request=req))
+        user: User = self._validate_token(token)
 
-    def store_token_on_keyring(
-        self,
-        token: str,
-        expires_in: int,
-        refresh_token: Optional[str] = None,
-    ) -> None:
-        req = StoreTokenOnKeyringRequestDTO(
-            client_id=self.config.client_id,
-            access_token=token,
-            expires_in=expires_in,
-            refresh_token=refresh_token,
-        )
-        self._execute_command(StoreTokenOnKeyringCommand(request=req))
+        self.token_storage_gateway.store_token(token=token)
 
-    def load_access_token_from_keyring(self) -> LoadedTokenDTO:
-        req = LoadTokenFromKeyringRequestDTO(
-            client_id=self.config.client_id,
-        )
-        return self._execute_command(LoadTokenFromKeyringCommand(request=req))
+        return UserInfoDTO.from_domain(token=token, user=user)
 
-    def refresh_access_token(self, refresh_token: str) -> Auth0AuthenticationDTO:
-        req = Auth0RefreshTokenRequestDTO(
-            domain=self.config.domain,
-            client_id=self.config.client_id,
-            refresh_token=refresh_token,
-        )
-        return self._execute_command(Auth0RefreshTokenCommand(request=req))
+    @handle_service_errors("acquiring access token")
+    def acquire_access_token(self) -> AcquiredAccessTokenDTO:
+        loaded_token: LoadedToken = self._load_token_from_keyring()
 
-    def reauthorize_with_scope(
-        self,
-        refresh_token: str,
-        scope: List[str],
-    ) -> Auth0AuthenticationDTO:
-        req = Auth0RefreshTokenRequestDTO(
-            domain=self.config.domain,
-            client_id=self.config.client_id,
-            refresh_token=refresh_token,
-            scope=scope,
-        )
-        return self._execute_command(Auth0RefreshTokenCommand(request=req))
-
-    def acquire_access_token(self) -> str:
-        try:
-            load_resp = self.load_access_token_from_keyring()
-        except ServiceError:
-            raise ServiceError("You are not logged in. Please log in first.")
-
-        if load_resp.expiry and datetime.now() >= (
-            load_resp.expiry
-            - timedelta(minutes=self.config.token_expiry_buffer_minutes)
-        ):
-            if not load_resp.refresh_token:
+        if loaded_token.is_expired:
+            if not loaded_token.refresh_token:
                 raise ServiceError("Session is expired. Please log in again.")
 
             try:
-                refresh_resp = self.refresh_access_token(load_resp.refresh_token)
+                params: RefreshTokenParams = (
+                    RefreshTokenParams.from_refresh_token_request_and_config(
+                        refresh_token_request=RefreshTokenRequestDTO(
+                            refresh_token=loaded_token.refresh_token,
+                        ),
+                        config=self.auth0_config,
+                    )
+                )
+                _ = self._refresh_access_token(params=params)
+                return AcquiredAccessTokenDTO.from_loaded_token(
+                    loaded_token=loaded_token
+                )
             except ServiceError as e:
                 raise ServiceError(
                     f"failed to refresh access token: {e.message}. Please log in again."
-                )
-
-            self.store_token_on_keyring(
-                token=refresh_resp.access_token,
-                expires_in=refresh_resp.expires_in,
-                refresh_token=refresh_resp.refresh_token,
-            )
-            return refresh_resp.access_token
-        return load_resp.access_token
+                ) from e
+        else:
+            return AcquiredAccessTokenDTO.from_loaded_token(loaded_token=loaded_token)
 
     def logout(self) -> None:
         try:
-            load_resp = self.load_access_token_from_keyring()
-        except ServiceError:
-            logging.debug("You are not logged in.")
-            raise NotLoggedInWarning("You are not logged in.")
-
-        req = Auth0RevokeTokenRequestDTO(
-            client_id=self.config.client_id,
-            domain=self.config.domain,
-            token=load_resp.access_token,
-            token_type_hint="access_token",
-        )
-
-        try:
-            self._execute_command(Auth0RevokeTokenCommand(request=req))
+            loaded_token: LoadedToken = self._load_token_from_keyring()
         except ServiceError as e:
-            logging.warning(f"failed to revoke token: {e}")
+            raise NotLoggedInWarning(f"You are not logged in: {e.message}") from e
 
-        req = ClearTokenFromKeyringRequestDTO(client_id=self.config.client_id)
         try:
-            self._execute_command(ClearTokenFromKeyringCommand(request=req))
+            self.auth_gateway.revoke_token(
+                params=RevokeTokenParams.from_token_and_config(
+                    token=loaded_token.access_token,
+                    config=self.auth0_config,
+                )
+            )
         except ServiceError as e:
-            raise ServiceError(f"failed to clear token from keyring: {e.message}")
+            raise ServiceWarning(f"failed to revoke token: {e.message}") from e
+        finally:
+            self.token_storage_gateway.clear_token(loaded_token=loaded_token)
 
-    def __open_browser(
-        self,
-        browser: webbrowser.BaseBrowser,
-        url: str,
-    ) -> bool:
-        try:
-            is_browser_opened = browser.open(url)
-            if not is_browser_opened:
-                return False
-        except Exception as e:
-            logging.debug(f"Could not open browser: {e}")
-            return False
-        return True
 
-    def open_browser_for_device_code_authentication(self, uri: str) -> bool:
-        if _register_silent_browser():
-            return self.__open_browser(webbrowser.get("silent"), uri)
-
-        return self.__open_browser(webbrowser.get(), uri)
+def get_auth_service(config: AppConfig) -> Auth0Service:
+    gateway_factory: GatewayFactory = GatewayFactory(config=config)
+    auth_gateway: AuthGateway = gateway_factory.create_auth_gateway()
+    token_storage_gateway: TokenStorageGateway = (
+        gateway_factory.create_token_storage_gateway()
+    )
+    return Auth0Service(
+        config=config,
+        auth_gateway=auth_gateway,
+        token_storage_gateway=token_storage_gateway,
+    )

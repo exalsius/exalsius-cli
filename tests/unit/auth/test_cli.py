@@ -77,7 +77,9 @@ def test_login_success_interactive(
     )
 
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
-        mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = True
+        mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
+            True
+        )
         result = runner.invoke(app, ["login"])
 
     assert result.exit_code == 0
@@ -173,7 +175,9 @@ def test_login_interactive_browser_open_fails(
     )
 
     with patch("exalsius.auth.cli.utils.is_interactive", return_value=True):
-        mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = False
+        mock_auth_service_instance.open_browser_for_device_code_authentication.return_value = (
+            False
+        )
         result = runner.invoke(app, ["login"])
 
     assert result.exit_code == 0

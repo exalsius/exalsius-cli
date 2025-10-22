@@ -1,25 +1,83 @@
-from typing import Any, Optional
+import logging
+import subprocess
+import sys
+import webbrowser
+from abc import ABC
+from typing import Any, Dict
 
 import qrcode
 
-from exls.core.base.models import ErrorDTO
-from exls.core.commons.display import BaseDisplayManager
-from exls.core.commons.render.text import (
-    RichTextErrorMessageRenderer,
-    RichTextRenderer,
-    RichTextSuccessMessageRenderer,
+from exls.auth.dtos import UserInfoDTO
+from exls.core.commons.display import (
+    BaseDisplayManager,
+    BaseJsonDisplayManager,
+    BaseTableDisplayManager,
+    ConsoleSingleItemDisplay,
 )
+from exls.core.commons.render.json import JsonSingleItemStringRenderer
+from exls.core.commons.render.table import Column, TableSingleItemRenderer, get_column
+
+logger = logging.getLogger(__name__)
 
 
-class AuthDisplayManager(BaseDisplayManager):
-    def __init__(self):
-        super().__init__(
-            info_renderer=RichTextRenderer(),
-            success_renderer=RichTextSuccessMessageRenderer(),
-            error_renderer=RichTextErrorMessageRenderer(),
-        )
+# This is needed to prevent output messages to stdout and stderr when the browser is opened.
+def register_silent_browser() -> bool:
+    try:
+        if sys.platform == "darwin":  # macOS
+            webbrowser.register("silent", None, _SilentBrowser("open"), preferred=True)
+        elif sys.platform == "win32":  # Windows
+            webbrowser.register("silent", None, _SilentBrowser("start"), preferred=True)
+        elif sys.platform.startswith("linux"):  # Linux
+            webbrowser.register(
+                "silent", None, _SilentBrowser("xdg-open"), preferred=True
+            )
+        else:
+            logger.debug("Unsupported platform. Could not register silent browser.")
+            return False
+    except Exception as e:
+        logger.debug(f"Could not register silent browser: {e}")
+        return False
+    return True
 
-    def _generate_qr_code(self, uri: str) -> qrcode.QRCode[Any]:
+
+# This is needed to prevent output messages to stdout and stderr when the browser is opened.
+class _SilentBrowser(webbrowser.BackgroundBrowser):
+    def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool:
+        try:
+            subprocess.Popen(
+                [self.name, url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except Exception as e:
+            logger.debug(f"Could not open browser: {e}")
+            return False
+
+    def __open_browser(
+        self,
+        browser: webbrowser.BaseBrowser,
+        url: str,
+    ) -> bool:
+        try:
+            is_browser_opened = browser.open(url)
+            if not is_browser_opened:
+                return False
+        except Exception as e:
+            logging.debug(f"Could not open browser: {e}")
+            return False
+        return True
+
+    def open_browser_for_device_code_authentication(self, uri: str) -> bool:
+        if register_silent_browser():
+            return self.__open_browser(webbrowser.get("silent"), uri)
+
+        return self.__open_browser(webbrowser.get(), uri)
+
+
+class BaseConsoleAuthDisplayManager(ABC, BaseDisplayManager):
+    @staticmethod
+    def _generate_qr_code(uri: str) -> qrcode.QRCode[Any]:
         qr: qrcode.QRCode[Any] = qrcode.QRCode(
             version=1,
             error_correction=qrcode.ERROR_CORRECT_L,
@@ -71,34 +129,38 @@ class AuthDisplayManager(BaseDisplayManager):
     def display_device_code_polling_cancelled(self):
         self.display_info("Login canceled via Ctrl+C")
 
-    def display_authentication_error(self, error: str):
-        self.display_error(
-            ErrorDTO(
-                message=f"Login error: {error}",
-                error_type="AUTHENTICATION_ERROR",
-            )
-        )
 
-    def display_authentication_success(self, email: Optional[str], sub: Optional[str]):
-        self.display_success(
-            f"You are successfully logged in as '{email or sub or 'unknown'}'"
-        )
-        self.display_success("Let's start setting up your workspaces!")
-
-    def display_logout_success(self):
-        self.display_success("Logged out successfully.")
-
-    def display_not_logged_in(self):
-        self.display_info("You are not logged in.")
-
-    def display_deployment_token_request_success(
+class JsonAuthDisplayManager(BaseJsonDisplayManager, BaseConsoleAuthDisplayManager):
+    def __init__(
         self,
-        access_token: str,
+        user_info_renderer: JsonSingleItemStringRenderer[
+            UserInfoDTO
+        ] = JsonSingleItemStringRenderer[UserInfoDTO](),
     ):
-        self.display_info("")
-        self.display_success("Request for deployment token successful!")
-        self.display_info("")
-        self.display_success("Your deployment token is:")
-        self.display_info("")
-        self.display_info(access_token)
-        self.display_info("")
+        super().__init__()
+        self.user_info_display = ConsoleSingleItemDisplay(renderer=user_info_renderer)
+
+    def display_user_info(self, user: UserInfoDTO):
+        self.user_info_display.display(user)
+
+
+DEFAULT_USER_INFO_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+    "email": get_column("Email"),
+    "sub": get_column("Sub"),
+}
+
+
+class TableAuthDisplayManager(BaseTableDisplayManager, BaseConsoleAuthDisplayManager):
+    def __init__(
+        self,
+        user_info_renderer: TableSingleItemRenderer[
+            UserInfoDTO
+        ] = TableSingleItemRenderer[UserInfoDTO](
+            columns_map=DEFAULT_USER_INFO_COLUMNS_RENDERING_MAP
+        ),
+    ):
+        super().__init__()
+        self.user_info_display = ConsoleSingleItemDisplay(renderer=user_info_renderer)
+
+    def display_user_info(self, user: UserInfoDTO):
+        self.user_info_display.display(user)
