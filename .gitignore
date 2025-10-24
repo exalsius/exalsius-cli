@@ -17,3 +17,8 @@ wheels/
 .cursor/
 .cursorrules
 .cursorignore
+
+# Test coverage
+coverage.xml
+test-report.xml
+.coverage
