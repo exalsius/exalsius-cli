@@ -1,0 +1,25 @@
+import typer
+
+from exls.core.commons.service import help_if_no_subcommand
+from exls.management.types.cluster_templates.cli import cluster_templates_app
+from exls.management.types.credentials.cli import credentials_app
+from exls.management.types.service_templates.cli import service_templates_app
+from exls.management.types.ssh_keys.cli import ssh_keys_app
+from exls.management.types.workspace_templates.cli import workspace_templates_app
+
+management_app: typer.Typer = typer.Typer()
+management_app.add_typer(cluster_templates_app, name="cluster-templates")
+management_app.add_typer(credentials_app, name="credentials")
+management_app.add_typer(service_templates_app, name="service-templates")
+management_app.add_typer(ssh_keys_app, name="ssh-keys")
+management_app.add_typer(workspace_templates_app, name="workspace-templates")
+
+
+@management_app.callback(invoke_without_command=True)
+def _root(  # pyright: ignore[reportUnusedFunction]
+    ctx: typer.Context,
+):
+    """
+    Manage management.
+    """
+    help_if_no_subcommand(ctx)

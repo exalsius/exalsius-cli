@@ -1,5 +1,5 @@
 [project]
-name = "exalsius"
+name = "exls"
 version = "0.3.0"
 description = "The exalsius CLI"
 readme = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.12,<4.0"
 dependencies = [
     "rich>=13.9.4",
     "typer>=0.15.2",
-    "exalsius-api-client @ git+https://github.com/exalsius/exalsius-api-spec.git@v1.21.6#subdirectory=client-sdk",
+    "exalsius-api-client @ git+https://github.com/exalsius/exalsius-api-spec.git@v1.22.0#subdirectory=client-sdk",
     "pydantic-settings>=2.10.1",
     "pyyaml>=6.0.2",
     "filelock>=3.17.0",
@@ -21,10 +21,10 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["exalsius*"] 
+include = ["exls*"] 
 
 [project.scripts]
-exls = "exalsius.app:app" 
+exls = "exls.app:app" 
 
 [build-system]
 requires = ["setuptools"]
@@ -32,6 +32,14 @@ build-backend = "setuptools.build_meta"
 
 [tool.pyright]
 typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=exls --cov-report=term-missing --no-cov-on-fail"
+testpaths = ["tests"]
+python_files = "test_*.py"
+xfail_strict = true
+norecursedirs = [".git", ".venv", "env", "venv*", "build", "dist", ".mypy_cache", ".pytest_cache", "__pycache__"]
 
 [dependency-groups]
 dev = [
@@ -42,5 +50,5 @@ dev = [
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
     "ruff>=0.9.9",
-    "pyright>=1.1.376",
+    "pyright>=1.1.406",
 ]
