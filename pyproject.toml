@@ -33,6 +33,14 @@ build-backend = "setuptools.build_meta"
 [tool.pyright]
 typeCheckingMode = "strict"
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=exls --cov-report=term-missing --no-cov-on-fail"
+testpaths = ["tests"]
+python_files = "test_*.py"
+xfail_strict = true
+norecursedirs = [".git", ".venv", "env", "venv*", "build", "dist", ".mypy_cache", ".pytest_cache", "__pycache__"]
+
 [dependency-groups]
 dev = [
     "black>=25.1.0",
