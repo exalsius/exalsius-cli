@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
@@ -7,13 +7,7 @@ from exalsius_api_client.models.workspace_delete_response import WorkspaceDelete
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
-from exls.core.commons.commands.sdk import ExalsiusSdkCommand
-from exls.workspaces.common.domain import (
-    DeployWorkspaceParams,
-    Workspace,
-    WorkspaceFilterParams,
-)
-from exls.workspaces.common.gateway.mappers import to_create_request
+from exls.core.commons.gateways.commands.sdk import ExalsiusSdkCommand
 
 
 class BaseWorkspacesSdkCommand[T_Cmd_Params, T_Cmd_Return](
@@ -24,42 +18,41 @@ class BaseWorkspacesSdkCommand[T_Cmd_Params, T_Cmd_Return](
     pass
 
 
-class ListWorkspacesSdkCommand(
-    BaseWorkspacesSdkCommand[WorkspaceFilterParams, List[Workspace]]
-):
-    def _execute_api_call(
-        self, params: Optional[WorkspaceFilterParams]
-    ) -> List[Workspace]:
+class ListWorkspacesSdkCommand(BaseWorkspacesSdkCommand[str, WorkspacesListResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> WorkspacesListResponse:
         assert params is not None
         response: WorkspacesListResponse = self.api_client.list_workspaces(
-            cluster_id=params.cluster_id
+            cluster_id=params
         )
-        return [Workspace(sdk_model=workspace) for workspace in response.workspaces]
+        return response
 
 
-class GetWorkspaceSdkCommand(BaseWorkspacesSdkCommand[str, Workspace]):
-    def _execute_api_call(self, params: Optional[str]) -> Workspace:
+class GetWorkspaceSdkCommand(BaseWorkspacesSdkCommand[str, WorkspaceResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> WorkspaceResponse:
         assert params is not None
         response: WorkspaceResponse = self.api_client.describe_workspace(
             workspace_id=params
         )
-        return Workspace(sdk_model=response.workspace)
+        return response
 
 
-class DeployWorkspaceSdkCommand(BaseWorkspacesSdkCommand[DeployWorkspaceParams, str]):
-    def _execute_api_call(self, params: Optional[DeployWorkspaceParams]) -> str:
+class DeployWorkspaceSdkCommand(
+    BaseWorkspacesSdkCommand[WorkspaceCreateRequest, WorkspaceCreateResponse]
+):
+    def _execute_api_call(
+        self, params: Optional[WorkspaceCreateRequest]
+    ) -> WorkspaceCreateResponse:
         assert params is not None
-        request: WorkspaceCreateRequest = to_create_request(params=params)
         response: WorkspaceCreateResponse = self.api_client.create_workspace(
-            workspace_create_request=request
+            workspace_create_request=params
         )
-        return response.workspace_id
+        return response
 
 
-class DeleteWorkspaceSdkCommand(BaseWorkspacesSdkCommand[str, str]):
-    def _execute_api_call(self, params: Optional[str]) -> str:
+class DeleteWorkspaceSdkCommand(BaseWorkspacesSdkCommand[str, WorkspaceDeleteResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> WorkspaceDeleteResponse:
         assert params is not None
         response: WorkspaceDeleteResponse = self.api_client.delete_workspace(
             workspace_id=params
         )
-        return response.workspace_id
+        return response

@@ -1,9 +1,6 @@
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
-import yaml
 from exalsius_api_client.api.clusters_api import ClustersApi
-from exalsius_api_client.models.cluster import Cluster as SdkCluster
-from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
@@ -14,7 +11,6 @@ from exalsius_api_client.models.cluster_kubeconfig_response import (
 from exalsius_api_client.models.cluster_node_remove_response import (
     ClusterNodeRemoveResponse,
 )
-from exalsius_api_client.models.cluster_node_to_add import ClusterNodeToAdd
 from exalsius_api_client.models.cluster_nodes_response import ClusterNodesResponse
 from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
@@ -22,25 +18,14 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 
-from exls.clusters.domain import (
+from exls.clusters.gateway.dtos import (
     AddNodesParams,
-    Cluster,
-    ClusterCreateParams,
-    ClusterFilterParams,
-    ClusterNodeRef,
-    ClusterNodeResources,
-    ClusterNodeRole,
     RemoveNodeParams,
-    Resources,
 )
-from exls.core.commons.commands.sdk import (
+from exls.core.commons.gateways.commands.sdk import (
     ExalsiusSdkCommand,
     UnexpectedSdkCommandResponseError,
 )
-
-
-def _create_cluster_from_sdk_model(sdk_model: SdkCluster) -> Cluster:
-    return Cluster(sdk_model=sdk_model)
 
 
 class BaseClustersSdkCommand[T_Cmd_Params, T_Cmd_Return](
@@ -52,141 +37,100 @@ class BaseClustersSdkCommand[T_Cmd_Params, T_Cmd_Return](
 
 
 class ListClustersSdkCommand(
-    BaseClustersSdkCommand[ClusterFilterParams, List[Cluster]]
+    BaseClustersSdkCommand[Optional[str], ClustersListResponse]
 ):
-    def _execute_api_call(self, params: Optional[ClusterFilterParams]) -> List[Cluster]:
-        assert params is not None
+    def _execute_api_call(self, params: Optional[str]) -> ClustersListResponse:
         response: ClustersListResponse = self.api_client.list_clusters(
-            cluster_status=params.status.value if params.status else None
+            cluster_status=params
         )
-        return [
-            _create_cluster_from_sdk_model(cluster) for cluster in response.clusters
-        ]
+        return response
 
 
-class GetClusterSdkCommand(BaseClustersSdkCommand[str, Cluster]):
-    def _execute_api_call(self, params: Optional[str]) -> Cluster:
+class GetClusterSdkCommand(BaseClustersSdkCommand[str, ClusterResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> ClusterResponse:
         assert params is not None
         response: ClusterResponse = self.api_client.describe_cluster(cluster_id=params)
-        return _create_cluster_from_sdk_model(response.cluster)
+        return response
 
 
-class DeleteClusterSdkCommand(BaseClustersSdkCommand[str, str]):
-    def _execute_api_call(self, params: Optional[str]) -> str:
+class DeleteClusterSdkCommand(BaseClustersSdkCommand[str, ClusterDeleteResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> ClusterDeleteResponse:
         assert params is not None
         response: ClusterDeleteResponse = self.api_client.delete_cluster(
             cluster_id=params
         )
-        return response.cluster_id
+        return response
 
 
-class CreateClusterSdkCommand(BaseClustersSdkCommand[ClusterCreateParams, str]):
-    def _execute_api_call(self, params: Optional[ClusterCreateParams]) -> str:
+class CreateClusterSdkCommand(
+    BaseClustersSdkCommand[ClusterCreateRequest, ClusterCreateResponse]
+):
+    def _execute_api_call(
+        self, params: Optional[ClusterCreateRequest]
+    ) -> ClusterCreateResponse:
         assert params is not None
-        request = ClusterCreateRequest(
-            name=params.name,
-            cluster_type=params.cluster_type,
-            cluster_labels=params.cluster_labels,
-            colony_id=params.colony_id,
-            k8s_version=params.k8s_version,
-            to_be_deleted_at=params.to_be_deleted_at,
-            control_plane_node_ids=params.control_plane_node_ids,
-            worker_node_ids=params.worker_node_ids,
-        )
         response: ClusterCreateResponse = self.api_client.create_cluster(
-            cluster_create_request=request
+            cluster_create_request=params
         )
-        return response.cluster_id
+        return response
 
 
-class DeployClusterSdkCommand(BaseClustersSdkCommand[str, None]):
-    def _execute_api_call(self, params: Optional[str]) -> None:
+class DeployClusterSdkCommand(BaseClustersSdkCommand[str, ClusterDeployResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> ClusterDeployResponse:
         assert params is not None
-        _: ClusterDeployResponse = self.api_client.deploy_cluster(cluster_id=params)
+        response: ClusterDeployResponse = self.api_client.deploy_cluster(
+            cluster_id=params
+        )
+        return response
 
 
-class GetClusterNodesSdkCommand(BaseClustersSdkCommand[str, List[ClusterNodeRef]]):
-    def _execute_api_call(self, params: Optional[str]) -> List[ClusterNodeRef]:
+class GetClusterNodesSdkCommand(BaseClustersSdkCommand[str, ClusterNodesResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> ClusterNodesResponse:
         assert params is not None
         response: ClusterNodesResponse = self.api_client.get_nodes(cluster_id=params)
-        cluster_nodes: List[ClusterNodeRef] = [
-            ClusterNodeRef(node_id=node_id, role=ClusterNodeRole.WORKER)
-            for node_id in response.worker_node_ids
-        ] + [
-            ClusterNodeRef(node_id=node_id, role=ClusterNodeRole.CONTROL_PLANE)
-            for node_id in response.control_plane_node_ids
-        ]
-        return cluster_nodes
+        return response
 
 
-class AddNodesSdkCommand(BaseClustersSdkCommand[AddNodesParams, List[ClusterNodeRef]]):
+class AddNodesSdkCommand(BaseClustersSdkCommand[AddNodesParams, ClusterNodesResponse]):
     def _execute_api_call(
         self, params: Optional[AddNodesParams]
-    ) -> List[ClusterNodeRef]:
+    ) -> ClusterNodesResponse:
         assert params is not None
-        request = ClusterAddNodeRequest(
-            nodes_to_add=[
-                ClusterNodeToAdd(node_id=node.node_id, node_role=node.node_role.value)
-                for node in params.nodes_to_add
-            ]
-        )
         response: ClusterNodesResponse = self.api_client.add_nodes(
-            cluster_id=params.cluster_id, cluster_add_node_request=request
+            cluster_id=params.cluster_id,
+            cluster_add_node_request=params.to_sdk_request(),
         )
-        cluster_nodes: List[ClusterNodeRef] = [
-            ClusterNodeRef(node_id=node_id, role=ClusterNodeRole.WORKER)
-            for node_id in response.worker_node_ids
-        ] + [
-            ClusterNodeRef(node_id=node_id, role=ClusterNodeRole.CONTROL_PLANE)
-            for node_id in response.control_plane_node_ids
-        ]
-        return cluster_nodes
+
+        return response
 
 
-class RemoveNodeSdkCommand(BaseClustersSdkCommand[RemoveNodeParams, str]):
-    def _execute_api_call(self, params: Optional[RemoveNodeParams]) -> str:
+class RemoveNodeSdkCommand(
+    BaseClustersSdkCommand[RemoveNodeParams, ClusterNodeRemoveResponse]
+):
+    def _execute_api_call(
+        self, params: Optional[RemoveNodeParams]
+    ) -> ClusterNodeRemoveResponse:
         assert params is not None
         response: ClusterNodeRemoveResponse = self.api_client.delete_node_from_cluster(
             cluster_id=params.cluster_id, node_id=params.node_id
         )
-        return response.node_id
+        return response
 
 
 class GetClusterResourcesSdkCommand(
-    BaseClustersSdkCommand[str, List[ClusterNodeResources]]
+    BaseClustersSdkCommand[str, ClusterResourcesListResponse]
 ):
-    def _execute_api_call(self, params: Optional[str]) -> List[ClusterNodeResources]:
+    def _execute_api_call(self, params: Optional[str]) -> ClusterResourcesListResponse:
         assert params is not None
         response: ClusterResourcesListResponse = self.api_client.get_cluster_resources(
             cluster_id=params
         )
-        cluster_node_resources: List[ClusterNodeResources] = []
-        for resource in response.resources:
-            if resource.node_id is None:
-                raise UnexpectedSdkCommandResponseError(
-                    "Node ID is None", self.__class__.__name__
-                )
-            if resource.available is None:
-                raise UnexpectedSdkCommandResponseError(
-                    "Available resources are None", self.__class__.__name__
-                )
-            if resource.occupied is None:
-                raise UnexpectedSdkCommandResponseError(
-                    "Occupied resources are None", self.__class__.__name__
-                )
-            cluster_node_resources.append(
-                ClusterNodeResources(
-                    node_id=resource.node_id,
-                    free_resources=Resources(sdk_model=resource.available),
-                    occupied_resources=Resources(sdk_model=resource.occupied),
-                )
-            )
 
-        return cluster_node_resources
+        return response
 
 
-class GetKubeconfigSdkCommand(BaseClustersSdkCommand[str, Dict[str, Any]]):
-    def _execute_api_call(self, params: Optional[str]) -> Dict[str, Any]:
+class GetKubeconfigSdkCommand(BaseClustersSdkCommand[str, ClusterKubeconfigResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> ClusterKubeconfigResponse:
         assert params is not None
         response: ClusterKubeconfigResponse = self.api_client.get_cluster_kubeconfig(
             cluster_id=params
@@ -195,10 +139,5 @@ class GetKubeconfigSdkCommand(BaseClustersSdkCommand[str, Dict[str, Any]]):
             raise UnexpectedSdkCommandResponseError(
                 "Kubeconfig response is empty", self.__class__.__name__
             )
-        try:
-            kubeconfig_content: Dict[str, Any] = yaml.safe_load(response.kubeconfig)
-            return kubeconfig_content
-        except yaml.YAMLError as e:
-            raise UnexpectedSdkCommandResponseError(
-                f"Failed to parse kubeconfig: {str(e)}", self.__class__.__name__
-            )
+
+        return response

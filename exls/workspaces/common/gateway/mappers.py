@@ -2,7 +2,7 @@ from functools import singledispatch
 
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 
-from exls.workspaces.common.domain import DeployWorkspaceParams
+from exls.workspaces.common.gateway.dtos import DeployWorkspaceParams
 
 
 @singledispatch

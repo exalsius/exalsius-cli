@@ -1,11 +1,11 @@
 import typer
 
+from exls.core.commons.service import help_if_no_subcommand
 from exls.management.types.cluster_templates.cli import cluster_templates_app
 from exls.management.types.credentials.cli import credentials_app
 from exls.management.types.service_templates.cli import service_templates_app
 from exls.management.types.ssh_keys.cli import ssh_keys_app
 from exls.management.types.workspace_templates.cli import workspace_templates_app
-from exls.utils import commons as utils
 
 management_app: typer.Typer = typer.Typer()
 management_app.add_typer(cluster_templates_app, name="cluster-templates")
@@ -22,4 +22,4 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage management.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)

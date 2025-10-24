@@ -1,10 +1,10 @@
-from typing import List, Optional
+from typing import Optional
 
 from exalsius_api_client.api.offers_api import OffersApi
 from exalsius_api_client.models.offers_list_response import OffersListResponse
 
-from exls.core.commons.commands.sdk import ExalsiusSdkCommand
-from exls.offers.domain import Offer, OfferFilterParams
+from exls.core.commons.gateways.commands.sdk import ExalsiusSdkCommand
+from exls.offers.domain import OfferFilterParams
 
 
 class BaseOffersSdkCommand[T_Cmd_Params, T_Cmd_Return](
@@ -15,10 +15,12 @@ class BaseOffersSdkCommand[T_Cmd_Params, T_Cmd_Return](
     pass
 
 
-class ListOffersSdkCommand(BaseOffersSdkCommand[OfferFilterParams, List[Offer]]):
+class ListOffersSdkCommand(BaseOffersSdkCommand[OfferFilterParams, OffersListResponse]):
     """Command to list offers."""
 
-    def _execute_api_call(self, params: Optional[OfferFilterParams]) -> List[Offer]:
+    def _execute_api_call(
+        self, params: Optional[OfferFilterParams]
+    ) -> OffersListResponse:
         assert params is not None
         response: OffersListResponse = self.api_client.get_offers(
             gpu_vendor=params.gpu_vendor,
@@ -27,4 +29,4 @@ class ListOffersSdkCommand(BaseOffersSdkCommand[OfferFilterParams, List[Offer]])
             price_min=params.price_min,
             price_max=params.price_max,
         )
-        return [Offer(sdk_model=sdk_offer) for sdk_offer in response.offers]
+        return response

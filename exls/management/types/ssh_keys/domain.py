@@ -6,10 +6,6 @@ from exalsius_api_client.models.ssh_keys_list_response_ssh_keys_inner import (
 from pydantic import BaseModel, Field, StrictStr
 
 
-class SshKeyFilterParams(BaseModel):
-    pass
-
-
 class SshKey(BaseModel):
     sdk_model: SdkSshKey = Field(..., description="The SDK model of the SSH key")
 
@@ -24,8 +20,3 @@ class SshKey(BaseModel):
         if self.sdk_model.name is None:
             raise ValueError("Name is None")
         return self.sdk_model.name
-
-
-class AddSshKeyParams(BaseModel):
-    name: str = Field(..., description="The name of the SSH key")
-    private_key: str = Field(..., description="The private key")

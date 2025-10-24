@@ -7,7 +7,13 @@ from pydantic import PositiveInt
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
-from exls.utils import commons as utils
+from exls.core.commons.service import (
+    generate_random_name,
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+    validate_kubernetes_name,
+)
 from exls.workspaces.cli import poll_workspace_creation, workspaces_deploy_app
 from exls.workspaces.common.display import TableWorkspacesDisplayManager
 from exls.workspaces.common.dtos import WorkspaceDTO, WorkspaceResourcesRequestDTO
@@ -23,8 +29,8 @@ logger: logging.Logger = logging.getLogger("cli.workspaces.jupyter")
 def get_jupyter_workspaces_service_from_ctx(
     ctx: typer.Context,
 ) -> JupyterWorkspacesService:
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
     return get_jupyter_workspaces_service(config=config, access_token=access_token)
 
 
@@ -35,7 +41,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage Jupyter workspaces.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @workspaces_deploy_app.command("jupyter", help="Deploy a Jupyter workspace")
@@ -45,12 +51,12 @@ def deploy_jupyter_workspace(
         help="The ID of the cluster to deploy the service to"
     ),
     name: str = typer.Option(
-        utils.generate_random_name(prefix="exls-jupyter"),
+        generate_random_name(prefix="exls-jupyter"),
         "--name",
         "-n",
         help="The name of the workspace to add. If not provided, a random name will be generated. It must be a valid kubernetes-formatted name.",
         show_default=False,
-        callback=utils.validate_kubernetes_name,
+        callback=validate_kubernetes_name,
     ),
     docker_image: Optional[str] = typer.Option(
         None,

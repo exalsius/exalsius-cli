@@ -1,39 +1,20 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from exalsius_api_client.api.nodes_api import NodesApi
-from exalsius_api_client.models.cloud_node import CloudNode as SdkCloudNode
 from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
 from exalsius_api_client.models.node_import_response import NodeImportResponse
 from exalsius_api_client.models.node_import_ssh_request import NodeImportSshRequest
 from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.nodes_list_response import NodesListResponse
-from exalsius_api_client.models.self_managed_node import (
-    SelfManagedNode as SdkSelfManagedNode,
-)
 
-from exls.core.commons.commands.sdk import (
+from exls.core.commons.gateways.commands.sdk import (
     ExalsiusSdkCommand,
     UnexpectedSdkCommandResponseError,
 )
-from exls.nodes.domain import (
-    BaseNode,
-    CloudNode,
+from exls.nodes.gateway.dtos import (
     ImportFromOfferParams,
-    ImportSshParams,
     NodeFilterParams,
-    SelfManagedNode,
 )
-
-
-def _create_from_sdk_model(
-    sdk_model: Union[SdkCloudNode, SdkSelfManagedNode],
-) -> BaseNode:
-    """Factory method to create a domain object from a SDK model."""
-
-    if isinstance(sdk_model, SdkCloudNode):
-        return CloudNode(sdk_model=sdk_model)
-    else:
-        return SelfManagedNode(sdk_model=sdk_model)
 
 
 class BaseNodesSdkCommand[T_Cmd_Params, T_Cmd_Return](
@@ -44,25 +25,23 @@ class BaseNodesSdkCommand[T_Cmd_Params, T_Cmd_Return](
     pass
 
 
-class ListNodesSdkCommand(BaseNodesSdkCommand[NodeFilterParams, List[BaseNode]]):
+class ListNodesSdkCommand(BaseNodesSdkCommand[NodeFilterParams, NodesListResponse]):
     """Command to list nodes."""
 
-    def _execute_api_call(self, params: Optional[NodeFilterParams]) -> List[BaseNode]:
+    def _execute_api_call(
+        self, params: Optional[NodeFilterParams]
+    ) -> NodesListResponse:
         assert params is not None
         response: NodesListResponse = self.api_client.list_nodes(
             node_type=params.node_type, provider=params.provider
         )
-        return [
-            _create_from_sdk_model(node_response.actual_instance)
-            for node_response in response.nodes
-            if node_response.actual_instance is not None
-        ]
+        return response
 
 
-class GetNodeSdkCommand(BaseNodesSdkCommand[str, BaseNode]):
+class GetNodeSdkCommand(BaseNodesSdkCommand[str, NodeResponse]):
     """Command to get a node."""
 
-    def _execute_api_call(self, params: Optional[str]) -> BaseNode:
+    def _execute_api_call(self, params: Optional[str]) -> NodeResponse:
         assert params is not None
         response: NodeResponse = self.api_client.describe_node(node_id=params)
         if response.actual_instance is None:
@@ -70,28 +49,22 @@ class GetNodeSdkCommand(BaseNodesSdkCommand[str, BaseNode]):
                 message=f"Response for node {params} contains no actual instance. This is unexpected.",
                 sdk_command=self.__class__.__name__,
             )
-        return _create_from_sdk_model(response.actual_instance)
+        return response
 
 
-class DeleteNodeSdkCommand(BaseNodesSdkCommand[str, str]):
-    def _execute_api_call(self, params: Optional[str]) -> str:
+class DeleteNodeSdkCommand(BaseNodesSdkCommand[str, NodeDeleteResponse]):
+    def _execute_api_call(self, params: Optional[str]) -> NodeDeleteResponse:
         assert params is not None
         response: NodeDeleteResponse = self.api_client.delete_node(node_id=params)
-        return response.node_id
+        return response
 
 
-class ImportSSHNodeSdkCommand(BaseNodesSdkCommand[ImportSshParams, str]):
-    def _execute_api_call(self, params: Optional[ImportSshParams]) -> str:
+class ImportSSHNodeSdkCommand(BaseNodesSdkCommand[NodeImportSshRequest, str]):
+    def _execute_api_call(self, params: Optional[NodeImportSshRequest]) -> str:
         assert params is not None
         response: NodeImportResponse = self.api_client.import_ssh(
-            NodeImportSshRequest(
-                hostname=params.hostname,
-                endpoint=params.endpoint,
-                username=params.username,
-                ssh_key_id=params.ssh_key_id,
-            )
+            node_import_ssh_request=params
         )
-
         # validate response
         if len(response.node_ids) != 1:
             err_msg: str = ""
@@ -106,7 +79,6 @@ class ImportSSHNodeSdkCommand(BaseNodesSdkCommand[ImportSshParams, str]):
                 retryable=False,  # TODO: This should be possible but needs idempotency at backend
             )
 
-        # we expect exactly one node ID
         return response.node_ids[0]
 
 
@@ -118,13 +90,11 @@ class ImportFromOfferSdkCommand(BaseNodesSdkCommand[ImportFromOfferParams, List[
             hostname=params.hostname,
             amount=params.amount,
         )
-
-        # validate response
         if len(response.node_ids) == 0:
             raise UnexpectedSdkCommandResponseError(
                 message="Response for import from offer contains no node IDs. This is unexpected.",
                 sdk_command=self.__class__.__name__,
-                retryable=False,  # TODO: This should be possible but needs idempotency at backend
+                retryable=False,
             )
 
         return response.node_ids

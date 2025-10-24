@@ -35,7 +35,8 @@ class OffersService:
 def get_offers_service(config: AppConfig, access_token: str) -> OffersService:
     gateway_factory: GatewayFactory = GatewayFactory(
         config=config,
-        access_token=access_token,
     )
-    offers_gateway: OffersGateway = gateway_factory.create_offers_gateway()
+    offers_gateway: OffersGateway = gateway_factory.create_offers_gateway(
+        access_token=access_token
+    )
     return OffersService(offers_gateway=offers_gateway)

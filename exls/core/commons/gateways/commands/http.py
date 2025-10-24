@@ -19,12 +19,12 @@ class HTTPCommandError(CommandError):
         self,
         message: str,
         endpoint: str,
-        status: int,
+        status_code: int,
         error_body: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.endpoint: str = endpoint
-        self.status: int = status
+        self.status_code: int = status_code
         self.error_body: Optional[Dict[str, Any]] = error_body
 
 
@@ -55,11 +55,16 @@ class BasePostRequestCommand(BaseCommand[T_SerOutput_Nullable]):
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as e:
+            error_body: Optional[Dict[str, Any]] = None
+            try:
+                error_body = e.response.json()
+            except requests.exceptions.JSONDecodeError:
+                pass
             raise HTTPCommandError(
                 message=f"error making POST request to {url}: {e}",
                 endpoint=url,
-                status=e.response.status_code,
-                error_body=e.response.json(),
+                status_code=e.response.status_code,
+                error_body=error_body,
             ) from e
         except Exception as e:
             raise CommandError(
@@ -70,10 +75,10 @@ class BasePostRequestCommand(BaseCommand[T_SerOutput_Nullable]):
 class PostRequestWithResponseCommand(BasePostRequestCommand[T_SerOutput]):
     """Command for POST requests that expect a JSON response."""
 
-    __error_message_template = "unexpected response from post request to {}"
-
     def __init__(
-        self, model: Type[T_SerOutput], deserializer: PydanticDeserializer[T_SerOutput]
+        self,
+        model: Type[T_SerOutput],
+        deserializer: PydanticDeserializer[T_SerOutput] = PydanticDeserializer(),
     ):
         self._model: Type[T_SerOutput] = model
         self._deserializer: PydanticDeserializer[T_SerOutput] = deserializer

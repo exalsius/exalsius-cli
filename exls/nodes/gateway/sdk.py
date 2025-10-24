@@ -1,12 +1,19 @@
-from typing import List
+from typing import List, Union
 
 from exalsius_api_client.api.nodes_api import NodesApi
+from exalsius_api_client.models.cloud_node import CloudNode as SdkCloudNode
+from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
+from exalsius_api_client.models.node_response import NodeResponse
+from exalsius_api_client.models.nodes_list_response import NodesListResponse
+from exalsius_api_client.models.self_managed_node import (
+    SelfManagedNode as SdkSelfManagedNode,
+)
 
+from exls.core.commons.gateways.commands.sdk import UnexpectedSdkCommandResponseError
 from exls.nodes.domain import (
     BaseNode,
-    ImportFromOfferParams,
-    ImportSshParams,
-    NodeFilterParams,
+    CloudNode,
+    SelfManagedNode,
 )
 from exls.nodes.gateway.base import NodesGateway
 from exls.nodes.gateway.commands import (
@@ -16,42 +23,58 @@ from exls.nodes.gateway.commands import (
     ImportSSHNodeSdkCommand,
     ListNodesSdkCommand,
 )
+from exls.nodes.gateway.dtos import (
+    ImportFromOfferParams,
+    NodeFilterParams,
+    NodeImportSshParams,
+)
 
 
 class NodesGatewaySdk(NodesGateway):
     def __init__(self, nodes_api: NodesApi):
         self._nodes_api = nodes_api
 
+    def _create_from_sdk_model(
+        self,
+        sdk_model: Union[SdkCloudNode, SdkSelfManagedNode],
+    ) -> BaseNode:
+        """Factory method to create a domain object from a SDK model."""
+
+        if isinstance(sdk_model, SdkCloudNode):
+            return CloudNode(sdk_model=sdk_model)
+        return SelfManagedNode(sdk_model=sdk_model)
+
     def list(self, node_filter_params: NodeFilterParams) -> List[BaseNode]:
         command = ListNodesSdkCommand(
             self._nodes_api,
-            NodeFilterParams(
-                node_type=node_filter_params.node_type,
-                provider=node_filter_params.provider,
-            ),
+            params=node_filter_params,
         )
-        response: List[BaseNode] = command.execute()
-        return response
+        response: NodesListResponse = command.execute()
+        return [
+            self._create_from_sdk_model(sdk_model=node.actual_instance)
+            for node in response.nodes
+            if node.actual_instance is not None
+        ]
 
     def get(self, node_id: str) -> BaseNode:
         command = GetNodeSdkCommand(self._nodes_api, node_id)
-        response: BaseNode = command.execute()
-        return response
+        response: NodeResponse = command.execute()
+        if response.actual_instance is None:
+            raise UnexpectedSdkCommandResponseError(
+                message=f"Response for node {node_id} contains no actual instance. This is unexpected.",
+                sdk_command=self.__class__.__name__,
+            )
+        return self._create_from_sdk_model(sdk_model=response.actual_instance)
 
     def delete(self, node_id: str) -> str:
         command = DeleteNodeSdkCommand(self._nodes_api, node_id)
-        response: str = command.execute()
-        return response
+        response: NodeDeleteResponse = command.execute()
+        return response.node_id
 
-    def import_ssh(self, import_ssh_params: ImportSshParams) -> BaseNode:
+    def import_ssh(self, import_ssh_params: NodeImportSshParams) -> BaseNode:
         cmd_node_import_ssh: ImportSSHNodeSdkCommand = ImportSSHNodeSdkCommand(
             self._nodes_api,
-            ImportSshParams(
-                hostname=import_ssh_params.hostname,
-                endpoint=import_ssh_params.endpoint,
-                username=import_ssh_params.username,
-                ssh_key_id=import_ssh_params.ssh_key_id,
-            ),
+            params=import_ssh_params.to_sdk_request(),
         )
         node_id: str = cmd_node_import_ssh.execute()
 
@@ -59,20 +82,20 @@ class NodesGatewaySdk(NodesGateway):
             self._nodes_api,
             node_id,
         )
-        response: BaseNode = cmd_node_get.execute()
-
-        return response
+        response: NodeResponse = cmd_node_get.execute()
+        if response.actual_instance is None:
+            raise UnexpectedSdkCommandResponseError(
+                message=f"Response for node {node_id} contains no actual instance. This is unexpected.",
+                sdk_command=self.__class__.__name__,
+            )
+        return self._create_from_sdk_model(sdk_model=response.actual_instance)
 
     def import_from_offer(
         self, import_from_offer_params: ImportFromOfferParams
     ) -> List[BaseNode]:
         cmd_offer_import: ImportFromOfferSdkCommand = ImportFromOfferSdkCommand(
             self._nodes_api,
-            ImportFromOfferParams(
-                hostname=import_from_offer_params.hostname,
-                offer_id=import_from_offer_params.offer_id,
-                amount=import_from_offer_params.amount,
-            ),
+            params=import_from_offer_params,
         )
         node_ids: List[str] = cmd_offer_import.execute()
 
@@ -83,6 +106,14 @@ class NodesGatewaySdk(NodesGateway):
                 self._nodes_api,
                 node_id,
             )
-            nodes.append(cmd_node_get.execute())
+            response: NodeResponse = cmd_node_get.execute()
+            if response.actual_instance is None:
+                raise UnexpectedSdkCommandResponseError(
+                    message=f"Response for node {node_id} contains no actual instance. This is unexpected.",
+                    sdk_command=self.__class__.__name__,
+                )
+            nodes.append(
+                self._create_from_sdk_model(sdk_model=response.actual_instance)
+            )
 
         return nodes

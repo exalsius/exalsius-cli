@@ -6,20 +6,27 @@ from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
 from exls.core.commons.factories import GatewayFactory
+from exls.core.commons.service import (
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.services.display import TableServicesDisplayManager
 from exls.services.dtos import ServiceDTO, ServiceListRequestDTO
+from exls.services.gateway.base import ServicesGateway
 from exls.services.service import ServicesService
-from exls.utils import commons as utils
 
 services_app = typer.Typer()
 
 
 def _get_services_service(ctx: typer.Context) -> ServicesService:
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
 
-    gateway_factory = GatewayFactory(config, access_token)
-    services_gateway = gateway_factory.create_services_gateway()
+    gateway_factory: GatewayFactory = GatewayFactory(config=config)
+    services_gateway: ServicesGateway = gateway_factory.create_services_gateway(
+        access_token=access_token
+    )
 
     return ServicesService(services_gateway)
 
@@ -31,7 +38,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage services.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @services_app.command("list", help="List all services of a cluster")

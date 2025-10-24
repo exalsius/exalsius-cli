@@ -5,7 +5,6 @@ from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
 from exls.management.types.service_templates.domain import (
     ServiceTemplate,
-    ServiceTemplateFilterParams,
 )
 from exls.management.types.service_templates.dtos import (
     ListServiceTemplatesRequestDTO,
@@ -24,18 +23,16 @@ class ServiceTemplatesService:
     def list_service_templates(
         self, request: ListServiceTemplatesRequestDTO
     ) -> List[ServiceTemplateDTO]:
-        service_templates: List[ServiceTemplate] = self.service_templates_gateway.list(
-            ServiceTemplateFilterParams()
-        )
+        service_templates: List[ServiceTemplate] = self.service_templates_gateway.list()
         return [ServiceTemplateDTO.from_domain(st) for st in service_templates]
 
 
 def get_service_templates_service(
     config: AppConfig, access_token: str
 ) -> ServiceTemplatesService:
-    gateway_factory = GatewayFactory(config=config, access_token=access_token)
+    gateway_factory: GatewayFactory = GatewayFactory(config=config)
     service_templates_gateway: ServiceTemplatesGateway = (
-        gateway_factory.create_service_templates_gateway()
+        gateway_factory.create_service_templates_gateway(access_token=access_token)
     )
     return ServiceTemplatesService(
         service_templates_gateway=service_templates_gateway,

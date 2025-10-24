@@ -1,30 +1,28 @@
-from exls.auth.domain import LoadedToken, Token
+from exls.auth.domain import LoadedToken
 from exls.auth.gateway.base import TokenStorageGateway
 from exls.auth.gateway.commands import (
     ClearTokenFromKeyringCommand,
     LoadTokenFromKeyringCommand,
     StoreTokenOnKeyringCommand,
 )
-from exls.auth.gateway.dtos import LoadedTokenDTO, StoreTokenOnKeyringRequest
+from exls.auth.gateway.dtos import LoadedTokenDTO, StoreTokenOnKeyringParams
+from exls.auth.gateway.mappers import loaded_token_from_response
 
 
 class KeyringTokenStorageGateway(TokenStorageGateway):
-    def store_token(self, token: Token) -> None:
-        request: StoreTokenOnKeyringRequest = StoreTokenOnKeyringRequest.from_token(
-            token
-        )
-        command: StoreTokenOnKeyringCommand = StoreTokenOnKeyringCommand(request)
+    def store_token(self, params: StoreTokenOnKeyringParams) -> None:
+        command: StoreTokenOnKeyringCommand = StoreTokenOnKeyringCommand(params)
         command.execute()
 
     def load_token(self, client_id: str) -> LoadedToken:
         command: LoadTokenFromKeyringCommand = LoadTokenFromKeyringCommand(
             client_id=client_id
         )
-        loaded_token: LoadedTokenDTO = command.execute()
-        return LoadedToken.from_dto(loaded_token)
+        response: LoadedTokenDTO = command.execute()
+        return loaded_token_from_response(client_id=client_id, response=response)
 
-    def clear_token(self, loaded_token: LoadedToken) -> None:
+    def clear_token(self, client_id: str) -> None:
         command: ClearTokenFromKeyringCommand = ClearTokenFromKeyringCommand(
-            client_id=loaded_token.client_id
+            client_id=client_id
         )
         command.execute()

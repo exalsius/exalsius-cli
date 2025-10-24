@@ -3,11 +3,6 @@ from typing import List
 from exls.config import AppConfig
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
-from exls.nodes.domain import (
-    ImportFromOfferParams,
-    ImportSshParams,
-    NodeFilterParams,
-)
 from exls.nodes.dtos import (
     NodeDTO,
     NodesImportFromOfferRequestDTO,
@@ -16,6 +11,11 @@ from exls.nodes.dtos import (
     node_dto_from_domain,
 )
 from exls.nodes.gateway.base import NodesGateway
+from exls.nodes.gateway.dtos import (
+    ImportFromOfferParams,
+    NodeFilterParams,
+    NodeImportSshParams,
+)
 
 
 class NodeService:
@@ -25,8 +25,7 @@ class NodeService:
     @handle_service_errors("listing nodes")
     def list_nodes(self, request: NodesListRequestDTO) -> List[NodeDTO]:
         node_filter_params: NodeFilterParams = NodeFilterParams(
-            node_type=request.domain_node_type,
-            provider=request.provider,
+            node_type=request.node_type.value if request.node_type else None,
         )
         nodes = self.nodes_gateway.list(node_filter_params)
         return [node_dto_from_domain(node) for node in nodes]
@@ -42,7 +41,7 @@ class NodeService:
 
     @handle_service_errors("importing ssh node")
     def import_ssh_node(self, dto: NodesImportSSHRequestDTO) -> NodeDTO:
-        import_ssh_params: ImportSshParams = ImportSshParams(
+        import_ssh_params: NodeImportSshParams = NodeImportSshParams(
             hostname=dto.hostname,
             endpoint=dto.endpoint,
             username=dto.username,
@@ -63,6 +62,8 @@ class NodeService:
 
 
 def get_node_service(config: AppConfig, access_token: str) -> NodeService:
-    gateway_factory = GatewayFactory(config, access_token)
-    nodes_gateway = gateway_factory.create_nodes_gateway()
+    gateway_factory: GatewayFactory = GatewayFactory(config=config)
+    nodes_gateway: NodesGateway = gateway_factory.create_nodes_gateway(
+        access_token=access_token
+    )
     return NodeService(nodes_gateway)

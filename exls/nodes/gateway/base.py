@@ -3,9 +3,11 @@ from typing import List
 
 from exls.nodes.domain import (
     BaseNode,
+)
+from exls.nodes.gateway.dtos import (
     ImportFromOfferParams,
-    ImportSshParams,
     NodeFilterParams,
+    NodeImportSshParams,
 )
 
 
@@ -23,7 +25,7 @@ class NodesGateway(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def import_ssh(self, import_ssh_params: ImportSshParams) -> BaseNode:
+    def import_ssh(self, import_ssh_params: NodeImportSshParams) -> BaseNode:
         raise NotImplementedError
 
     @abstractmethod

@@ -5,7 +5,6 @@ from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
 from exls.management.types.cluster_templates.domain import (
     ClusterTemplate,
-    ClusterTemplateFilterParams,
 )
 from exls.management.types.cluster_templates.dtos import (
     ClusterTemplateDTO,
@@ -29,12 +28,7 @@ class ClusterTemplateService:
     def list_cluster_templates(
         self, request: ListClusterTemplatesRequestDTO
     ) -> List[ClusterTemplateDTO]:
-        cluster_template_filter_params: ClusterTemplateFilterParams = (
-            ClusterTemplateFilterParams()
-        )
-        cluster_templates: List[ClusterTemplate] = self.cluster_templates_gateway.list(
-            cluster_template_filter_params
-        )
+        cluster_templates: List[ClusterTemplate] = self.cluster_templates_gateway.list()
         return [ClusterTemplateDTO.from_domain(c) for c in cluster_templates]
 
 
@@ -43,10 +37,9 @@ def get_cluster_templates_service(
 ) -> ClusterTemplateService:
     gateway_factory: GatewayFactory = GatewayFactory(
         config=config,
-        access_token=access_token,
     )
     cluster_templates_gateway: ClusterTemplatesGateway = (
-        gateway_factory.create_cluster_templates_gateway()
+        gateway_factory.create_cluster_templates_gateway(access_token=access_token)
     )
     return ClusterTemplateService(
         cluster_templates_gateway=cluster_templates_gateway,

@@ -1,21 +1,11 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 from exls.auth.domain import DeviceCode, LoadedToken, Token, User
-
-######################################
-########### Exceptions ###############
-######################################
-
-
-class AuthenticationError(Exception):
-    def __init__(self, message: str, error_code: Optional[str] = None):
-        super().__init__(message)
-        self.message: str = message
-        self.error_code: Optional[str] = error_code
-
 
 ######################################
 ######## Request DTOs ################
@@ -61,10 +51,6 @@ class ValidateTokenRequestDTO(BaseModel):
     id_token: str = Field(..., description="The ID token")
 
 
-class RefreshTokenRequestDTO(BaseModel):
-    refresh_token: str = Field(..., description="The refresh token")
-
-
 ######################################
 ######## Response DTOs ###############
 ######################################
@@ -76,14 +62,16 @@ class DeviceCodeAuthenticationDTO(BaseModel):
         ..., description="The verification URI complete"
     )
     user_code: str = Field(..., description="The user code")
+    device_code: str = Field(..., description="The device code")
     expires_in: int = Field(..., description="The expiration time in seconds")
 
     @classmethod
-    def from_domain(cls, device_code: DeviceCode):
+    def from_domain(cls, device_code: DeviceCode) -> DeviceCodeAuthenticationDTO:
         return cls(
             verification_uri=device_code.verification_uri,
             verification_uri_complete=device_code.verification_uri_complete,
             user_code=device_code.user_code,
+            device_code=device_code.device_code,
             expires_in=device_code.expires_in,
         )
 
@@ -103,7 +91,7 @@ class AuthenticationDTO(BaseModel):
     expires_in: int = Field(..., description="The expiration time in seconds")
 
     @classmethod
-    def from_domain(cls, token: Token):
+    def from_domain(cls, token: Token) -> AuthenticationDTO:
         return cls(**token.model_dump())
 
 
@@ -114,11 +102,21 @@ class UserInfoDTO(BaseModel):
     access_token: str = Field(..., description="The access token")
 
     @classmethod
-    def from_domain(cls, user: User, token: Token):
+    def from_token_domain(cls, user: User, token: Token) -> UserInfoDTO:
         return cls(
             email=user.email,
             sub=user.sub,
             access_token=token.access_token,
+        )
+
+    @classmethod
+    def from_loaded_token_domain(
+        cls, user: User, loaded_token: LoadedToken
+    ) -> UserInfoDTO:
+        return cls(
+            email=user.email,
+            sub=user.sub,
+            access_token=loaded_token.access_token,
         )
 
 
@@ -128,28 +126,8 @@ class AcquiredAccessTokenDTO(BaseModel):
     expiry: datetime = Field(..., description="The expiry datetime")
 
     @classmethod
-    def from_loaded_token(cls, loaded_token: LoadedToken):
+    def from_loaded_token(cls, loaded_token: LoadedToken) -> AcquiredAccessTokenDTO:
         return cls(
-            access_token=loaded_token.access_token,
-            refresh_token=loaded_token.refresh_token,
-            expiry=loaded_token.expiry,
-        )
-
-
-class TokenKeyringStorageStatusDTO(BaseModel):
-    success: bool = Field(..., description="Whether the token was stored successfully")
-
-
-class LoadedTokenDTO(BaseModel):
-    client_id: str = Field(..., description="The client ID")
-    access_token: str = Field(..., description="The access token")
-    refresh_token: Optional[str] = Field(default=None, description="The refresh token")
-    expiry: datetime = Field(..., description="The expiry datetime")
-
-    @classmethod
-    def from_loaded_token(cls, loaded_token: LoadedToken):
-        return cls(
-            client_id=loaded_token.client_id,
             access_token=loaded_token.access_token,
             refresh_token=loaded_token.refresh_token,
             expiry=loaded_token.expiry,

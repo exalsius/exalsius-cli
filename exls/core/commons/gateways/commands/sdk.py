@@ -61,9 +61,11 @@ class ExalsiusSdkCommand(
     def execute(self) -> T_Cmd_Return:
         try:
             return self._execute_api_call(self._params)
-        # TODO: Retry logic should be placed in this class with respective configs etc.
         except UnexpectedSdkCommandResponseError as e:
-            raise e
+            raise ExalsiusSdkCommandError(
+                message=f"An unexpected error occurred: {str(e)}",
+                sdk_command=self.__class__.__name__,
+            ) from e
         except ServiceException as e:
             raise ExalsiusSdkCommandError(
                 message=f"An API error occurred: {str(e)}",

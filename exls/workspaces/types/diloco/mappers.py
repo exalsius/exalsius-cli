@@ -1,42 +1,31 @@
 from typing import Any, Dict
 
-from exalsius_api_client.models.hardware import Hardware
-from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
-from exalsius_api_client.models.workspace_template import WorkspaceTemplate
-
-from exls.workspaces.common.gateway.mappers import to_create_request
-from exls.workspaces.types.diloco.domain import DeployDilocoWorkspaceParams
+from exls.workspaces.common.mappers import requested_resources_params_from_request_dto
+from exls.workspaces.types.diloco.dtos import DeployDilocoWorkspaceRequestDTO
+from exls.workspaces.types.diloco.gateway.dtos import DeployDilocoWorkspaceParams
 
 
-@to_create_request.register(DeployDilocoWorkspaceParams)
-def _(params: DeployDilocoWorkspaceParams) -> WorkspaceCreateRequest:
-    resources: Hardware = Hardware(
-        gpu_count=params.resources.gpu_count,
-        gpu_type=params.resources.gpu_type,
-        gpu_vendor=params.resources.gpu_vendor,
-        cpu_cores=params.resources.cpu_cores,
-        memory_gb=params.resources.memory_gb,
-        storage_gb=params.resources.pvc_storage_gb,
-    )
+def deploy_diloco_workspace_params_from_request_dto(
+    request_dto: DeployDilocoWorkspaceRequestDTO,
+    diloco_config_from_file: Dict[str, Any],
+) -> DeployDilocoWorkspaceParams:
+    diloco_config: Dict[str, Any] = {**diloco_config_from_file}
+    if request_dto.wandb_user_key is not None:
+        diloco_config["wandbUserKey"] = request_dto.wandb_user_key
+    if request_dto.wandb_project_name is not None:
+        diloco_config["wandbProjectName"] = request_dto.wandb_project_name
+    if request_dto.wandb_group is not None:
+        diloco_config["wandbGroup"] = request_dto.wandb_group
+    if request_dto.huggingface_token is not None:
+        diloco_config["huggingfaceToken"] = request_dto.huggingface_token
 
-    variables: Dict[str, Any] = {
-        "deploymentName": params.name,
-        "nodes": params.nodes,
-        "diloco": {**params.diloco_config},
-    }
-    if params.ephemeral_storage_gb_per_node is not None:
-        variables["ephemeralStorageGb"] = params.ephemeral_storage_gb_per_node
-
-    template: WorkspaceTemplate = WorkspaceTemplate(
-        name=params.template_id,
-        variables=variables,
-    )
-
-    return WorkspaceCreateRequest(
-        cluster_id=params.cluster_id,
-        name=params.name,
-        description=params.description,
-        resources=resources,
-        template=template,
-        to_be_deleted_at=params.to_be_deleted_at,
+    return DeployDilocoWorkspaceParams(
+        cluster_id=request_dto.cluster_id,
+        name=request_dto.name,
+        resources=requested_resources_params_from_request_dto(request_dto.resources),
+        description="DiLoCo workspace",
+        to_be_deleted_at=request_dto.to_be_deleted_at,
+        nodes=request_dto.nodes,
+        ephemeral_storage_gb_per_node=request_dto.resources.ephemeral_storage_gb,
+        diloco_config=diloco_config,
     )

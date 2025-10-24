@@ -24,5 +24,5 @@ class SshKeyDTO(BaseModel):
 
 
 class AddSshKeyRequestDTO(BaseModel):
-    name: str = Field(..., description="The name of the SSH key")
+    name: StrictStr = Field(..., description="The name of the SSH key")
     key_path: Path = Field(..., description="The path to the SSH key file")

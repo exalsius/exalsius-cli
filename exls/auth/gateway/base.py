@@ -2,45 +2,48 @@ from abc import ABC, abstractmethod
 
 from exls.auth.domain import (
     DeviceCode,
-    FetchDeviceCodeParams,
     LoadedToken,
-    PollForAuthenticationParams,
-    RefreshTokenParams,
-    RevokeTokenParams,
     Token,
     User,
-    ValidateTokenParams,
+)
+from exls.auth.gateway.dtos import (
+    Auth0AuthenticationParams,
+    Auth0FetchDeviceCodeParams,
+    Auth0RefreshTokenParams,
+    Auth0RevokeTokenParams,
+    Auth0ValidateTokenParams,
+    StoreTokenOnKeyringParams,
 )
 
 
 class AuthGateway(ABC):
     @abstractmethod
-    def fetch_device_code(self, params: FetchDeviceCodeParams) -> DeviceCode:
+    def fetch_device_code(self, params: Auth0FetchDeviceCodeParams) -> DeviceCode:
         pass
 
     @abstractmethod
     def poll_for_authentication(
         self,
-        params: PollForAuthenticationParams,
+        params: Auth0AuthenticationParams,
     ) -> Token:
         pass
 
     @abstractmethod
-    def validate_token(self, params: ValidateTokenParams) -> User:
+    def validate_token(self, params: Auth0ValidateTokenParams) -> User:
         pass
 
     @abstractmethod
-    def refresh_access_token(self, params: RefreshTokenParams) -> Token:
+    def refresh_access_token(self, params: Auth0RefreshTokenParams) -> Token:
         pass
 
     @abstractmethod
-    def revoke_token(self, params: RevokeTokenParams) -> None:
+    def revoke_token(self, params: Auth0RevokeTokenParams) -> None:
         pass
 
 
 class TokenStorageGateway(ABC):
     @abstractmethod
-    def store_token(self, token: Token) -> None:
+    def store_token(self, params: StoreTokenOnKeyringParams) -> None:
         pass
 
     @abstractmethod
@@ -48,5 +51,5 @@ class TokenStorageGateway(ABC):
         pass
 
     @abstractmethod
-    def clear_token(self, loaded_token: LoadedToken) -> None:
+    def clear_token(self, client_id: str) -> None:
         pass

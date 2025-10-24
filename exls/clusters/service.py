@@ -1,16 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, List
 
-from exls.clusters.domain import (
-    AddNodesParams,
-    Cluster,
-    ClusterCreateParams,
-    ClusterFilterParams,
-    ClusterNodeRef,
-    ClusterNodeResources,
-    NodeToAddParams,
-    RemoveNodeParams,
-)
+from exls.clusters.domain import Cluster, ClusterNodeRef, ClusterNodeResources
 from exls.clusters.dtos import (
     AddNodesRequestDTO,
     ClusterDTO,
@@ -18,15 +9,28 @@ from exls.clusters.dtos import (
     ClusterNodeResourcesDTO,
     CreateClusterRequestDTO,
     ListClustersRequestDTO,
+    RemoveNodeRequestDTO,
 )
 from exls.clusters.gateway.base import ClustersGateway
+from exls.clusters.gateway.dtos import (
+    AddNodesParams,
+    ClusterCreateParams,
+    ClusterFilterParams,
+    RemoveNodeParams,
+)
+from exls.clusters.mappers import (
+    cluster_add_nodes_params_from_request_dto,
+    cluster_create_params_from_request_dto,
+    cluster_list_filter_params_from_request_dto,
+)
 from exls.config import AppConfig
 from exls.core.base.service import ServiceError
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
 from exls.core.commons.gateways.fileio import YamlFileIOGateway
-from exls.nodes.domain import BaseNode, NodeFilterParams
+from exls.nodes.domain import BaseNode
 from exls.nodes.gateway.base import NodesGateway
+from exls.nodes.gateway.dtos import NodeFilterParams
 
 
 class ClustersService:
@@ -42,27 +46,31 @@ class ClustersService:
 
     @handle_service_errors("listing clusters")
     def list_clusters(self, request: ListClustersRequestDTO) -> List[ClusterDTO]:
-        cluster_filter_params: ClusterFilterParams = ClusterFilterParams(
-            status=request.status
+        cluster_filter_params: ClusterFilterParams = (
+            cluster_list_filter_params_from_request_dto(request_dto=request)
         )
-        clusters: List[Cluster] = self.clusters_gateway.list(cluster_filter_params)
+        clusters: List[Cluster] = self.clusters_gateway.list(
+            cluster_filter_params=cluster_filter_params
+        )
         return [ClusterDTO.from_domain(c) for c in clusters]
 
     @handle_service_errors("getting cluster")
     def get_cluster(self, cluster_id: str) -> ClusterDTO:
-        cluster: Cluster = self.clusters_gateway.get(cluster_id)
+        cluster: Cluster = self.clusters_gateway.get(cluster_id=cluster_id)
         return ClusterDTO.from_domain(cluster)
 
     @handle_service_errors("deleting cluster")
     def delete_cluster(self, cluster_id: str) -> None:
-        self.clusters_gateway.delete(cluster_id)
+        self.clusters_gateway.delete(cluster_id=cluster_id)
 
     @handle_service_errors("creating cluster")
     def create_cluster(self, request: CreateClusterRequestDTO) -> ClusterDTO:
         cluster_create_params: ClusterCreateParams = (
-            ClusterCreateParams.from_request_dto(request_dto=request)
+            cluster_create_params_from_request_dto(request_dto=request)
         )
-        cluster_id: str = self.clusters_gateway.create(cluster_create_params)
+        cluster_id: str = self.clusters_gateway.create(
+            cluster_create_params=cluster_create_params
+        )
         cluster: Cluster = self.clusters_gateway.get(cluster_id)
         return ClusterDTO.from_domain(domain_obj=cluster)
 
@@ -92,8 +100,7 @@ class ClustersService:
                 )
             cluster_nodes_dtos.append(
                 ClusterNodeDTO.from_domain(
-                    cluster_id=cluster.id,
-                    cluster_name=cluster.name,
+                    cluster=cluster,
                     cluster_node_ref=node_ref,
                     node=nodes_by_id[node_ref.node_id],
                 )
@@ -103,14 +110,11 @@ class ClustersService:
 
     @handle_service_errors("adding cluster nodes")
     def add_cluster_nodes(self, request: AddNodesRequestDTO) -> List[ClusterNodeDTO]:
-        nodes_to_add: List[NodeToAddParams] = [
-            NodeToAddParams(node_id=node_id, node_role=request.node_role)
-            for node_id in request.node_ids
-        ]
-        add_nodes_params: AddNodesParams = AddNodesParams(
-            cluster_id=request.cluster_id, nodes_to_add=nodes_to_add
-        )
         cluster: Cluster = self.clusters_gateway.get(cluster_id=request.cluster_id)
+
+        add_nodes_params: AddNodesParams = cluster_add_nodes_params_from_request_dto(
+            request_dto=request
+        )
         cluster_nodes: List[ClusterNodeRef] = (
             self.clusters_gateway.add_nodes_to_cluster(
                 add_nodes_params=add_nodes_params
@@ -130,8 +134,7 @@ class ClustersService:
                 )
             cluster_nodes_dtos.append(
                 ClusterNodeDTO.from_domain(
-                    cluster_id=request.cluster_id,
-                    cluster_name=cluster.name,
+                    cluster=cluster,
                     cluster_node_ref=node_ref,
                     node=nodes_by_id[node_ref.node_id],
                 )
@@ -140,8 +143,14 @@ class ClustersService:
         return cluster_nodes_dtos
 
     @handle_service_errors("removing cluster node")
-    def remove_cluster_node(self, remove_node_params: RemoveNodeParams) -> str:
-        return self.clusters_gateway.remove_node_from_cluster(remove_node_params)
+    def remove_cluster_node(self, request: RemoveNodeRequestDTO) -> str:
+        node_id: str = self.clusters_gateway.remove_node_from_cluster(
+            remove_node_params=RemoveNodeParams(
+                cluster_id=request.cluster_id,
+                node_id=request.node_id,
+            )
+        )
+        return node_id
 
     @handle_service_errors("getting cluster resources")
     def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeResourcesDTO]:
@@ -167,8 +176,9 @@ class ClustersService:
                 raise ServiceError(
                     message=f"cluster node resources for node {node_id} not found",
                 )
+            print(resources_by_node_id[node_id])
             cluster_node_resources_dtos.append(
-                ClusterNodeResourcesDTO.from_base_dto(
+                ClusterNodeResourcesDTO.from_base_dto_and_resources(
                     base_dto=cluster_node_dtos_by_id[node_id],
                     cluster_node_resources=resources_by_node_id[node_id],
                 )
@@ -193,10 +203,13 @@ class ClustersService:
 def get_clusters_service(config: AppConfig, access_token: str) -> ClustersService:
     gateway_factory: GatewayFactory = GatewayFactory(
         config=config,
+    )
+    clusters_gateway: ClustersGateway = gateway_factory.create_clusters_gateway(
         access_token=access_token,
     )
-    clusters_gateway: ClustersGateway = gateway_factory.create_clusters_gateway()
-    nodes_gateway: NodesGateway = gateway_factory.create_nodes_gateway()
+    nodes_gateway: NodesGateway = gateway_factory.create_nodes_gateway(
+        access_token=access_token,
+    )
     yaml_fileio_gateway: YamlFileIOGateway = (
         gateway_factory.create_yaml_fileio_gateway()
     )

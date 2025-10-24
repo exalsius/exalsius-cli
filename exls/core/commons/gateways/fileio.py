@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Generic, TypeVar
 
-from exls.core.commons.commands.fileio import (
+from exls.core.commons.gateways.commands.fileio import (
     ReadBinaryFileCommand,
     ReadStringFileCommand,
     ReadYamlFileCommand,

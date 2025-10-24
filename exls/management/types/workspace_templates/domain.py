@@ -8,10 +8,6 @@ from exalsius_api_client.models.workspace_template import (
 from pydantic import BaseModel, Field
 
 
-class WorkspaceTemplateFilterParams(BaseModel):
-    pass
-
-
 class WorkspaceTemplate(BaseModel):
     sdk_model: SdkWorkspaceTemplate = Field(
         ..., description="The SDK model of the workspace template"

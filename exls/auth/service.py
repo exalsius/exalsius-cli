@@ -1,24 +1,31 @@
 import logging
-from typing import Callable
 
 from exls.auth.domain import (
     DeviceCode,
-    FetchDeviceCodeParams,
     LoadedToken,
-    PollForAuthenticationParams,
-    RefreshTokenParams,
-    RevokeTokenParams,
     Token,
     User,
-    ValidateTokenParams,
 )
 from exls.auth.dtos import (
-    AcquiredAccessTokenDTO,
     DeviceCodeAuthenticationDTO,
-    RefreshTokenRequestDTO,
     UserInfoDTO,
 )
 from exls.auth.gateway.base import AuthGateway, TokenStorageGateway
+from exls.auth.gateway.dtos import (
+    Auth0AuthenticationParams,
+    Auth0FetchDeviceCodeParams,
+    Auth0RefreshTokenParams,
+    Auth0ValidateTokenParams,
+)
+from exls.auth.gateway.errors import Auth0CommandError, KeyringCommandError
+from exls.auth.gateway.mappers import (
+    auth0_authentication_params_from_device_code_and_config,
+    auth0_fetch_device_code_params_from_config,
+    auth0_refresh_token_params_from_token_and_config,
+    auth0_revoke_token_params_from_token_and_config,
+    auth0_validate_token_params_from_access_token_and_config,
+    store_token_params_from_token_and_config,
+)
 from exls.config import AppConfig, Auth0Config
 from exls.core.base.service import ServiceError, ServiceWarning
 from exls.core.commons.decorators import handle_service_errors
@@ -45,7 +52,9 @@ class Auth0Service:
         self.auth0_config: Auth0Config = config.auth0
 
     def _fetch_device_code(self) -> DeviceCode:
-        params = FetchDeviceCodeParams.from_config(self.auth0_config)
+        params: Auth0FetchDeviceCodeParams = auth0_fetch_device_code_params_from_config(
+            config=self.auth0_config
+        )
 
         device_code: DeviceCode = self.auth_gateway.fetch_device_code(
             params=params,
@@ -53,8 +62,8 @@ class Auth0Service:
         return device_code
 
     def _poll_for_authentication(self, device_code: DeviceCode) -> Token:
-        params: PollForAuthenticationParams = (
-            PollForAuthenticationParams.from_device_code_and_config(
+        params: Auth0AuthenticationParams = (
+            auth0_authentication_params_from_device_code_and_config(
                 device_code=device_code,
                 config=self.auth0_config,
             )
@@ -65,38 +74,43 @@ class Auth0Service:
         )
         return token
 
-    def _validate_token(self, token: Token) -> User:
-        params: ValidateTokenParams = ValidateTokenParams.from_token_and_config(
-            token=token,
-            config=self.auth0_config,
+    def _validate_token(self, id_token: str) -> User:
+        params: Auth0ValidateTokenParams = (
+            auth0_validate_token_params_from_access_token_and_config(
+                id_token=id_token,
+                config=self.auth0_config,
+            )
         )
         user: User = self.auth_gateway.validate_token(params=params)
         return user
 
     @handle_service_errors("logging in")
-    def login(
-        self,
-        display_device_code_handler: Callable[[DeviceCodeAuthenticationDTO], None],
+    def initiate_device_code_login(self) -> DeviceCodeAuthenticationDTO:
+        device_code: DeviceCode = self._fetch_device_code()
+        return DeviceCodeAuthenticationDTO.from_domain(device_code)
+
+    @handle_service_errors("polling for authentication")
+    def poll_for_authentication(
+        self, device_code_dto: DeviceCodeAuthenticationDTO
     ) -> UserInfoDTO:
         try:
-            # 1. Fetch the device code.
-            device_code: DeviceCode = self._fetch_device_code()
-
-            # 2. Display the device code to the user.
-            display_device_code_handler(
-                DeviceCodeAuthenticationDTO.from_domain(device_code)
+            device_code = DeviceCode(
+                verification_uri=device_code_dto.verification_uri,
+                verification_uri_complete=device_code_dto.verification_uri_complete,
+                user_code=device_code_dto.user_code,
+                device_code=device_code_dto.device_code,
+                expires_in=device_code_dto.expires_in,
+                interval=self.auth0_config.device_code_poll_interval_seconds,
             )
-
-            # 3. Poll for the authentication response.
             token: Token = self._poll_for_authentication(device_code)
-
-            # 4. Validate the token.
-            user: User = self._validate_token(token)
-
-            # 5. Store the token on the keyring.
-            self.token_storage_gateway.store_token(token=token)
-
-            return UserInfoDTO.from_domain(user=user, token=token)
+            user: User = self._validate_token(token.id_token)
+            self.token_storage_gateway.store_token(
+                params=store_token_params_from_token_and_config(
+                    token=token,
+                    config=self.auth0_config,
+                )
+            )
+            return UserInfoDTO.from_token_domain(user=user, token=token)
         except KeyboardInterrupt:
             raise ServiceWarning("User cancelled authentication polling.")
 
@@ -106,60 +120,71 @@ class Auth0Service:
         )
         return loaded_token
 
-    def _refresh_access_token(self, params: RefreshTokenParams) -> UserInfoDTO:
-        token: Token = self.auth_gateway.refresh_access_token(params=params)
+    def _refresh_access_token(self, loaded_token: LoadedToken) -> UserInfoDTO:
+        params: Auth0RefreshTokenParams = (
+            auth0_refresh_token_params_from_token_and_config(
+                loaded_token=loaded_token,
+                config=self.auth0_config,
+            )
+        )
 
-        user: User = self._validate_token(token)
+        refreshed_token: Token = self.auth_gateway.refresh_access_token(params=params)
 
-        self.token_storage_gateway.store_token(token=token)
+        user: User = self._validate_token(refreshed_token.id_token)
 
-        return UserInfoDTO.from_domain(token=token, user=user)
+        self.token_storage_gateway.store_token(
+            params=store_token_params_from_token_and_config(
+                token=refreshed_token,
+                config=self.auth0_config,
+            )
+        )
+
+        return UserInfoDTO.from_token_domain(token=refreshed_token, user=user)
 
     @handle_service_errors("acquiring access token")
-    def acquire_access_token(self) -> AcquiredAccessTokenDTO:
-        loaded_token: LoadedToken = self._load_token_from_keyring()
+    def acquire_access_token(self) -> UserInfoDTO:
+        try:
+            loaded_token: LoadedToken = self._load_token_from_keyring()
+        except KeyringCommandError as e:
+            raise NotLoggedInWarning(f"You are not logged in: {e.message}") from e
 
         if loaded_token.is_expired:
             if not loaded_token.refresh_token:
                 raise ServiceError("Session is expired. Please log in again.")
 
             try:
-                params: RefreshTokenParams = (
-                    RefreshTokenParams.from_refresh_token_request_and_config(
-                        refresh_token_request=RefreshTokenRequestDTO(
-                            refresh_token=loaded_token.refresh_token,
-                        ),
-                        config=self.auth0_config,
-                    )
-                )
-                _ = self._refresh_access_token(params=params)
-                return AcquiredAccessTokenDTO.from_loaded_token(
+                user_info: UserInfoDTO = self._refresh_access_token(
                     loaded_token=loaded_token
                 )
-            except ServiceError as e:
+                return user_info
+            except Auth0CommandError as e:
                 raise ServiceError(
-                    f"failed to refresh access token: {e.message}. Please log in again."
+                    f"failed to refresh access token. Please log in again. Error: {e.message}"
                 ) from e
         else:
-            return AcquiredAccessTokenDTO.from_loaded_token(loaded_token=loaded_token)
+            user: User = self._validate_token(loaded_token.id_token)
+            return UserInfoDTO.from_loaded_token_domain(
+                user=user, loaded_token=loaded_token
+            )
 
+    @handle_service_errors("logging out")
     def logout(self) -> None:
         try:
             loaded_token: LoadedToken = self._load_token_from_keyring()
-        except ServiceError as e:
+        except KeyringCommandError as e:
             raise NotLoggedInWarning(f"You are not logged in: {e.message}") from e
 
         try:
             self.auth_gateway.revoke_token(
-                params=RevokeTokenParams.from_token_and_config(
-                    token=loaded_token.access_token,
+                params=auth0_revoke_token_params_from_token_and_config(
+                    loaded_token=loaded_token,
                     config=self.auth0_config,
                 )
             )
-        except ServiceError as e:
-            raise ServiceWarning(f"failed to revoke token: {e.message}") from e
+        except Exception as e:
+            raise ServiceError(f"failed to revoke token: {e}") from e
         finally:
-            self.token_storage_gateway.clear_token(loaded_token=loaded_token)
+            self.token_storage_gateway.clear_token(client_id=loaded_token.client_id)
 
 
 def get_auth_service(config: AppConfig) -> Auth0Service:

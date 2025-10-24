@@ -6,6 +6,11 @@ import typer
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
+from exls.core.commons.service import (
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.management.types.ssh_keys.display import (
     TableSshKeysDisplayManager,
 )
@@ -18,14 +23,13 @@ from exls.management.types.ssh_keys.service import (
     SshKeysService,
     get_ssh_keys_service,
 )
-from exls.utils import commons as utils
 
 ssh_keys_app = typer.Typer()
 
 
 def _get_ssh_keys_service(ctx: typer.Context) -> SshKeysService:
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
     return get_ssh_keys_service(config, access_token)
 
 
@@ -36,7 +40,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage SSH keys management.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @ssh_keys_app.command("list", help="List all available SSH keys")

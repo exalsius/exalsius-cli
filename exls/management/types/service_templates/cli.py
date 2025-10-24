@@ -5,6 +5,11 @@ import typer
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
+from exls.core.commons.service import (
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.management.types.service_templates.display import (
     TableServiceTemplatesDisplayManager,
 )
@@ -16,7 +21,6 @@ from exls.management.types.service_templates.service import (
     ServiceTemplatesService,
     get_service_templates_service,
 )
-from exls.utils import commons as utils
 
 service_templates_app = typer.Typer()
 
@@ -28,7 +32,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage service templates.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @service_templates_app.command("list", help="List all available service templates")
@@ -38,8 +42,8 @@ def list_service_templates(
     """List all available service templates."""
     display_manager = TableServiceTemplatesDisplayManager()
 
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
 
     service: ServiceTemplatesService = get_service_templates_service(
         config, access_token

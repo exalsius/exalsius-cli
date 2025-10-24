@@ -21,8 +21,6 @@ from exls.core.commons.render.table import (
     get_column,
 )
 
-# TODO: We probably need a available / occupied resources DTO
-
 
 class JsonClusterDisplayManager(BaseJsonDisplayManager):
     def __init__(
@@ -74,10 +72,10 @@ DEFAULT_COLUMNS_RENDERING_MAP = {
 }
 
 DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP = {
+    "cluster_name": get_column("Cluster Name"),
     "node_hostname": get_column("Hostname"),
     "node_role": get_column("Role"),
     "node_status": get_column("Status"),
-    "node_ip_address": get_column("IP Address"),
 }
 
 DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP = {

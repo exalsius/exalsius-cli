@@ -1,6 +1,7 @@
 from typing import List
 
 from exalsius_api_client.api.offers_api import OffersApi
+from exalsius_api_client.models.offers_list_response import OffersListResponse
 
 from exls.offers.domain import Offer, OfferFilterParams
 from exls.offers.gateway.base import OffersGateway
@@ -13,5 +14,5 @@ class OffersGatewaySdk(OffersGateway):
 
     def list(self, offer_filter_params: OfferFilterParams) -> List[Offer]:
         command = ListOffersSdkCommand(self._offers_api, offer_filter_params)
-        response: List[Offer] = command.execute()
-        return response
+        response: OffersListResponse = command.execute()
+        return [Offer(sdk_model=sdk_offer) for sdk_offer in response.offers]

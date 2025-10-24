@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from exls.core.base.models import ErrorDTO
+from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.render import BaseSingleItemRenderer
 
 
@@ -70,7 +70,7 @@ class RichTextRenderer(_BaseRichTextRenderer, BaseSingleItemRenderer[str, str]):
 
 
 class RichTextErrorMessageRenderer(
-    _BaseRichTextRenderer, BaseSingleItemRenderer[ErrorDTO, str]
+    _BaseRichTextRenderer, BaseSingleItemRenderer[ErrorDisplayModel, str]
 ):
     """Render an error message as a rich text string."""
 
@@ -80,13 +80,9 @@ class RichTextErrorMessageRenderer(
     ):
         self.render_config = render_config or TextRenderConfig(color="red")
 
-    def render(self, data: ErrorDTO) -> str:
+    def render(self, data: ErrorDisplayModel) -> str:
         message = data.message
         parts: List[str] = []
-        if data.error_type is not None:
-            parts.append(f"[{data.error_type}]")
-        if data.error_code is not None:
-            parts.append(f"error code: {data.error_code}")
         parts.append(message)
         return self._get_styled_text(" - ".join(parts))
 

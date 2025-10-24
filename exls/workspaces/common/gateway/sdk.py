@@ -1,11 +1,15 @@
 from typing import List
 
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
+from exalsius_api_client.models.workspace import Workspace as SdkWorkspace
+from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
+from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
+from exalsius_api_client.models.workspace_delete_response import WorkspaceDeleteResponse
+from exalsius_api_client.models.workspace_response import WorkspaceResponse
+from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
 from exls.workspaces.common.domain import (
-    DeployWorkspaceParams,
     Workspace,
-    WorkspaceFilterParams,
 )
 from exls.workspaces.common.gateway.base import WorkspacesGateway
 from exls.workspaces.common.gateway.commands import (
@@ -14,32 +18,45 @@ from exls.workspaces.common.gateway.commands import (
     GetWorkspaceSdkCommand,
     ListWorkspacesSdkCommand,
 )
+from exls.workspaces.common.gateway.dtos import DeployWorkspaceParams
+from exls.workspaces.common.gateway.mappers import to_create_request
 
 
 class WorkspacesGatewaySdk(WorkspacesGateway):
     def __init__(self, workspaces_api: WorkspacesApi):
         self._workspaces_api = workspaces_api
 
-    def list(self, workspace_filter_params: WorkspaceFilterParams) -> List[Workspace]:
+    def _create_from_sdk_model(self, sdk_model: SdkWorkspace) -> Workspace:
+        return Workspace(sdk_model=sdk_model)
+
+    def list(self, cluster_id: str) -> List[Workspace]:
         command: ListWorkspacesSdkCommand = ListWorkspacesSdkCommand(
-            self._workspaces_api, params=workspace_filter_params
+            self._workspaces_api, params=cluster_id
         )
-        return command.execute()
+        response: WorkspacesListResponse = command.execute()
+        return [
+            self._create_from_sdk_model(sdk_model=workspace)
+            for workspace in response.workspaces
+        ]
 
     def get(self, workspace_id: str) -> Workspace:
         command: GetWorkspaceSdkCommand = GetWorkspaceSdkCommand(
             self._workspaces_api, params=workspace_id
         )
-        return command.execute()
+        response: WorkspaceResponse = command.execute()
+        return self._create_from_sdk_model(sdk_model=response.workspace)
 
     def deploy(self, deploy_params: DeployWorkspaceParams) -> str:
+        request: WorkspaceCreateRequest = to_create_request(params=deploy_params)
         command: DeployWorkspaceSdkCommand = DeployWorkspaceSdkCommand(
-            self._workspaces_api, params=deploy_params
+            self._workspaces_api, params=request
         )
-        return command.execute()
+        response: WorkspaceCreateResponse = command.execute()
+        return response.workspace_id
 
     def delete(self, workspace_id: str) -> str:
         command: DeleteWorkspaceSdkCommand = DeleteWorkspaceSdkCommand(
             self._workspaces_api, params=workspace_id
         )
-        return command.execute()
+        response: WorkspaceDeleteResponse = command.execute()
+        return response.workspace_id

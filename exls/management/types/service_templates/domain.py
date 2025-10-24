@@ -8,10 +8,6 @@ from exalsius_api_client.models.service_template import (
 from pydantic import BaseModel, Field
 
 
-class ServiceTemplateFilterParams(BaseModel):
-    pass
-
-
 class ServiceTemplate(BaseModel):
     sdk_model: SdkServiceTemplate = Field(
         ..., description="The SDK model of the service template"

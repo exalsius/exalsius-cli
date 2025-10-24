@@ -3,10 +3,7 @@ from typing import List
 from exls.config import AppConfig
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
-from exls.management.types.credentials.domain import (
-    Credentials,
-    CredentialsFilterParams,
-)
+from exls.management.types.credentials.domain import Credentials
 from exls.management.types.credentials.dtos import (
     CredentialsDTO,
     ListCredentialsRequestDTO,
@@ -25,19 +22,16 @@ class CredentialsService:
     def list_credentials(
         self, request: ListCredentialsRequestDTO
     ) -> List[CredentialsDTO]:
-        credentials: List[Credentials] = self.credentials_gateway.list(
-            CredentialsFilterParams()
-        )
+        credentials: List[Credentials] = self.credentials_gateway.list()
         return [CredentialsDTO.from_domain(c) for c in credentials]
 
 
 def get_credentials_service(config: AppConfig, access_token: str) -> CredentialsService:
     gateway_factory: GatewayFactory = GatewayFactory(
         config=config,
-        access_token=access_token,
     )
     credentials_gateway: CredentialsGateway = (
-        gateway_factory.create_credentials_gateway()
+        gateway_factory.create_credentials_gateway(access_token=access_token)
     )
     return CredentialsService(
         credentials_gateway=credentials_gateway,

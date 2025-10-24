@@ -1,55 +1,11 @@
 from datetime import datetime
-from enum import StrEnum
 from typing import Optional
 
 from exalsius_api_client.models.cloud_node import CloudNode as SdkCloudNode
 from exalsius_api_client.models.self_managed_node import (
     SelfManagedNode as SdkSelfManagedNode,
 )
-from pydantic import BaseModel, Field, StrictInt, StrictStr
-
-
-class NodeType(StrEnum):
-    """The type of the node."""
-
-    CLOUD = "CLOUD"
-    SELF_MANAGED = "SELF_MANAGED"
-
-
-class CloudProvider(StrEnum):
-    """The provider of the node."""
-
-    AWS = "AWS"
-    GCP = "GCP"
-    AZURE = "AZURE"
-
-
-class NodeFilterParams(BaseModel):
-    """Domain object representing query parameters for nodes."""
-
-    node_type: Optional[NodeType] = Field(
-        default=None, description="The type of the node"
-    )
-    provider: Optional[CloudProvider] = Field(
-        default=None, description="The provider of the node"
-    )
-
-
-class ImportSshParams(BaseModel):
-    """Domain object representing parameters for importing a self-managed node."""
-
-    hostname: StrictStr = Field(..., description="The hostname of the node")
-    endpoint: StrictStr = Field(..., description="The endpoint of the node")
-    username: StrictStr = Field(..., description="The username of the node")
-    ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key to use")
-
-
-class ImportFromOfferParams(BaseModel):
-    """Domain object representing parameters for importing a node from an offer."""
-
-    hostname: StrictStr = Field(..., description="The hostname of the node")
-    offer_id: StrictStr = Field(..., description="The ID of the offer to use")
-    amount: StrictInt = Field(..., description="The amount of nodes to import")
+from pydantic import BaseModel, Field, StrictStr
 
 
 class BaseNode(BaseModel):

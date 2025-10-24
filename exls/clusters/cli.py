@@ -4,33 +4,35 @@ from typing import List, Optional
 import typer
 
 from exls.clusters.display import TableClusterDisplayManager
-from exls.clusters.domain import (
-    ClusterNodeRole,
-    ClusterStatus,
-    ClusterType,
-    RemoveNodeParams,
-)
 from exls.clusters.dtos import (
     AddNodesRequestDTO,
+    AllowedClusterNodeRoleDTO,
+    AllowedClusterStatusDTO,
+    AllowedClusterTypesDTO,
+    AllowedGpuTypesDTO,
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
     CreateClusterRequestDTO,
-    GpuTypeDTO,
     ListClustersRequestDTO,
+    RemoveNodeRequestDTO,
 )
 from exls.clusters.service import ClustersService, get_clusters_service
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
-from exls.utils import commons as utils
+from exls.core.commons.service import (
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 
 clusters_app = typer.Typer()
 
 
 def _get_clusters_service(ctx: typer.Context) -> ClustersService:
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
     return get_clusters_service(config, access_token)
 
 
@@ -41,13 +43,13 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage clusters.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @clusters_app.command("list", help="List all clusters")
 def list_clusters(
     ctx: typer.Context,
-    status: Optional[ClusterStatus] = typer.Option(
+    status: Optional[AllowedClusterStatusDTO] = typer.Option(
         None,
         "--status",
         help="Filter clusters by status",
@@ -57,8 +59,8 @@ def list_clusters(
     List all clusters.
     """
     display_manager = TableClusterDisplayManager()
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
     service: ClustersService = get_clusters_service(config, access_token)
 
     try:
@@ -95,7 +97,7 @@ def get_cluster(
 @clusters_app.command("delete", help="Delete a cluster")
 def delete_cluster(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(help="The ID of the cluster to delete"),
+    cluster_id: str = typer.Argument(..., help="The ID of the cluster to delete"),
 ):
     """
     Delete a cluster.
@@ -128,14 +130,14 @@ def delete_cluster(
 @clusters_app.command("create", help="Create a cluster")
 def create_cluster(
     ctx: typer.Context,
-    name: str = typer.Argument(help="The name of the cluster"),
-    cluster_type: ClusterType = typer.Option(
-        ClusterType.REMOTE,
+    name: str = typer.Argument(..., help="The name of the cluster"),
+    cluster_type: AllowedClusterTypesDTO = typer.Option(
+        AllowedClusterTypesDTO.REMOTE,
         "--cluster-type",
         help="The type of the cluster",
     ),
-    gpu_type: GpuTypeDTO = typer.Option(
-        GpuTypeDTO.NVIDIA.value,
+    gpu_type: AllowedGpuTypesDTO = typer.Option(
+        AllowedGpuTypesDTO.NVIDIA.value,
         "--gpu-type",
         help="The type of the GPU to add to the cluster",
         show_choices=True,
@@ -178,7 +180,7 @@ def create_cluster(
 @clusters_app.command("deploy", help="Deploy a cluster")
 def deploy_cluster(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(help="The ID of the cluster to deploy"),
+    cluster_id: str = typer.Argument(..., help="The ID of the cluster to deploy"),
 ):
     """
     Deploy a cluster.
@@ -217,7 +219,9 @@ def deploy_cluster(
 @clusters_app.command("list-nodes", help="List all nodes of a cluster")
 def list_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(help="The ID of the cluster to list nodes of"),
+    cluster_id: str = typer.Argument(
+        ..., help="The ID of the cluster to list nodes of"
+    ),
 ):
     """
     List all nodes of a cluster.
@@ -243,12 +247,14 @@ def _node_role_callback(value: str) -> str:
 @clusters_app.command("add-nodes", help="Add nodes to a cluster")
 def add_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(help="The ID of the cluster to add a node to"),
+    cluster_id: str = typer.Argument(
+        ..., help="The ID of the cluster to add a node to"
+    ),
     node_ids: List[str] = typer.Argument(
         help="The IDs of the nodes to add to the cluster"
     ),
-    node_role: ClusterNodeRole = typer.Option(
-        ClusterNodeRole.WORKER,
+    node_role: AllowedClusterNodeRoleDTO = typer.Option(
+        AllowedClusterNodeRoleDTO.WORKER,
         "--node-role",
         help="The role of the nodes to add to the cluster. Can be `WORKER` or `CONTROL_PLANE`, defaults to `WORKER`",
         case_sensitive=True,
@@ -284,9 +290,11 @@ def add_nodes(
 def remove_node(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
-        help="The ID of the cluster to remove a node from"
+        ..., help="The ID of the cluster to remove a node from"
     ),
-    node_id: str = typer.Argument(help="The ID of the node to remove from the cluster"),
+    node_id: str = typer.Argument(
+        ..., help="The ID of the node to remove from the cluster"
+    ),
 ):
     """
     Remove a node from a cluster.
@@ -295,15 +303,15 @@ def remove_node(
     service: ClustersService = _get_clusters_service(ctx)
 
     try:
-        service.remove_cluster_node(
-            RemoveNodeParams(cluster_id=cluster_id, node_id=node_id)
+        removed_node_id: str = service.remove_cluster_node(
+            RemoveNodeRequestDTO(cluster_id=cluster_id, node_id=node_id)
         )
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     display_manager.display_success(
-        f"Node {node_id} removed from cluster {cluster_id} successfully."
+        f"Node {removed_node_id} removed from cluster {cluster_id} successfully."
     )
 
 
@@ -338,7 +346,7 @@ def get_cluster_resources(
 def import_kubeconfig(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
-        help="The ID of the cluster to import the kubeconfig to"
+        ..., help="The ID of the cluster to import the kubeconfig to"
     ),
     kubeconfig_path: str = typer.Option(
         Path.home().joinpath(".kube", "config").as_posix(),

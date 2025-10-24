@@ -2,15 +2,14 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from exls.management.types.ssh_keys.domain import (
-    AddSshKeyParams,
     SshKey,
-    SshKeyFilterParams,
 )
+from exls.management.types.ssh_keys.gateway.dtos import AddSshKeyParams
 
 
 class SshKeysGateway(ABC):
     @abstractmethod
-    def list(self, params: SshKeyFilterParams) -> List[SshKey]:
+    def list(self) -> List[SshKey]:
         raise NotImplementedError
 
     @abstractmethod
@@ -18,5 +17,5 @@ class SshKeysGateway(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create(self, ssh_key_create_params: AddSshKeyParams) -> str:
+    def create(self, add_ssh_key_params: AddSshKeyParams) -> str:
         raise NotImplementedError

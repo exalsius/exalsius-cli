@@ -3,24 +3,22 @@ from typing import Optional
 
 import typer
 
-from exls import (
-    __version__,
-    clusters,
-)
 from exls import config as cli_config
-from exls import (
-    management,
-    nodes,
-    offers,
-    services,
-    workspaces,
-)
 from exls.auth.cli import login, logout
-from exls.auth.service import Auth0Service
+from exls.auth.dtos import AcquiredAccessTokenDTO
+from exls.auth.service import Auth0Service, NotLoggedInWarning, get_auth_service
+from exls.clusters.cli import clusters_app
+from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
+from exls.core.commons.display import BaseTextDisplayManager
+from exls.core.commons.service import help_if_no_subcommand
 from exls.logging import setup_logging
+from exls.management.cli import management_app
+from exls.nodes.cli import nodes_app
+from exls.offers.cli import offers_app
+from exls.services.cli import services_app
 from exls.state import AppState
-from exls.utils import commons as utils
+from exls.workspaces.cli import workspaces_app
 
 NON_AUTH_COMMANDS = ["login", "logout"]
 
@@ -34,37 +32,37 @@ app.command()(logout)
 
 
 app.add_typer(
-    offers.cli.offers_app,
+    offers_app,
     name="offers",
     help="List and manage GPU offers from cloud providers",
 )
 
 app.add_typer(
-    nodes.cli.nodes_app,
+    nodes_app,
     name="nodes",
     help="Manage the node pool",
 )
 
 app.add_typer(
-    clusters.cli.clusters_app,
+    clusters_app,
     name="clusters",
     help="Manage clusters",
 )
 
 app.add_typer(
-    workspaces.cli.workspaces_app,
+    workspaces_app,
     name="workspaces",
     help="Manage workspaces of a cluster",
 )
 
 app.add_typer(
-    services.cli.services_app,
+    services_app,
     name="services",
     help="Manage services of a cluster",
 )
 
 app.add_typer(
-    management.cli.management_app,
+    management_app,
     name="management",
     help="Manage management resources",
 )
@@ -72,7 +70,8 @@ app.add_typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"{__version__}")
+        # TODO: Replace with actual version
+        typer.echo("0.2.0")
         raise typer.Exit()
 
 
@@ -107,28 +106,34 @@ def __root(  # pyright: ignore[reportUnusedFunction]
     config: cli_config.AppConfig = cli_config.load_config()
     logging.debug(f"Loaded config: {config}")
 
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
-    access_token: Optional[str] = None
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
-        auth_service = Auth0Service(config)
+        auth_service: Auth0Service = get_auth_service(config)
+        display_manager: BaseTextDisplayManager = BaseTextDisplayManager()
         try:
-            access_token = auth_service.acquire_access_token()
-        except ServiceError as e:
-            typer.echo(f"Authentication failed: {e.message}")
-            typer.echo("Please log in again. Login command:")
-            typer.echo("")
-            typer.echo("exls login")
-            typer.echo("")
-        if not access_token:
-            typer.echo("You are not logged in. Please log in. Login command:")
-            typer.echo("")
-            typer.echo("exls login")
-            typer.echo("")
+            acquired_access_token: AcquiredAccessTokenDTO = (
+                auth_service.acquire_access_token()
+            )
+        except NotLoggedInWarning:
+            display_manager.display_error(
+                ErrorDisplayModel(message="You are not logged in. Please log in.")
+            )
+            raise typer.Exit(1)
+        except ServiceError:
+            display_manager.display_error(
+                ErrorDisplayModel(
+                    message="Failed to acquire access token. Please log in again."
+                )
+            )
             raise typer.Exit(1)
 
-    # Each command is responsible for checking the session for none
-    ctx.obj = AppState(config=config, access_token=access_token)
+        # Each command is responsible for checking the session for none and acquiring a new access token if needed
+        ctx.obj = AppState(
+            config=config, access_token=acquired_access_token.access_token
+        )
+    else:
+        ctx.obj = AppState(config=config, access_token=None)
     logging.debug(f"Using config: {ctx.obj.config}")
 
 

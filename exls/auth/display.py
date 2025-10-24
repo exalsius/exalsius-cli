@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 import qrcode
 
-from exls.auth.dtos import UserInfoDTO
+from exls.auth.dtos import DeviceCodeAuthenticationDTO, UserInfoDTO
 from exls.core.commons.display import (
     BaseDisplayManager,
     BaseJsonDisplayManager,
@@ -20,8 +20,13 @@ from exls.core.commons.render.table import Column, TableSingleItemRenderer, get_
 logger = logging.getLogger(__name__)
 
 
+def _is_interactive() -> bool:
+    """Check if running in interactive environment (e.g., not CI/CD)."""
+    return sys.stdout.isatty()
+
+
 # This is needed to prevent output messages to stdout and stderr when the browser is opened.
-def register_silent_browser() -> bool:
+def _register_silent_browser() -> bool:
     try:
         if sys.platform == "darwin":  # macOS
             webbrowser.register("silent", None, _SilentBrowser("open"), preferred=True)
@@ -54,25 +59,26 @@ class _SilentBrowser(webbrowser.BackgroundBrowser):
             logger.debug(f"Could not open browser: {e}")
             return False
 
-    def __open_browser(
-        self,
-        browser: webbrowser.BaseBrowser,
-        url: str,
-    ) -> bool:
-        try:
-            is_browser_opened = browser.open(url)
-            if not is_browser_opened:
-                return False
-        except Exception as e:
-            logging.debug(f"Could not open browser: {e}")
+
+def _open_browser(
+    browser: webbrowser.BaseBrowser,
+    url: str,
+) -> bool:
+    try:
+        is_browser_opened = browser.open(url)
+        if not is_browser_opened:
             return False
-        return True
+    except Exception as e:
+        logging.debug(f"Could not open browser: {e}")
+        return False
+    return True
 
-    def open_browser_for_device_code_authentication(self, uri: str) -> bool:
-        if register_silent_browser():
-            return self.__open_browser(webbrowser.get("silent"), uri)
 
-        return self.__open_browser(webbrowser.get(), uri)
+def _open_browser_for_device_code_authentication(uri: str) -> bool:
+    if _register_silent_browser():
+        return _open_browser(webbrowser.get("silent"), uri)
+
+    return _open_browser(webbrowser.get(), uri)
 
 
 class BaseConsoleAuthDisplayManager(ABC, BaseDisplayManager):
@@ -88,7 +94,7 @@ class BaseConsoleAuthDisplayManager(ABC, BaseDisplayManager):
         qr.make(fit=True)
         return qr
 
-    def display_device_code_polling_started(
+    def _display_device_code_polling_started(
         self, verification_uri_complete: str, user_code: str
     ):
         qr: qrcode.QRCode[Any] = self._generate_qr_code(verification_uri_complete)
@@ -109,7 +115,7 @@ class BaseConsoleAuthDisplayManager(ABC, BaseDisplayManager):
         self.display_info("Waiting for verification...")
         self.display_info("Press Ctrl+C to cancel")
 
-    def display_device_code_polling_started_via_browser(
+    def _display_device_code_polling_started_via_browser(
         self, verification_uri_complete: str, user_code: str
     ):
         self.display_info("Your browser should have been opened.")
@@ -126,8 +132,33 @@ class BaseConsoleAuthDisplayManager(ABC, BaseDisplayManager):
         self.display_info("Waiting for verification...")
         self.display_info("Press Ctrl+C to cancel")
 
-    def display_device_code_polling_cancelled(self):
-        self.display_info("Login canceled via Ctrl+C")
+    def display_auth_poling(self, dto: DeviceCodeAuthenticationDTO):
+        # Display the device code to the user and wait for them to authenticate.
+        # The CLI will poll for the authentication response.
+        logger.debug("Device code received. Waiting for user authentication.")
+        if _is_interactive():
+            # In an interactive session, attempt to open the verification URL in the user's browser.
+            if _open_browser_for_device_code_authentication(
+                uri=dto.verification_uri_complete
+            ):
+                logger.debug("Opened browser for authentication.")
+                self._display_device_code_polling_started_via_browser(
+                    verification_uri_complete=dto.verification_uri_complete,
+                    user_code=dto.user_code,
+                )
+            else:
+                logger.debug("Could not open browser. Displaying URL.")
+                self._display_device_code_polling_started(
+                    verification_uri_complete=dto.verification_uri_complete,
+                    user_code=dto.user_code,
+                )
+        else:
+            # In a non-interactive session, display the URL and code for the user to handle manually.
+            logger.debug("Non-interactive session. Displaying URL.")
+            self._display_device_code_polling_started(
+                verification_uri_complete=dto.verification_uri_complete,
+                user_code=dto.user_code,
+            )
 
 
 class JsonAuthDisplayManager(BaseJsonDisplayManager, BaseConsoleAuthDisplayManager):

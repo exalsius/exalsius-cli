@@ -2,12 +2,14 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 from exls.clusters.domain import (
-    AddNodesParams,
     Cluster,
-    ClusterCreateParams,
-    ClusterFilterParams,
     ClusterNodeRef,
     ClusterNodeResources,
+)
+from exls.clusters.gateway.dtos import (
+    AddNodesParams,
+    ClusterCreateParams,
+    ClusterFilterParams,
     RemoveNodeParams,
 )
 

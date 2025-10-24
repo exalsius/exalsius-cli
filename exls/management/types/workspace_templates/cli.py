@@ -5,6 +5,11 @@ import typer
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
+from exls.core.commons.service import (
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.management.types.workspace_templates.display import (
     TableWorkspaceTemplatesDisplayManager,
 )
@@ -16,14 +21,13 @@ from exls.management.types.workspace_templates.service import (
     WorkspaceTemplatesService,
     get_workspace_templates_service,
 )
-from exls.utils import commons as utils
 
 workspace_templates_app = typer.Typer()
 
 
 def _get_workspace_templates_service(ctx: typer.Context) -> WorkspaceTemplatesService:
-    config: AppConfig = utils.get_config_from_ctx(ctx)
-    access_token: str = utils.get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
     return get_workspace_templates_service(config, access_token)
 
 
@@ -34,7 +38,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     Manage workspace templates management.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @workspace_templates_app.command("list", help="List all available workspace templates")

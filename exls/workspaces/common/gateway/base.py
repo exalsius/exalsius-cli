@@ -2,15 +2,14 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from exls.workspaces.common.domain import (
-    DeployWorkspaceParams,
     Workspace,
-    WorkspaceFilterParams,
 )
+from exls.workspaces.common.gateway.dtos import DeployWorkspaceParams
 
 
 class WorkspacesGateway(ABC):
     @abstractmethod
-    def list(self, workspace_filter_params: WorkspaceFilterParams) -> List[Workspace]:
+    def list(self, cluster_id: str) -> List[Workspace]:
         raise NotImplementedError
 
     @abstractmethod

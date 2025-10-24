@@ -5,17 +5,21 @@ import typer
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
+from exls.core.commons.service import (
+    get_access_token_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.offers.display import TableOffersDisplayManager
 from exls.offers.dtos import OfferDTO, OffersListRequestDTO
 from exls.offers.service import OffersService, get_offers_service
-from exls.utils import commons as utils
 
 offers_app = typer.Typer()
 
 
 def _get_offers_service(ctx: typer.Context) -> OffersService:
-    access_token: str = utils.get_access_token_from_ctx(ctx)
-    config: AppConfig = utils.get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
+    config: AppConfig = get_config_from_ctx(ctx)
     return get_offers_service(config, access_token)
 
 
@@ -26,7 +30,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     """
     List and manage GPU offers from cloud providers.
     """
-    utils.help_if_no_subcommand(ctx)
+    help_if_no_subcommand(ctx)
 
 
 @offers_app.command("list")

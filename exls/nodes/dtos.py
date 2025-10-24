@@ -9,8 +9,6 @@ from pydantic import BaseModel, Field, StrictStr
 from exls.nodes.domain import (
     BaseNode,
     CloudNode,
-    CloudProvider,
-    NodeType,
     SelfManagedNode,
 )
 
@@ -36,7 +34,7 @@ def _(node: SelfManagedNode) -> SelfManagedNodeDTO:
     return SelfManagedNodeDTO.from_domain(node)
 
 
-class NodeTypeDTO(StrEnum):
+class NodeTypesDTO(StrEnum):
     CLOUD = "cloud"
     SELF_MANAGED = "self-managed"
 
@@ -46,14 +44,14 @@ class NodeDTO(BaseModel):
     hostname: StrictStr
     import_time: StrictStr
     node_status: StrictStr
-    node_type: NodeTypeDTO
+    node_type: NodeTypesDTO
 
 
 class CloudNodeDTO(NodeDTO):
     provider: StrictStr
     instance_type: StrictStr
     price_per_hour: StrictStr
-    node_type: NodeTypeDTO = Field(NodeTypeDTO.CLOUD, frozen=True)
+    node_type: NodeTypesDTO = Field(NodeTypesDTO.CLOUD, frozen=True)
 
     @classmethod
     def from_domain(cls, node: CloudNode) -> CloudNodeDTO:
@@ -62,8 +60,8 @@ class CloudNodeDTO(NodeDTO):
             hostname=node.hostname or "",
             import_time=node.import_time.isoformat() if node.import_time else "N/A",
             node_status=node.node_status,
-            node_type=NodeTypeDTO.CLOUD,
-            provider=CloudProvider(node.provider),
+            node_type=NodeTypesDTO.CLOUD,
+            provider=node.provider,
             instance_type=node.instance_type,
             price_per_hour=node.price_per_hour or "N/A",
         )
@@ -71,7 +69,7 @@ class CloudNodeDTO(NodeDTO):
 
 class SelfManagedNodeDTO(NodeDTO):
     endpoint: StrictStr
-    node_type: NodeTypeDTO = Field(NodeTypeDTO.SELF_MANAGED, frozen=True)
+    node_type: NodeTypesDTO = Field(NodeTypesDTO.SELF_MANAGED, frozen=True)
 
     @classmethod
     def from_domain(cls, node: SelfManagedNode) -> SelfManagedNodeDTO:
@@ -80,24 +78,15 @@ class SelfManagedNodeDTO(NodeDTO):
             hostname=node.hostname or "",
             import_time=node.import_time.isoformat() if node.import_time else "N/A",
             node_status=node.node_status,
-            node_type=NodeTypeDTO.SELF_MANAGED,
+            node_type=NodeTypesDTO.SELF_MANAGED,
             endpoint=node.endpoint or "",
         )
 
 
 class NodesListRequestDTO(BaseModel):
-    node_type: Optional[NodeTypeDTO] = Field(
+    node_type: Optional[NodeTypesDTO] = Field(
         default=None, description="The type of the node"
     )
-    provider: Optional[CloudProvider] = Field(
-        default=None, description="The provider of the node"
-    )
-
-    @property
-    def domain_node_type(self) -> Optional[NodeType]:
-        if self.node_type is None:
-            return None
-        return NodeType[self.node_type.value.upper()]
 
 
 class NodesImportSSHRequestDTO(BaseModel):

@@ -4,10 +4,6 @@ from exalsius_api_client.models.credentials import Credentials as SdkCredentials
 from pydantic import BaseModel, Field
 
 
-class CredentialsFilterParams(BaseModel):
-    pass
-
-
 class Credentials(BaseModel):
     sdk_model: SdkCredentials = Field(
         ..., description="The SDK model of the credentials"

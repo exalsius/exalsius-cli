@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from exls.services.domain import Service, ServiceDeployParams, ServiceFilterParams
+from exls.services.domain import Service
 
 
 class ServicesGateway(ABC):
     @abstractmethod
-    def list(self, service_filter_params: ServiceFilterParams) -> List[Service]:
+    def list(self, cluster_id: str) -> List[Service]:
         raise NotImplementedError
 
     @abstractmethod
@@ -18,5 +18,5 @@ class ServicesGateway(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def deploy(self, deploy_params: ServiceDeployParams) -> str:
+    def deploy(self) -> str:
         raise NotImplementedError

@@ -4,6 +4,7 @@ from typing import List, Optional
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.status import Status
+from rich.theme import Theme
 
 from exls.core.base.display import (
     BaseConfirmationDisplay,
@@ -29,7 +30,12 @@ from exls.core.commons.render.text import (
     RichTextSuccessMessageRenderer,
     TextRenderConfig,
 )
-from exls.utils.theme import custom_theme
+
+DEFAULT_THEME = Theme(
+    {
+        "custom": "#f46907",
+    }
+)
 
 
 class ConsoleListDisplay(BaseListDisplay[T_RenderInput_Inv, T_RenderOutput_Cov]):
@@ -38,9 +44,10 @@ class ConsoleListDisplay(BaseListDisplay[T_RenderInput_Inv, T_RenderOutput_Cov])
     def __init__(
         self,
         renderer: BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov],
+        theme: Theme = DEFAULT_THEME,
         console: Optional[Console] = None,
     ):
-        self.console: Console = console or Console(theme=custom_theme)
+        self.console: Console = console or Console(theme=theme)
         self._renderer: BaseListRenderer[T_RenderInput_Inv, T_RenderOutput_Cov] = (
             renderer
         )
@@ -63,9 +70,10 @@ class ConsoleSingleItemDisplay(
     def __init__(
         self,
         renderer: BaseSingleItemRenderer[T_RenderInput_Contra, T_RenderOutput_Cov],
+        theme: Theme = DEFAULT_THEME,
         console: Optional[Console] = None,
     ):
-        self.console: Console = console or Console(theme=custom_theme)
+        self.console: Console = console or Console(theme=theme)
         self._renderer: BaseSingleItemRenderer[
             T_RenderInput_Contra, T_RenderOutput_Cov
         ] = renderer
@@ -88,9 +96,10 @@ class ConsoleConfirmationDisplay(BaseConfirmationDisplay[T_RenderInput_Contra, s
     def __init__(
         self,
         renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str],
+        theme: Theme = DEFAULT_THEME,
         console: Optional[Console] = None,
     ):
-        self.console: Console = console or Console(theme=custom_theme)
+        self.console: Console = console or Console(theme=theme)
         self._renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str] = renderer
 
     @property
@@ -109,11 +118,12 @@ class ConsoleSpinnerDisplay(BaseSpinnerDisplay[T_RenderInput_Contra, str]):
     def __init__(
         self,
         renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str],
+        theme: Theme = DEFAULT_THEME,
         console: Optional[Console] = None,
         spinner: str = "bouncingBall",
         spinner_style: str = "custom",
     ):
-        self.console: Console = console or Console(theme=custom_theme)
+        self.console: Console = console or Console(theme=theme)
         self._renderer: BaseSingleItemRenderer[T_RenderInput_Contra, str] = renderer
         self._status: Optional[AbstractContextManager[Status]] = None
         self._spinner: str = spinner
@@ -146,27 +156,22 @@ class BaseDisplayManager:
         spinner_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(
             render_config=TextRenderConfig(bold=True, color="custom")
         ),
+        theme: Theme = DEFAULT_THEME,
     ):
         self.info_display: BaseSingleItemDisplay[str, str] = ConsoleSingleItemDisplay(
-            renderer=info_renderer,
+            renderer=info_renderer, theme=theme
         )
         self.success_display: BaseSingleItemDisplay[str, str] = (
-            ConsoleSingleItemDisplay(
-                renderer=success_renderer,
-            )
+            ConsoleSingleItemDisplay(renderer=success_renderer, theme=theme)
         )
         self.error_display: BaseSingleItemDisplay[ErrorDisplayModel, str] = (
-            ConsoleSingleItemDisplay(
-                renderer=error_renderer,
-            )
+            ConsoleSingleItemDisplay(renderer=error_renderer, theme=theme)
         )
         self.confirmation_display: BaseConfirmationDisplay[str, str] = (
-            ConsoleConfirmationDisplay(
-                renderer=confirmation_renderer,
-            )
+            ConsoleConfirmationDisplay(renderer=confirmation_renderer, theme=theme)
         )
         self.spinner_display: BaseSpinnerDisplay[str, str] = ConsoleSpinnerDisplay(
-            renderer=spinner_renderer
+            renderer=spinner_renderer, theme=theme
         )
 
     def display_info(self, message: str):
@@ -200,11 +205,13 @@ class BaseJsonDisplayManager(BaseDisplayManager):
         error_renderer: BaseSingleItemRenderer[
             ErrorDisplayModel, str
         ] = JsonSingleItemStringRenderer[ErrorDisplayModel](),
+        theme: Theme = DEFAULT_THEME,
     ):
         super().__init__(
             info_renderer=info_renderer,
             success_renderer=success_renderer,
             error_renderer=error_renderer,
+            theme=theme,
         )
 
 
@@ -218,9 +225,31 @@ class BaseTableDisplayManager(BaseDisplayManager):
         error_renderer: BaseSingleItemRenderer[
             ErrorDisplayModel, str
         ] = RichTextErrorMessageRenderer(),
+        theme: Theme = DEFAULT_THEME,
     ):
         super().__init__(
             info_renderer=info_renderer,
             success_renderer=success_renderer,
             error_renderer=error_renderer,
+            theme=theme,
+        )
+
+
+class BaseTextDisplayManager(BaseDisplayManager):
+    def __init__(
+        self,
+        info_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(),
+        success_renderer: BaseSingleItemRenderer[
+            str, str
+        ] = RichTextSuccessMessageRenderer(),
+        error_renderer: BaseSingleItemRenderer[
+            ErrorDisplayModel, str
+        ] = RichTextErrorMessageRenderer(),
+        theme: Theme = DEFAULT_THEME,
+    ):
+        super().__init__(
+            info_renderer=info_renderer,
+            success_renderer=success_renderer,
+            error_renderer=error_renderer,
+            theme=theme,
         )

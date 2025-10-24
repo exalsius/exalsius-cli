@@ -8,10 +8,6 @@ from exalsius_api_client.models.cluster_template import (
 from pydantic import BaseModel, Field, StrictStr
 
 
-class ClusterTemplateFilterParams(BaseModel):
-    pass
-
-
 class ClusterTemplate(BaseModel):
     sdk_model: SdkClusterTemplate = Field(
         ..., description="The SDK model of the cluster template"
