@@ -2,7 +2,8 @@ from typing import Dict, List
 
 from exls.clusters.dtos import (
     AddNodesRequestDTO,
-    CreateClusterRequestDTO,
+    AllowedClusterNodeRoleDTO,
+    DeployClusterRequestDTO,
     ListClustersRequestDTO,
 )
 from exls.clusters.gateway.dtos import (
@@ -30,7 +31,7 @@ def cluster_list_filter_params_from_request_dto(
 
 
 def cluster_create_params_from_request_dto(
-    request_dto: CreateClusterRequestDTO,
+    request_dto: DeployClusterRequestDTO,
 ) -> ClusterCreateParams:
     gpu_type_enum: ClusterLabelValuesGPUType = ClusterLabelValuesGPUType(
         request_dto.gpu_type
@@ -51,7 +52,7 @@ def cluster_create_params_from_request_dto(
     )
 
 
-def cluster_add_nodes_params_from_request_dto(
+def cluster_add_nodes_params_from_add_nodes_request_dto(
     request_dto: AddNodesRequestDTO,
 ) -> AddNodesParams:
     nodes_to_add: List[NodeToAddParams] = [
@@ -61,4 +62,29 @@ def cluster_add_nodes_params_from_request_dto(
     return AddNodesParams(
         cluster_id=request_dto.cluster_id,
         nodes_to_add=nodes_to_add,
+    )
+
+
+def cluster_add_nodes_params_from_deploy_cluster_request_dto(
+    cluster_id: str,
+    request_dto: DeployClusterRequestDTO,
+) -> AddNodesParams:
+    worker_nodes_to_add: List[NodeToAddParams] = [
+        NodeToAddParams(
+            node_id=node_id, node_role=AllowedClusterNodeRoleDTO.WORKER.value.upper()
+        )
+        for node_id in request_dto.worker_node_ids
+    ]
+    control_plane_nodes_to_add: List[NodeToAddParams] = []
+    if request_dto.control_plane_node_ids is not None:
+        control_plane_nodes_to_add = [
+            NodeToAddParams(
+                node_id=node_id,
+                node_role=AllowedClusterNodeRoleDTO.CONTROL_PLANE.value.upper(),
+            )
+            for node_id in request_dto.control_plane_node_ids
+        ]
+    return AddNodesParams(
+        cluster_id=cluster_id,
+        nodes_to_add=worker_nodes_to_add + control_plane_nodes_to_add,
     )

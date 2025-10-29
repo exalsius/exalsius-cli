@@ -49,12 +49,18 @@ class ListClustersRequestDTO(BaseModel):
     )
 
 
-class CreateClusterRequestDTO(BaseModel):
+class DeployClusterRequestDTO(BaseModel):
     name: StrictStr = Field(..., description="The name of the cluster")
     cluster_type: AllowedClusterTypesDTO = Field(
         ..., description="The type of the cluster"
     )
     gpu_type: AllowedGpuTypesDTO = Field(..., description="The type of the GPU")
+    worker_node_ids: List[StrictStr] = Field(
+        ..., description="The IDs of the worker nodes"
+    )
+    control_plane_node_ids: Optional[List[StrictStr]] = Field(
+        default=None, description="The IDs of the control plane nodes"
+    )
     diloco: bool = Field(
         ...,
         description="Add the volcano workload type to the cluster to support Diloco workloads",

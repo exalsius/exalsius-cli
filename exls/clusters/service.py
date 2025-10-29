@@ -7,7 +7,7 @@ from exls.clusters.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
-    CreateClusterRequestDTO,
+    DeployClusterRequestDTO,
     ListClustersRequestDTO,
     RemoveNodeRequestDTO,
 )
@@ -19,7 +19,8 @@ from exls.clusters.gateway.dtos import (
     RemoveNodeParams,
 )
 from exls.clusters.mappers import (
-    cluster_add_nodes_params_from_request_dto,
+    cluster_add_nodes_params_from_add_nodes_request_dto,
+    cluster_add_nodes_params_from_deploy_cluster_request_dto,
     cluster_create_params_from_request_dto,
     cluster_list_filter_params_from_request_dto,
 )
@@ -63,22 +64,28 @@ class ClustersService:
     def delete_cluster(self, cluster_id: str) -> None:
         self.clusters_gateway.delete(cluster_id=cluster_id)
 
-    @handle_service_errors("creating cluster")
-    def create_cluster(self, request: CreateClusterRequestDTO) -> ClusterDTO:
+    @handle_service_errors("deploying cluster")
+    def deploy_cluster(self, request: DeployClusterRequestDTO) -> ClusterDTO:
         cluster_create_params: ClusterCreateParams = (
             cluster_create_params_from_request_dto(request_dto=request)
         )
         cluster_id: str = self.clusters_gateway.create(
             cluster_create_params=cluster_create_params
         )
-        cluster: Cluster = self.clusters_gateway.get(cluster_id)
-        return ClusterDTO.from_domain(domain_obj=cluster)
 
-    @handle_service_errors("deploying cluster")
-    def deploy_cluster(self, cluster_id: str) -> ClusterDTO:
-        self.clusters_gateway.deploy(cluster_id)
-        cluster: Cluster = self.clusters_gateway.get(cluster_id)
-        return ClusterDTO.from_domain(domain_obj=cluster)
+        add_nodes_params: AddNodesParams = (
+            cluster_add_nodes_params_from_deploy_cluster_request_dto(
+                cluster_id=cluster_id, request_dto=request
+            )
+        )
+        self.clusters_gateway.add_nodes_to_cluster(add_nodes_params=add_nodes_params)
+
+        deployed_cluster_id: str = self.clusters_gateway.deploy(cluster_id)
+        deployed_cluster: Cluster = self.clusters_gateway.get(
+            cluster_id=deployed_cluster_id
+        )
+
+        return ClusterDTO.from_domain(domain_obj=deployed_cluster)
 
     @handle_service_errors("getting cluster nodes")
     def get_cluster_nodes(self, cluster_id: str) -> List[ClusterNodeDTO]:
@@ -112,8 +119,8 @@ class ClustersService:
     def add_cluster_nodes(self, request: AddNodesRequestDTO) -> List[ClusterNodeDTO]:
         cluster: Cluster = self.clusters_gateway.get(cluster_id=request.cluster_id)
 
-        add_nodes_params: AddNodesParams = cluster_add_nodes_params_from_request_dto(
-            request_dto=request
+        add_nodes_params: AddNodesParams = (
+            cluster_add_nodes_params_from_add_nodes_request_dto(request_dto=request)
         )
         cluster_nodes: List[ClusterNodeRef] = (
             self.clusters_gateway.add_nodes_to_cluster(

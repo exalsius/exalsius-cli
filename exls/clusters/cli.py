@@ -13,7 +13,7 @@ from exls.clusters.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
-    CreateClusterRequestDTO,
+    DeployClusterRequestDTO,
     ListClustersRequestDTO,
     RemoveNodeRequestDTO,
 )
@@ -22,9 +22,11 @@ from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
 from exls.core.commons.service import (
+    generate_random_name,
     get_access_token_from_ctx,
     get_config_from_ctx,
     help_if_no_subcommand,
+    validate_kubernetes_name,
 )
 
 clusters_app = typer.Typer()
@@ -127,14 +129,32 @@ def delete_cluster(
     display_manager.display_success(f"Cluster {cluster_id} deleted successfully.")
 
 
-@clusters_app.command("create", help="Create a cluster")
-def create_cluster(
+@clusters_app.command("deploy", help="Create a cluster")
+def deploy_cluster(
     ctx: typer.Context,
-    name: str = typer.Argument(..., help="The name of the cluster"),
+    name: str = typer.Option(
+        generate_random_name(prefix="exls-cluster"),
+        "--name",
+        "-n",
+        help="The name of the cluster. If not provided, a random name will be generated.",
+        show_default=False,
+        callback=validate_kubernetes_name,
+    ),
     cluster_type: AllowedClusterTypesDTO = typer.Option(
         AllowedClusterTypesDTO.REMOTE,
         "--cluster-type",
         help="The type of the cluster",
+    ),
+    worker_node_ids: List[str] = typer.Option(
+        [],
+        "--worker-nodes",
+        help="The IDs of the worker nodes to add to the cluster.",
+        show_default=False,
+    ),
+    control_plane_node_ids: Optional[List[str]] = typer.Option(
+        None,
+        "--control-nodes",
+        help="The IDs of the control plane nodes to add to the cluster. This is optional.",  # TODO: Explain default behaviour
     ),
     gpu_type: AllowedGpuTypesDTO = typer.Option(
         AllowedGpuTypesDTO.NVIDIA.value,
@@ -161,11 +181,13 @@ def create_cluster(
     service: ClustersService = _get_clusters_service(ctx)
 
     try:
-        cluster: ClusterDTO = service.create_cluster(
-            CreateClusterRequestDTO(
+        cluster: ClusterDTO = service.deploy_cluster(
+            DeployClusterRequestDTO(
                 name=name,
                 cluster_type=cluster_type,
                 gpu_type=gpu_type,
+                worker_node_ids=worker_node_ids,
+                control_plane_node_ids=control_plane_node_ids,
                 diloco=diloco,
                 telemetry_enabled=telemetry_enabled,
             )
@@ -175,45 +197,6 @@ def create_cluster(
         raise typer.Exit(1)
 
     display_manager.display_success(f"Cluster {cluster.id} created successfully.")
-
-
-@clusters_app.command("deploy", help="Deploy a cluster")
-def deploy_cluster(
-    ctx: typer.Context,
-    cluster_id: str = typer.Argument(..., help="The ID of the cluster to deploy"),
-):
-    """
-    Deploy a cluster.
-    """
-    display_manager = TableClusterDisplayManager()
-    service: ClustersService = _get_clusters_service(ctx)
-
-    try:
-        cluster: ClusterDTO = service.get_cluster(cluster_id)
-    except ServiceError as e:
-        display_manager.display_error(ErrorDisplayModel(message=str(e)))
-        raise typer.Exit(1)
-
-    display_manager.display_cluster(cluster)
-
-    if not display_manager.display_confirmation(
-        "Are you sure you want to deploy this cluster?"
-    ):
-        raise typer.Exit()
-
-    try:
-        service.deploy_cluster(cluster_id)
-    except ServiceError as e:
-        display_manager.display_error(ErrorDisplayModel(message=str(e)))
-        raise typer.Exit(1)
-
-    display_manager.display_success(
-        f"Cluster {cluster_id} deployment started successfully."
-    )
-
-    display_manager.display_info(
-        f"You can check the status with `exls clusters get {cluster_id}`"
-    )
 
 
 @clusters_app.command("list-nodes", help="List all nodes of a cluster")
