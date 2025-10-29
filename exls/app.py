@@ -10,7 +10,7 @@ from exls.auth.service import Auth0Service, NotLoggedInWarning, get_auth_service
 from exls.clusters.cli import clusters_app
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
-from exls.core.commons.display import BaseTextDisplayManager
+from exls.core.commons.display import SimpleTextDisplayManager
 from exls.core.commons.service import help_if_no_subcommand
 from exls.logging import setup_logging
 from exls.management.cli import management_app
@@ -110,7 +110,7 @@ def __root(  # pyright: ignore[reportUnusedFunction]
 
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
         auth_service: Auth0Service = get_auth_service(config)
-        display_manager: BaseTextDisplayManager = BaseTextDisplayManager()
+        display_manager: SimpleTextDisplayManager = SimpleTextDisplayManager()
         try:
             acquired_access_token: AcquiredAccessTokenDTO = (
                 auth_service.acquire_access_token()

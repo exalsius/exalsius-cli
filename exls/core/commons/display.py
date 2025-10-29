@@ -1,6 +1,8 @@
 from contextlib import AbstractContextManager
-from typing import List, Optional
+from typing import List, Optional, Protocol
 
+import questionary
+from pydantic import StrictStr
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.status import Status
@@ -12,6 +14,7 @@ from exls.core.base.display import (
     BaseSingleItemDisplay,
     BaseSpinnerDisplay,
     ErrorDisplayModel,
+    InteractiveDisplay,
 )
 from exls.core.base.render import (
     BaseListRenderer,
@@ -146,7 +149,20 @@ class ConsoleSpinnerDisplay(BaseSpinnerDisplay[T_RenderInput_Contra, str]):
             self._status = None
 
 
-class BaseDisplayManager:
+class BaseDisplayManager(Protocol):
+    """Base display manager protocol."""
+
+    def display_info(self, message: str): ...
+    def display_success(self, message: str): ...
+    def display_error(self, error: ErrorDisplayModel): ...
+    def display_confirmation(self, message: str) -> bool: ...
+    def start_spinner_display(self, message: str): ...
+    def stop_spinner_display(self): ...
+
+
+class SimpleDisplayManager(BaseDisplayManager):
+    """Simple display manager that uses renderers to display messages."""
+
     def __init__(
         self,
         info_renderer: BaseSingleItemRenderer[str, str],
@@ -193,7 +209,9 @@ class BaseDisplayManager:
         self.spinner_display.stop_display()
 
 
-class BaseJsonDisplayManager(BaseDisplayManager):
+class BaseJsonDisplayManager(SimpleDisplayManager):
+    """Base JSON display manager that uses renderers to display messages."""
+
     def __init__(
         self,
         info_renderer: BaseSingleItemRenderer[str, str] = JsonMessageRenderer(
@@ -215,7 +233,9 @@ class BaseJsonDisplayManager(BaseDisplayManager):
         )
 
 
-class BaseTableDisplayManager(BaseDisplayManager):
+class BaseTableDisplayManager(SimpleDisplayManager):
+    """Base table display manager that uses renderers to display messages."""
+
     def __init__(
         self,
         info_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(),
@@ -235,7 +255,9 @@ class BaseTableDisplayManager(BaseDisplayManager):
         )
 
 
-class BaseTextDisplayManager(BaseDisplayManager):
+class SimpleTextDisplayManager(SimpleDisplayManager):
+    """Base text display manager that uses renderers to display messages."""
+
     def __init__(
         self,
         info_renderer: BaseSingleItemRenderer[str, str] = RichTextRenderer(),
@@ -253,3 +275,119 @@ class BaseTextDisplayManager(BaseDisplayManager):
             error_renderer=error_renderer,
             theme=theme,
         )
+
+
+class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
+    """Handler for interactive prompts using the questionary library."""
+
+    def ask_text(self, message: str, default: Optional[str] = None) -> StrictStr:
+        """Ask a free-form text question."""
+
+        def _validate_text(text: str) -> bool | str:
+            return True if len(text.strip()) > 0 else "Please enter a valid name."
+
+        return questionary.text(
+            message,
+            default=default or "",
+            validate=_validate_text,
+        ).ask()
+
+    def ask_select_required(
+        self,
+        message: str,
+        choices: List[questionary.Choice],
+        default: questionary.Choice,
+    ) -> questionary.Choice:
+        """Ask the user to select one option from a list."""
+        return questionary.select(message, choices=choices, default=default).ask()
+
+    def ask_select_optional(
+        self,
+        message: str,
+        choices: List[questionary.Choice],
+        default: Optional[questionary.Choice] = None,
+    ) -> Optional[questionary.Choice]:
+        return questionary.select(message, choices=choices, default=default).ask()
+
+    def ask_confirm(self, message: str, default: bool = False) -> bool:
+        """Ask a yes/no confirmation question."""
+        return questionary.confirm(message, default=default).ask()
+
+    def ask_checkbox(
+        self, message: str, choices: List[questionary.Choice], min_choices: int = 1
+    ) -> List[questionary.Choice]:
+        """Ask the user to select multiple options from a list."""
+
+        def _validate_checkbox(choices: List[str]) -> bool | str:
+            return (
+                True
+                if len(choices) >= min_choices
+                else "Please select at least {min_choices} options."
+            )
+
+        return questionary.checkbox(
+            message, choices=choices, validate=_validate_checkbox
+        ).ask()
+
+
+class ComposingDisplayManager(
+    BaseDisplayManager, InteractiveDisplay[questionary.Choice]
+):
+    """A display manager that composes text display with an interactive handler."""
+
+    def __init__(
+        self,
+        display_manager: BaseDisplayManager,
+        interaction_handler: InteractiveDisplay[
+            questionary.Choice
+        ] = QuestionaryInteractionHandler(),
+    ):
+        self._interaction_handler: InteractiveDisplay[questionary.Choice] = (
+            interaction_handler
+        )
+        self._display_manager: BaseDisplayManager = display_manager
+
+    def ask_text(self, message: str, default: Optional[str] = None) -> StrictStr:
+        return self._interaction_handler.ask_text(message, default)
+
+    def ask_select_required(
+        self,
+        message: str,
+        choices: List[questionary.Choice],
+        default: questionary.Choice,
+    ) -> questionary.Choice:
+        return self._interaction_handler.ask_select_required(message, choices, default)
+
+    def ask_select_optional(
+        self,
+        message: str,
+        choices: List[questionary.Choice],
+        default: Optional[questionary.Choice] = None,
+    ) -> Optional[questionary.Choice]:
+        return self._interaction_handler.ask_select_optional(message, choices, default)
+
+    def ask_confirm(self, message: str, default: bool = False) -> bool:
+        return self._interaction_handler.ask_confirm(message, default)
+
+    def ask_checkbox(
+        self, message: str, choices: List[questionary.Choice], min_choices: int = 1
+    ) -> List[questionary.Choice]:
+        return self._interaction_handler.ask_checkbox(message, choices, min_choices)
+
+    def display_info(self, message: str):
+        self._display_manager.display_info(message)
+
+    def display_success(self, message: str):
+        self._display_manager.display_success(message)
+
+    def display_error(self, error: ErrorDisplayModel):
+        self._display_manager.display_error(error)
+
+    def display_confirmation(self, message: str) -> bool:
+        return self._display_manager.display_confirmation(message)
+
+    def start_spinner_display(self, message: str):
+        self._display_manager.start_spinner_display(message)
+
+    def stop_spinner_display(self):
+        self._display_manager.stop_spinner_display()

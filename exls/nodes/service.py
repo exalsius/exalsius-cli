@@ -3,6 +3,7 @@ from typing import List
 from exls.config import AppConfig
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
+from exls.nodes.domain import BaseNode
 from exls.nodes.dtos import (
     NodeDTO,
     NodesImportFromOfferRequestDTO,
@@ -12,6 +13,7 @@ from exls.nodes.dtos import (
 )
 from exls.nodes.gateway.base import NodesGateway
 from exls.nodes.gateway.dtos import (
+    AllowedNodeStatusFilters,
     ImportFromOfferParams,
     NodeFilterParams,
     NodeImportSshParams,
@@ -26,8 +28,13 @@ class NodeService:
     def list_nodes(self, request: NodesListRequestDTO) -> List[NodeDTO]:
         node_filter_params: NodeFilterParams = NodeFilterParams(
             node_type=request.node_type.value if request.node_type else None,
+            status=(
+                AllowedNodeStatusFilters(request.status.value.upper())
+                if request.status is not None
+                else None
+            ),
         )
-        nodes = self.nodes_gateway.list(node_filter_params)
+        nodes: List[BaseNode] = self.nodes_gateway.list(node_filter_params)
         return [node_dto_from_domain(node) for node in nodes]
 
     @handle_service_errors("getting node")

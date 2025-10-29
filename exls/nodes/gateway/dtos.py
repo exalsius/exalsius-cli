@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Optional
 
 from exalsius_api_client.models.node_import_ssh_request import NodeImportSshRequest
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
+
+
+class AllowedNodeStatusFilters(StrEnum):
+    """Enum representing the status of a node."""
+
+    AVAILABLE = "AVAILABLE"
+    ADDED = "ADDED"
+    FAILED = "FAILED"
 
 
 class NodeFilterParams(BaseModel):
@@ -14,6 +23,9 @@ class NodeFilterParams(BaseModel):
     )
     provider: Optional[StrictStr] = Field(
         default=None, description="The provider of the node"
+    )
+    status: Optional[AllowedNodeStatusFilters] = Field(
+        default=None, description="The status of the node"
     )
 
 
