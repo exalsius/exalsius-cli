@@ -1,13 +1,17 @@
+from abc import ABC, abstractmethod
 from typing import List
 
 from exls.clusters.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
+    DeployClusterRequestDTO,
 )
 from exls.core.commons.display import (
+    BaseDisplayManager,
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
+    ComposingDisplayManager,
     ConsoleListDisplay,
     ConsoleSingleItemDisplay,
 )
@@ -22,7 +26,29 @@ from exls.core.commons.render.table import (
 )
 
 
-class JsonClusterDisplayManager(BaseJsonDisplayManager):
+class BaseClusterDisplayManager(BaseDisplayManager, ABC):
+    @abstractmethod
+    def display_clusters(self, data: List[ClusterDTO]):
+        pass
+
+    @abstractmethod
+    def display_cluster(self, data: ClusterDTO):
+        pass
+
+    @abstractmethod
+    def display_cluster_nodes(self, data: List[ClusterNodeDTO]):
+        pass
+
+    @abstractmethod
+    def display_cluster_resources(self, data: List[ClusterNodeResourcesDTO]):
+        pass
+
+    @abstractmethod
+    def display_deploy_cluster_request(self, data: DeployClusterRequestDTO):
+        pass
+
+
+class JsonClusterDisplayManager(BaseJsonDisplayManager, BaseClusterDisplayManager):
     def __init__(
         self,
         cluster_list_renderer: JsonListStringRenderer[
@@ -37,6 +63,9 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager):
         cluster_resources_list_renderer: JsonListStringRenderer[
             ClusterNodeResourcesDTO
         ] = JsonListStringRenderer[ClusterNodeResourcesDTO](),
+        deploy_cluster_request_renderer: JsonSingleItemStringRenderer[
+            DeployClusterRequestDTO
+        ] = JsonSingleItemStringRenderer[DeployClusterRequestDTO](),
     ):
         super().__init__()
         self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
@@ -48,6 +77,9 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager):
         )
         self.cluster_resources_list_display = ConsoleListDisplay(
             renderer=cluster_resources_list_renderer
+        )
+        self.deploy_cluster_request_display = ConsoleSingleItemDisplay(
+            renderer=deploy_cluster_request_renderer
         )
 
     def display_clusters(self, data: List[ClusterDTO]):
@@ -61,6 +93,9 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager):
 
     def display_cluster_resources(self, data: List[ClusterNodeResourcesDTO]):
         self.cluster_resources_list_display.display(data)
+
+    def display_deploy_cluster_request(self, data: DeployClusterRequestDTO):
+        self.deploy_cluster_request_display.display(data)
 
 
 DEFAULT_COLUMNS_RENDERING_MAP = {
@@ -88,8 +123,18 @@ DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP = {
     "free_resources.storage": get_column("Storage GB"),
 }
 
+DEFAULT_DEPLOY_CLUSTER_REQUEST_COLUMNS_RENDERING_MAP = {
+    "name": get_column("Name"),
+    "cluster_type": get_column("Cluster Type"),
+    "gpu_type": get_column("GPU Type"),
+    "diloco": get_column("Diloco"),
+    "telemetry_enabled": get_column("Telemetry Enabled"),
+    "worker_node_ids": get_column("Worker Node IDs"),
+    "control_plane_node_ids": get_column("Control Plane Node IDs"),
+}
 
-class TableClusterDisplayManager(BaseTableDisplayManager):
+
+class TableClusterDisplayManager(BaseTableDisplayManager, BaseClusterDisplayManager):
     def __init__(
         self,
         cluster_list_renderer: TableListRenderer[ClusterDTO] = TableListRenderer[
@@ -110,6 +155,11 @@ class TableClusterDisplayManager(BaseTableDisplayManager):
         ] = TableListRenderer[ClusterNodeResourcesDTO](
             columns_rendering_map=DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP
         ),
+        deploy_cluster_request_renderer: TableSingleItemRenderer[
+            DeployClusterRequestDTO
+        ] = TableSingleItemRenderer[DeployClusterRequestDTO](
+            columns_map=DEFAULT_DEPLOY_CLUSTER_REQUEST_COLUMNS_RENDERING_MAP
+        ),
     ):
         super().__init__()
         self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
@@ -121,6 +171,9 @@ class TableClusterDisplayManager(BaseTableDisplayManager):
         )
         self.cluster_resources_list_display = ConsoleListDisplay(
             renderer=cluster_resources_list_renderer
+        )
+        self.deploy_cluster_request_display = ConsoleSingleItemDisplay(
+            renderer=deploy_cluster_request_renderer
         )
 
     def display_clusters(self, data: List[ClusterDTO]):
@@ -134,3 +187,34 @@ class TableClusterDisplayManager(BaseTableDisplayManager):
 
     def display_cluster_resources(self, data: List[ClusterNodeResourcesDTO]):
         self.cluster_resources_list_display.display(data)
+
+    def display_deploy_cluster_request(self, data: DeployClusterRequestDTO):
+        self.deploy_cluster_request_display.display(data)
+
+
+class ComposingClusterDisplayManager(ComposingDisplayManager):
+    def __init__(
+        self,
+        display_manager: BaseClusterDisplayManager,
+    ):
+        super().__init__(display_manager=display_manager)
+        self.display_manager: BaseClusterDisplayManager = display_manager
+
+    def display_cluster(self, cluster: ClusterDTO):
+        self.display_manager.display_cluster(cluster)
+
+    def display_cluster_nodes(self, cluster_nodes: List[ClusterNodeDTO]):
+        self.display_manager.display_cluster_nodes(cluster_nodes)
+
+    def display_cluster_resources(
+        self, cluster_resources: List[ClusterNodeResourcesDTO]
+    ):
+        self.display_manager.display_cluster_resources(cluster_resources)
+
+    def display_clusters(self, clusters: List[ClusterDTO]):
+        self.display_manager.display_clusters(clusters)
+
+    def display_deploy_cluster_request(
+        self, deploy_cluster_request: DeployClusterRequestDTO
+    ):
+        self.display_manager.display_deploy_cluster_request(deploy_cluster_request)

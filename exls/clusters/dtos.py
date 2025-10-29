@@ -30,6 +30,10 @@ class AllowedGpuTypesDTO(StrEnum):
     AMD = "amd"
     NO_GPU = "no-gpu"
 
+    @classmethod
+    def values(cls) -> List[AllowedGpuTypesDTO]:
+        return list(cls.__members__.values())
+
 
 class AllowedClusterNodeRoleDTO(StrEnum):
     WORKER = "worker"
@@ -41,6 +45,10 @@ class AllowedClusterTypesDTO(StrEnum):
     REMOTE = "remote"
     ADOPTED = "adopted"
     DOCKER = "docker"
+
+    @classmethod
+    def values(cls) -> List[AllowedClusterTypesDTO]:
+        return list(cls.__members__.values())
 
 
 class ListClustersRequestDTO(BaseModel):

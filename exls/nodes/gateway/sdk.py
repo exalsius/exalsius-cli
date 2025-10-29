@@ -50,11 +50,20 @@ class NodesGatewaySdk(NodesGateway):
             params=node_filter_params,
         )
         response: NodesListResponse = command.execute()
-        return [
+        nodes: List[BaseNode] = [
             self._create_from_sdk_model(sdk_model=node.actual_instance)
             for node in response.nodes
             if node.actual_instance is not None
         ]
+
+        if node_filter_params.status is not None:
+            nodes = [
+                node
+                for node in nodes
+                if node.node_status.lower() == node_filter_params.status.lower()
+            ]
+
+        return nodes
 
     def get(self, node_id: str) -> BaseNode:
         command = GetNodeSdkCommand(self._nodes_api, node_id)

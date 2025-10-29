@@ -9,10 +9,10 @@ import qrcode
 
 from exls.auth.dtos import DeviceCodeAuthenticationDTO, UserInfoDTO
 from exls.core.commons.display import (
-    BaseDisplayManager,
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
     ConsoleSingleItemDisplay,
+    SimpleDisplayManager,
 )
 from exls.core.commons.render.json import JsonSingleItemStringRenderer
 from exls.core.commons.render.table import Column, TableSingleItemRenderer, get_column
@@ -81,7 +81,7 @@ def _open_browser_for_device_code_authentication(uri: str) -> bool:
     return _open_browser(webbrowser.get(), uri)
 
 
-class BaseConsoleAuthDisplayManager(ABC, BaseDisplayManager):
+class BaseConsoleAuthDisplayManager(ABC, SimpleDisplayManager):
     @staticmethod
     def _generate_qr_code(uri: str) -> qrcode.QRCode[Any]:
         qr: qrcode.QRCode[Any] = qrcode.QRCode(

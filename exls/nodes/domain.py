@@ -47,7 +47,7 @@ class CloudNode(BaseNode):
 
     @property
     def node_status(self) -> StrictStr:
-        return self.sdk_model.node_status
+        return self.sdk_model.node_status.lower()
 
     @property
     def provider(self) -> StrictStr:
@@ -83,7 +83,7 @@ class SelfManagedNode(BaseNode):
 
     @property
     def node_status(self) -> StrictStr:
-        return self.sdk_model.node_status
+        return self.sdk_model.node_status.lower()
 
     @property
     def endpoint(self) -> Optional[StrictStr]:
