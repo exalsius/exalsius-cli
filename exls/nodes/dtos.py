@@ -39,6 +39,12 @@ class NodeTypesDTO(StrEnum):
     SELF_MANAGED = "self-managed"
 
 
+class AllowedNodeStatusFiltersDTO(StrEnum):
+    AVAILABLE = "available"
+    ADDED = "added"
+    FAILED = "failed"
+
+
 class NodeDTO(BaseModel):
     id: StrictStr
     hostname: StrictStr
@@ -86,6 +92,9 @@ class SelfManagedNodeDTO(NodeDTO):
 class NodesListRequestDTO(BaseModel):
     node_type: Optional[NodeTypesDTO] = Field(
         default=None, description="The type of the node"
+    )
+    status: Optional[AllowedNodeStatusFiltersDTO] = Field(
+        default=None, description="The status of the node"
     )
 
 
