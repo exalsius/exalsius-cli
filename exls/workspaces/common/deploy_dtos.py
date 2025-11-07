@@ -114,6 +114,10 @@ class WorkspaceDeployConfigDTO(BaseModel):
                 result_lines.append(
                     "# This is the template name of the workspace. Do not change it."
                 )
+            elif line.startswith("workspace_name:"):
+                result_lines.append(
+                    "# This is the name of the workspace. Please adjust the value as needed."
+                )
             elif line.startswith("resources:"):
                 result_lines.append(
                     "# This is the resources configuration for the workspace. Please adjust the values as needed."
