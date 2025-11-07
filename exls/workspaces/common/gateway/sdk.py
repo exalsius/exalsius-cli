@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.models.workspace import Workspace as SdkWorkspace
@@ -8,6 +8,7 @@ from exalsius_api_client.models.workspace_delete_response import WorkspaceDelete
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
+from exls.workspaces.common.deploy_dtos import WorkspaceDeployConfigDTO
 from exls.workspaces.common.domain import (
     Workspace,
 )
@@ -46,8 +47,11 @@ class WorkspacesGatewaySdk(WorkspacesGateway):
         response: WorkspaceResponse = command.execute()
         return self._create_from_sdk_model(sdk_model=response.workspace)
 
-    def deploy(self, deploy_params: DeployWorkspaceParams) -> str:
-        request: WorkspaceCreateRequest = to_create_request(params=deploy_params)
+    def deploy(
+        self, deploy_params: Union[DeployWorkspaceParams, WorkspaceDeployConfigDTO]
+    ) -> str:
+        """Deploy a workspace. Accepts DeployWorkspaceParams or WorkspaceDeployConfigDTO."""
+        request: WorkspaceCreateRequest = to_create_request(deploy_params)
         command: DeployWorkspaceSdkCommand = DeployWorkspaceSdkCommand(
             self._workspaces_api, params=request
         )

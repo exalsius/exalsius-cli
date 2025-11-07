@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import TYPE_CHECKING, List, Union
 
 from exls.workspaces.common.domain import (
     Workspace,
 )
 from exls.workspaces.common.gateway.dtos import DeployWorkspaceParams
+
+if TYPE_CHECKING:
+    from exls.workspaces.common.deploy_dtos import WorkspaceDeployConfigDTO
 
 
 class WorkspacesGateway(ABC):
@@ -17,7 +20,9 @@ class WorkspacesGateway(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def deploy(self, deploy_params: DeployWorkspaceParams) -> str:
+    def deploy(
+        self, deploy_params: Union[DeployWorkspaceParams, "WorkspaceDeployConfigDTO"]
+    ) -> str:
         raise NotImplementedError
 
     @abstractmethod

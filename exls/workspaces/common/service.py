@@ -6,8 +6,12 @@ from exls.clusters.gateway.base import ClustersGateway
 from exls.config import AppConfig, ConfigWorkspaceCreationPolling
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
+from exls.workspaces.common.deploy_dtos import WorkspaceDeployConfigDTO
 from exls.workspaces.common.domain import Workspace
-from exls.workspaces.common.dtos import ListWorkspacesRequestDTO, WorkspaceDTO
+from exls.workspaces.common.dtos import (
+    ListWorkspacesRequestDTO,
+    WorkspaceDTO,
+)
 from exls.workspaces.common.gateway.base import WorkspacesGateway
 
 
@@ -44,6 +48,19 @@ class WorkspacesService:
     @handle_service_errors("deleting workspace")
     def delete_workspace(self, workspace_id: str) -> None:
         self.workspaces_gateway.delete(workspace_id=workspace_id)
+
+    @handle_service_errors("deploying workspace")
+    def deploy_workspace(self, config: WorkspaceDeployConfigDTO) -> str:
+        """
+        Deploy a workspace using the deployment configuration.
+
+        Args:
+            config: Workspace deployment configuration from file or interactive flow
+
+        Returns:
+            workspace_id of the deployed workspace
+        """
+        return self.workspaces_gateway.deploy(config)
 
     @handle_service_errors("polling workspace creation")
     def poll_workspace_creation(self, workspace_id: str) -> WorkspaceDTO:

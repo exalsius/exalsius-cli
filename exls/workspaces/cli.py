@@ -1,9 +1,12 @@
 import logging
 from enum import StrEnum
-from typing import List, Union
+from pathlib import Path
+from typing import List, Optional, Union
 
 import typer
 
+from exls.clusters.dtos import ClusterDTO, ListClustersRequestDTO
+from exls.clusters.service import ClustersService, get_clusters_service
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
 from exls.core.base.service import ServiceError
@@ -12,19 +15,32 @@ from exls.core.commons.service import (
     get_config_from_ctx,
     help_if_no_subcommand,
 )
+from exls.management.types.workspace_templates.dtos import (
+    ListWorkspaceTemplatesRequestDTO,
+    WorkspaceTemplateDTO,
+)
+from exls.management.types.workspace_templates.service import (
+    WorkspaceTemplatesService,
+    get_workspace_templates_service,
+)
+from exls.workspaces.common.deploy_dtos import WorkspaceDeployConfigDTO
 from exls.workspaces.common.display import (
+    ComposingWorkspaceDeployDisplayManager,
     JsonWorkspacesDisplayManager,
     TableWorkspacesDisplayManager,
 )
-from exls.workspaces.common.dtos import ListWorkspacesRequestDTO, WorkspaceDTO
+from exls.workspaces.common.dtos import (
+    ListWorkspacesRequestDTO,
+    WorkspaceDTO,
+)
 from exls.workspaces.common.service import WorkspacesService, get_workspaces_service
+from exls.workspaces.interactive.orchestrator_flow import (
+    WorkspaceDeployOrchestratorFlow,
+)
 
 logger = logging.getLogger("cli.workspaces")
 
 workspaces_app = typer.Typer()
-workspaces_deploy_app = typer.Typer()
-
-workspaces_app.add_typer(workspaces_deploy_app, name="deploy")
 
 
 class DisplayFormat(StrEnum):
@@ -133,6 +149,181 @@ def delete_workspace(
     display_manager.display_success(f"Workspace {workspace_id} deleted successfully.")
 
 
+@workspaces_app.command("deploy", help="Deploy a workspace")
+def deploy_workspace(
+    ctx: typer.Context,
+    config_file: Optional[Path] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to workspace deployment config YAML file. If not provided, runs in interactive mode.",
+    ),
+):
+    """
+    Deploy a workspace.
+
+    When called without options, runs in interactive mode:
+    - Guides through cluster selection, template selection, and configuration
+    - Saves configuration to YAML file
+    - Prompts for deployment confirmation
+
+    When called with --config, deploys from configuration file:
+    - Loads configuration from YAML file
+    - Validates and deploys directly
+    """
+    table_display_manager = TableWorkspacesDisplayManager()
+    display_manager = ComposingWorkspaceDeployDisplayManager(
+        display_manager=table_display_manager
+    )
+
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
+
+    # Config file mode
+    if config_file:
+        try:
+            # Load config from file
+            deploy_config = WorkspaceDeployConfigDTO.from_file(config_file)
+            display_manager.display_info(f"Loaded configuration from {config_file}")
+            display_manager.display_deploy_config(deploy_config)
+
+            # Confirm deployment
+            if not display_manager.ask_confirm(
+                "Deploy workspace with this configuration?", default=True
+            ):
+                display_manager.display_info("Deployment cancelled by user.")
+                raise typer.Exit()
+
+        except Exception as e:
+            display_manager.display_error(
+                ErrorDisplayModel(message=f"Failed to load config file: {str(e)}")
+            )
+            raise typer.Exit(1)
+    else:
+        # Interactive mode
+        display_manager.display_info("🚀 Starting interactive workspace deployment...")
+
+        # Pre-fetch clusters
+        clusters_service: ClustersService = get_clusters_service(config, access_token)
+        try:
+            clusters: List[ClusterDTO] = clusters_service.list_clusters(
+                ListClustersRequestDTO()
+            )
+        except ServiceError as e:
+            display_manager.display_error(
+                ErrorDisplayModel(message=f"Failed to load clusters: {str(e)}")
+            )
+            raise typer.Exit(1)
+
+        # Pre-fetch workspace templates
+        templates_service: WorkspaceTemplatesService = get_workspace_templates_service(
+            config, access_token
+        )
+        try:
+            templates: List[WorkspaceTemplateDTO] = (
+                templates_service.list_workspace_templates(
+                    ListWorkspaceTemplatesRequestDTO()
+                )
+            )
+        except ServiceError as e:
+            display_manager.display_error(
+                ErrorDisplayModel(message=f"Failed to load templates: {str(e)}")
+            )
+            raise typer.Exit(1)
+
+        # Validate data availability
+        if not clusters:
+            display_manager.display_error(
+                ErrorDisplayModel(
+                    message="No clusters available. Please deploy a cluster first using 'exls clusters deploy'."
+                )
+            )
+            raise typer.Exit(1)
+
+        if not templates:
+            display_manager.display_error(
+                ErrorDisplayModel(
+                    message="No workspace templates available. Please contact support."
+                )
+            )
+            raise typer.Exit(1)
+
+        # Run orchestrator flow
+        orchestrator = WorkspaceDeployOrchestratorFlow(
+            clusters=clusters,
+            templates=templates,
+            display_manager=display_manager,
+        )
+
+        try:
+            deploy_config: Optional[WorkspaceDeployConfigDTO] = orchestrator.run()
+        except Exception as e:
+            display_manager.display_error(
+                ErrorDisplayModel(message=f"Interactive flow failed: {str(e)}")
+            )
+            raise typer.Exit(1)
+
+        if not deploy_config:
+            display_manager.display_info("Deployment cancelled by user.")
+            raise typer.Exit()
+
+        # Save config to file
+        config_filename = f"exls-ws-{deploy_config.workspace_name}.yaml"
+        try:
+            deploy_config.to_file(config_filename)
+            display_manager.display_success(
+                f"✅ Configuration saved to {config_filename}"
+            )
+        except Exception as e:
+            display_manager.display_error(
+                ErrorDisplayModel(
+                    message=f"Failed to save configuration file: {str(e)}"
+                )
+            )
+            # Continue anyway - config is already in memory
+
+        # Confirm deployment
+        if not display_manager.ask_confirm(
+            "Proceed with workspace deployment?", default=True
+        ):
+            display_manager.display_info(
+                f"Deployment cancelled. Configuration saved to {config_filename}. "
+                f"You can deploy later using: exls workspaces deploy --config {config_filename}"
+            )
+            raise typer.Exit()
+
+    # Deploy workspace
+    display_manager.display_info("\n🚀 Deploying workspace...")
+
+    # Get workspace service
+    workspace_service: WorkspacesService = _get_workspaces_service(ctx)
+
+    try:
+        workspace_id: str = workspace_service.deploy_workspace(deploy_config)
+        display_manager.display_success(
+            f"✅ Workspace deployment initiated! Workspace ID: {workspace_id}"
+        )
+
+        # Poll for workspace creation
+        display_manager.display_info("\n⏳ Waiting for workspace to become ready...")
+        workspace: WorkspaceDTO = poll_workspace_creation(
+            workspace_id=workspace_id,
+            service=workspace_service,
+            display_manager=table_display_manager,
+        )
+
+        display_manager.display_success(
+            f"🎉 Workspace '{workspace.workspace_name}' is now running!"
+        )
+        display_manager.display_workspace(workspace)
+
+    except Exception as e:
+        display_manager.display_error(
+            ErrorDisplayModel(message=f"Deployment failed: {str(e)}")
+        )
+        raise typer.Exit(1)
+
+
 def poll_workspace_creation(
     workspace_id: str,
     service: WorkspacesService,
@@ -157,25 +348,3 @@ def poll_workspace_creation(
         display_manager.spinner_display.stop_display()
 
     return workspace
-
-
-# isort: off
-# This serves as a registry for the workspaces CLI commands making sure they are imported and registered with typer
-
-from exls.workspaces.types.devpod import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
-    cli as devpod_cli,  # pyright: ignore[reportUnusedImport]
-)
-from exls.workspaces.types.diloco import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
-    cli as diloco_cli,  # pyright: ignore[reportUnusedImport]
-)
-from exls.workspaces.types.jupyter import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
-    cli as jupyter_cli,  # pyright: ignore[reportUnusedImport]
-)
-from exls.workspaces.types.llminference import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
-    cli as llminference_cli,  # pyright: ignore[reportUnusedImport]
-)
-from exls.workspaces.types.marimo import (  # noqa: F401, E402; pyright: ignore[reportUnusedImport]
-    cli as marimo_cli,  # pyright: ignore[reportUnusedImport]
-)
-
-# isort: on
