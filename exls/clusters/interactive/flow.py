@@ -75,7 +75,7 @@ class ClusterInteractiveFlow:
             gpu_type: AllowedGpuTypesDTO = AllowedGpuTypesDTO(gpu_type_choice.value)
 
             diloco_enabled: bool = self._display_manager.ask_confirm(
-                "Enable Diloco/Volcano workload support?", default=False
+                "Enable Diloco workload support?", default=False
             )
 
             telemetry_enabled: bool = self._display_manager.ask_confirm(

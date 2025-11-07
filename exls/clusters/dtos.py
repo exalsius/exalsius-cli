@@ -44,7 +44,6 @@ class AllowedClusterTypesDTO(StrEnum):
     CLOUD = "cloud"
     REMOTE = "remote"
     ADOPTED = "adopted"
-    DOCKER = "docker"
 
     @classmethod
     def values(cls) -> List[AllowedClusterTypesDTO]:
