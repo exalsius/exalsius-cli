@@ -107,7 +107,4 @@ class WorkspaceConfigEditorFlow(BaseWorkspaceDeployFlow):
         Returns the variables dict with default values, preserving nested structure.
         Automatically infers types for stringified values (e.g., "50" -> 50).
         """
-        variables = self._template.variables
-        if not isinstance(variables, dict):
-            return {}
-        return infer_types_in_dict(variables)
+        return infer_types_in_dict(self._template.variables)
