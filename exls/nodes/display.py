@@ -1,6 +1,8 @@
+from abc import ABC, abstractmethod
 from typing import List
 
 from exls.core.commons.display import (
+    BaseDisplayManager,
     BaseJsonDisplayManager,
     BaseTableDisplayManager,
     ComposingDisplayManager,
@@ -27,7 +29,33 @@ from exls.nodes.dtos import (
 from exls.offers.dtos import OfferDTO
 
 
-class JsonNodesDisplayManager(BaseJsonDisplayManager):
+class BaseNodesDisplayManager(BaseDisplayManager, ABC):
+    @abstractmethod
+    def display_nodes(self, data: List[NodeDTO]):
+        pass
+
+    @abstractmethod
+    def display_node(self, data: NodeDTO):
+        pass
+
+    @abstractmethod
+    def display_ssh_keys(self, ssh_keys: List[SshKeyDTO]):
+        pass
+
+    @abstractmethod
+    def display_offers(self, offers: List[OfferDTO]):
+        pass
+
+    @abstractmethod
+    def display_import_ssh_request(self, dto: NodesImportSSHRequestDTO):
+        pass
+
+    @abstractmethod
+    def display_import_offer_request(self, dto: NodesImportFromOfferRequestDTO):
+        pass
+
+
+class JsonNodesDisplayManager(BaseJsonDisplayManager, BaseNodesDisplayManager):
     def __init__(
         self,
         cloud_nodes_list_renderer: JsonListStringRenderer[
@@ -153,7 +181,7 @@ DEFAULT_IMPORT_OFFER_REQUEST_COLUMNS_RENDERING_MAP = {
 }
 
 
-class TableNodesDisplayManager(BaseTableDisplayManager):
+class TableNodesDisplayManager(BaseTableDisplayManager, BaseNodesDisplayManager):
     def __init__(
         self,
         cloud_nodes_list_renderer: TableListRenderer[CloudNodeDTO] = TableListRenderer[
@@ -246,10 +274,10 @@ class TableNodesDisplayManager(BaseTableDisplayManager):
 class ComposingNodeDisplayManager(ComposingDisplayManager):
     def __init__(
         self,
-        display_manager: TableNodesDisplayManager,
+        display_manager: BaseNodesDisplayManager,
     ):
         super().__init__(display_manager=display_manager)
-        self.display_manager: TableNodesDisplayManager = display_manager
+        self.display_manager: BaseNodesDisplayManager = display_manager
 
     def display_nodes(self, nodes: List[NodeDTO]):
         self.display_manager.display_nodes(nodes)
