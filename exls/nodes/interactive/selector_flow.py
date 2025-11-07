@@ -24,7 +24,8 @@ class NodeImportSelectorFlow(BaseNodeImportFlow):
         try:
             import_type_choices: List[questionary.Choice] = [
                 questionary.Choice("Self-managed (SSH)", "SSH"),
-                questionary.Choice("Cloud Offer", "OFFER"),
+                # commented out for now until we fully suppor the offers functionality
+                # questionary.Choice("Cloud Offer", "OFFER"),
             ]
             import_type = self._display_manager.ask_select_required(
                 "Choose import type:",
