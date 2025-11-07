@@ -286,11 +286,14 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
         def _validate_text(text: str) -> bool | str:
             return True if len(text.strip()) > 0 else "Please enter a valid name."
 
-        return questionary.text(
+        result = questionary.text(
             message,
             default=default or "",
             validate=_validate_text,
         ).ask()
+        if result is None:
+            raise KeyboardInterrupt("User cancelled")
+        return result
 
     def ask_select_required(
         self,
@@ -299,7 +302,10 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
         default: questionary.Choice,
     ) -> questionary.Choice:
         """Ask the user to select one option from a list."""
-        return questionary.select(message, choices=choices, default=default).ask()
+        result = questionary.select(message, choices=choices, default=default).ask()
+        if result is None:
+            raise KeyboardInterrupt("User cancelled")
+        return result
 
     def ask_select_optional(
         self,
@@ -307,11 +313,17 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
         choices: List[questionary.Choice],
         default: Optional[questionary.Choice] = None,
     ) -> Optional[questionary.Choice]:
-        return questionary.select(message, choices=choices, default=default).ask()
+        result = questionary.select(message, choices=choices, default=default).ask()
+        if result is None:
+            raise KeyboardInterrupt("User cancelled")
+        return result
 
     def ask_confirm(self, message: str, default: bool = False) -> bool:
         """Ask a yes/no confirmation question."""
-        return questionary.confirm(message, default=default).ask()
+        result = questionary.confirm(message, default=default).ask()
+        if result is None:
+            raise KeyboardInterrupt("User cancelled")
+        return result
 
     def ask_checkbox(
         self, message: str, choices: List[questionary.Choice], min_choices: int = 1
@@ -325,9 +337,12 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
                 else "Please select at least {min_choices} options."
             )
 
-        return questionary.checkbox(
+        result = questionary.checkbox(
             message, choices=choices, validate=_validate_checkbox
         ).ask()
+        if result is None:
+            raise KeyboardInterrupt("User cancelled")
+        return result
 
 
 class ComposingDisplayManager(

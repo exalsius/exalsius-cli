@@ -11,7 +11,8 @@ from exls.core.commons.service import (
     get_config_from_ctx,
     help_if_no_subcommand,
 )
-from exls.nodes.display import TableNodesDisplayManager
+from exls.management.types.ssh_keys.service import SshKeysService, get_ssh_keys_service
+from exls.nodes.display import ComposingNodeDisplayManager, TableNodesDisplayManager
 from exls.nodes.dtos import (
     NodeDTO,
     NodesImportFromOfferRequestDTO,
@@ -19,7 +20,9 @@ from exls.nodes.dtos import (
     NodesListRequestDTO,
     NodeTypesDTO,
 )
+from exls.nodes.interactive.flow import NodeInteractiveFlow
 from exls.nodes.service import NodeService, get_node_service
+from exls.offers.service import OffersService, get_offers_service
 
 nodes_app = typer.Typer()
 
@@ -168,3 +171,39 @@ def import_offer(
 
     display_manager.display_success(f"Nodes {nodes} imported successfully")
     display_manager.display_nodes(nodes)
+
+
+@nodes_app.command("import", help="Import nodes using interactive mode")
+def import_nodes(ctx: typer.Context):
+    """Import nodes using interactive mode."""
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
+
+    # Initialize services
+    node_service: NodeService = get_node_service(config, access_token)
+    ssh_keys_service: SshKeysService = get_ssh_keys_service(config, access_token)
+    offers_service: OffersService = get_offers_service(config, access_token)
+
+    # Create display manager
+    table_display_manager = TableNodesDisplayManager()
+    display_manager = ComposingNodeDisplayManager(display_manager=table_display_manager)
+
+    # Create and run interactive flow
+    interactive_flow: NodeInteractiveFlow = NodeInteractiveFlow(
+        node_service=node_service,
+        ssh_keys_service=ssh_keys_service,
+        offers_service=offers_service,
+        display_manager=display_manager,
+    )
+
+    try:
+        imported_nodes: List[NodeDTO] = interactive_flow.run()
+    except Exception as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
+        raise typer.Exit(1)
+
+    if not imported_nodes:
+        display_manager.display_info("No nodes were imported.")
+        raise typer.Exit()
+
+    display_manager.display_nodes(imported_nodes)
