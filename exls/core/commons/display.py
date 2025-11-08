@@ -403,7 +403,7 @@ class ComposingDisplayManager(
         self,
         message: str,
         default: Optional[str] = None,
-        validator: Optional[Callable[[str], bool | str]] = non_empty_string_validator,
+        validator: Optional[Callable[[str], bool | str]] = None,
     ) -> StrictStr:
         return self._interaction_handler.ask_text(message, default, validator)
 
