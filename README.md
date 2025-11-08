@@ -1,6 +1,6 @@
 <p align="middle"><img src="./docs/assets/logo_banner.png" alt="exalsius banner" width="250"></p>
 
-<h1 align="center">exalsius CLI (`exls`)</h1>
+<h1 align="center">exalsius CLI - exls </h1>
 
 <div align="center">
 
@@ -8,7 +8,7 @@
 
 </div>
 
-The exalsius CLI (`exls`) is a command-line tool for orchestrating and managing distributed AI training workloads on ephemeral clusters.
+The exalsius CLI - `exls`- is a command-line tool for orchestrating and managing distributed AI training workloads on ephemeral clusters.
 As a core component of the exalsius stack, it enables deployment and management of AI training jobs across multiple cloud providers and on-premise hardware.
 
 ## Features
