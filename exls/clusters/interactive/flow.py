@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 import questionary
 from pydantic import StrictStr
@@ -13,10 +13,16 @@ from exls.clusters.interactive.mappers import (
     allowed_gpu_types_to_questionary_choices,
     nodes_to_questionary_choices,
 )
+from exls.core.base.display import UserCancellationException
+from exls.core.base.exceptions import ExalsiusError
 from exls.core.commons.service import generate_random_name
 from exls.nodes.dtos import NodeDTO
 
 # TODO: We need a better solution for type-save conversion from questionary.Choice to the actual type.
+
+
+class ClusterFlowInterruptionException(UserCancellationException):
+    """Raised when the user cancels an interactive cluster flow."""
 
 
 class ClusterInteractiveFlow:
@@ -32,7 +38,7 @@ class ClusterInteractiveFlow:
         self._display_manager: ComposingClusterDisplayManager = display_manager
         self._available_nodes: List[NodeDTO] = available_nodes
 
-    def run(self) -> Optional[DeployClusterRequestDTO]:
+    def run(self) -> DeployClusterRequestDTO:
         try:
             self._display_manager.display_info(
                 "🚀 Cluster Creation - Interactive Mode: This will guide you through creating a new cluster",
@@ -82,11 +88,15 @@ class ClusterInteractiveFlow:
             )
 
             if not self._display_summary(clusterer_request):
-                return None
+                raise ClusterFlowInterruptionException(
+                    "Cluster creation cancelled by user."
+                )
+        except UserCancellationException as e:
+            raise ClusterFlowInterruptionException(e) from e
+        except Exception as e:
+            raise ExalsiusError(f"An unexpected error occurred: {str(e)}") from e
 
-            return clusterer_request
-        except (KeyboardInterrupt, TypeError):
-            return None
+        return clusterer_request
 
     def _prompt_node_selection(
         self, title: str, nodes: List[NodeDTO], min_choices: int = 1

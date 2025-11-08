@@ -2,6 +2,7 @@ from typing import List, Optional, Protocol, TypeVar
 
 from pydantic import BaseModel, Field, StrictStr
 
+from exls.core.base.exceptions import ExalsiusWarning
 from exls.core.base.render import (
     BaseListRenderer,
     BaseSingleItemRenderer,
@@ -11,6 +12,10 @@ from exls.core.base.render import (
 )
 
 T_Choice = TypeVar("T_Choice")
+
+
+class UserCancellationException(ExalsiusWarning):
+    """Raised when the user cancels an interactive operation."""
 
 
 class ErrorDisplayModel(BaseModel):
