@@ -39,11 +39,11 @@ def cluster_create_params_from_request_dto(
     cluster_labels: Dict[str, str] = {}
     if gpu_type_enum != ClusterLabelValuesGPUType.NO_GPU:
         cluster_labels[ClusterLabels.GPU_TYPE] = gpu_type_enum.value
-    if request_dto.diloco:
+    if request_dto.enable_multinode_training:
         cluster_labels[ClusterLabels.WORKLOAD_TYPE] = (
             ClusterLabelValuesWorkloadType.VOLCANO
         )
-    if request_dto.telemetry_enabled:
+    if request_dto.enable_telemetry:
         cluster_labels[ClusterLabels.TELEMETRY_TYPE] = "true"
     return ClusterCreateParams(
         name=request_dto.name,

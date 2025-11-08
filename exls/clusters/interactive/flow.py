@@ -10,7 +10,6 @@ from exls.clusters.dtos import (
     DeployClusterRequestDTO,
 )
 from exls.clusters.interactive.mappers import (
-    allowed_cluster_types_to_questionary_choices,
     allowed_gpu_types_to_questionary_choices,
     nodes_to_questionary_choices,
 )
@@ -44,22 +43,6 @@ class ClusterInteractiveFlow:
                 "Cluster name:", default=generate_random_name(prefix="exls-cluster")
             )
 
-            cluster_type_choices: List[questionary.Choice] = (
-                allowed_cluster_types_to_questionary_choices(
-                    default=AllowedClusterTypesDTO.REMOTE
-                )
-            )
-            cluster_type_choice: questionary.Choice = (
-                self._display_manager.ask_select_required(
-                    "Cluster type:",
-                    choices=cluster_type_choices,
-                    default=cluster_type_choices[0],
-                )
-            )
-            cluster_type: AllowedClusterTypesDTO = AllowedClusterTypesDTO(
-                cluster_type_choice.value
-            )
-
             gpu_type_choices: List[questionary.Choice] = (
                 allowed_gpu_types_to_questionary_choices(
                     default=AllowedGpuTypesDTO.NVIDIA
@@ -74,8 +57,8 @@ class ClusterInteractiveFlow:
             )
             gpu_type: AllowedGpuTypesDTO = AllowedGpuTypesDTO(gpu_type_choice.value)
 
-            diloco_enabled: bool = self._display_manager.ask_confirm(
-                "Enable Diloco workload support?", default=False
+            multinode_training_enabled: bool = self._display_manager.ask_confirm(
+                "Enable multinode AI model training?", default=False
             )
 
             telemetry_enabled: bool = self._display_manager.ask_confirm(
@@ -88,23 +71,14 @@ class ClusterInteractiveFlow:
                 nodes=self._available_nodes,
                 min_choices=1,
             )
-            control_node_ids: List[StrictStr] = self._prompt_node_selection(
-                title="Select control plane nodes to add (Space to select, Enter to confirm):",
-                nodes=[
-                    node
-                    for node in self._available_nodes
-                    if node.id not in worker_node_ids
-                ],
-                min_choices=0,
-            )
             clusterer_request: DeployClusterRequestDTO = DeployClusterRequestDTO(
                 name=name,
-                cluster_type=cluster_type,
+                cluster_type=AllowedClusterTypesDTO.REMOTE,
                 gpu_type=gpu_type,
-                diloco=diloco_enabled,
-                telemetry_enabled=telemetry_enabled,
+                enable_multinode_training=multinode_training_enabled,
+                enable_telemetry=telemetry_enabled,
                 worker_node_ids=worker_node_ids,
-                control_plane_node_ids=control_node_ids,
+                control_plane_node_ids=[],
             )
 
             if not self._display_summary(clusterer_request):

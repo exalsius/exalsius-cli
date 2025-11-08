@@ -179,21 +179,11 @@ def deploy_cluster(
         show_default=False,
         callback=validate_kubernetes_name,
     ),
-    cluster_type: AllowedClusterTypesDTO = typer.Option(
-        AllowedClusterTypesDTO.REMOTE,
-        "--cluster-type",
-        help="The type of the cluster",
-    ),
     worker_node_ids: List[str] = typer.Option(
         [],
         "--worker-nodes",
         help="The IDs of the worker nodes to add to the cluster.",
         show_default=False,
-    ),
-    control_plane_node_ids: Optional[List[str]] = typer.Option(
-        None,
-        "--control-nodes",
-        help="The IDs of the control plane nodes to add to the cluster. This is optional.",  # TODO: Explain default behaviour
     ),
     gpu_type: AllowedGpuTypesDTO = typer.Option(
         AllowedGpuTypesDTO.NVIDIA.value,
@@ -202,14 +192,14 @@ def deploy_cluster(
         show_choices=True,
         case_sensitive=False,
     ),
-    diloco: bool = typer.Option(
+    enable_multinode_training: bool = typer.Option(
         False,
-        "--diloco",
-        help="Add the volcano workload type to the cluster to support Diloco workloads",
+        "--enable-multinode-training",
+        help="Enable multinode AI model training for the cluster",
     ),
-    telemetry_enabled: bool = typer.Option(
+    enable_telemetry: bool = typer.Option(
         False,
-        "--telemetry-enabled",
+        "--enable-telemetry",
         help="Enable telemetry for the cluster",
     ),
     interactive: bool = typer.Option(
@@ -225,7 +215,7 @@ def deploy_cluster(
     config: AppConfig = get_config_from_ctx(ctx)
     access_token: str = get_access_token_from_ctx(ctx)
     node_service: NodeService = get_node_service(config, access_token)
-    service: ClustersService = get_clusters_service(config, access_token)
+    cluster_service: ClustersService = get_clusters_service(config, access_token)
 
     try:
         nodes_list_request: NodesListRequestDTO = NodesListRequestDTO(
@@ -269,7 +259,7 @@ def deploy_cluster(
         # Validate worker node IDs
         validation_error: Optional[ErrorDisplayModel] = _validate_node_ids(
             available_nodes=available_nodes,
-            node_ids=worker_node_ids + (control_plane_node_ids or []),
+            node_ids=worker_node_ids,
         )
         if validation_error:
             display_manager.display_error(error=validation_error)
@@ -277,16 +267,16 @@ def deploy_cluster(
 
         deploy_request = DeployClusterRequestDTO(
             name=name,
-            cluster_type=cluster_type,
+            cluster_type=AllowedClusterTypesDTO.REMOTE,
             gpu_type=gpu_type,
             worker_node_ids=worker_node_ids,
-            control_plane_node_ids=control_plane_node_ids,
-            diloco=diloco,
-            telemetry_enabled=telemetry_enabled,
+            control_plane_node_ids=[],
+            enable_multinode_training=enable_multinode_training,
+            enable_telemetry=enable_telemetry,
         )
 
     try:
-        cluster: ClusterDTO = service.deploy_cluster(deploy_request)
+        cluster: ClusterDTO = cluster_service.deploy_cluster(deploy_request)
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
