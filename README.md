@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![CI](https://img.shields.io/github/actions/workflow/status/exalsius/exalsius-cli/ci.yml?label=CI)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![CI](https://img.shields.io/github/actions/workflow/status/exalsius/exalsius-cli/ci.yaml?label=CI)
 
 </div>
 
