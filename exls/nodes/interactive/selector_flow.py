@@ -1,37 +1,47 @@
-from typing import TYPE_CHECKING, List, Literal, Optional
+from __future__ import annotations
+
+from typing import List
 
 import questionary
 
-from exls.nodes.interactive.base_flow import BaseNodeImportFlow
+from exls.core.base.display import UserCancellationException
+from exls.core.base.exceptions import ExalsiusError
+from exls.nodes.display import ComposingNodeDisplayManager
+from exls.nodes.dtos import NodeImportTypeDTO
 
-if TYPE_CHECKING:
-    from exls.nodes.display import ComposingNodeDisplayManager
+
+class NodeImportSelectorFlowInterruptionException(UserCancellationException):
+    """Raised when the user cancels an interactive node import type selection flow."""
 
 
-class NodeImportSelectorFlow(BaseNodeImportFlow):
+class NodeImportSelectorFlow:
     """Flow for selecting the node import type (SSH or Offer)."""
 
-    def __init__(self, display_manager: "ComposingNodeDisplayManager"):
-        super().__init__(display_manager)
+    def __init__(self, display_manager: ComposingNodeDisplayManager):
+        self._display_manager: ComposingNodeDisplayManager = display_manager
 
-    def run(self) -> Optional[Literal["SSH", "OFFER"]]:
+    def run(self) -> NodeImportTypeDTO:
         """
         Prompt user to select import type.
-
-        Returns:
-            "SSH" or "OFFER" if selected, None if cancelled
         """
         try:
             import_type_choices: List[questionary.Choice] = [
-                questionary.Choice("Self-managed (SSH)", "SSH"),
-                # commented out for now until we fully suppor the offers functionality
-                # questionary.Choice("Cloud Offer", "OFFER"),
+                questionary.Choice(
+                    NodeImportTypeDTO.SSH.value, NodeImportTypeDTO.SSH.value
+                ),
+                questionary.Choice(
+                    NodeImportTypeDTO.OFFER.value, NodeImportTypeDTO.OFFER.value
+                ),
             ]
             import_type = self._display_manager.ask_select_required(
                 "Choose import type:",
                 choices=import_type_choices,
                 default=import_type_choices[0],
             )
-            return str(import_type)  # type: ignore
-        except (KeyboardInterrupt, TypeError):
-            return None
+            return NodeImportTypeDTO(import_type.value)
+        except UserCancellationException:
+            raise NodeImportSelectorFlowInterruptionException(
+                "Node import type selection cancelled by user."
+            )
+        except Exception as e:
+            raise ExalsiusError(f"An unexpected error occurred: {str(e)}") from e
