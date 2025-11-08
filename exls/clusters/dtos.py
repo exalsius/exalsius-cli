@@ -41,9 +41,9 @@ class AllowedClusterNodeRoleDTO(StrEnum):
 
 
 class AllowedClusterTypesDTO(StrEnum):
-    CLOUD = "cloud"
+    # CLOUD = "cloud"
     REMOTE = "remote"
-    ADOPTED = "adopted"
+    # ADOPTED = "adopted"
 
     @classmethod
     def values(cls) -> List[AllowedClusterTypesDTO]:
@@ -68,11 +68,11 @@ class DeployClusterRequestDTO(BaseModel):
     control_plane_node_ids: Optional[List[StrictStr]] = Field(
         default=None, description="The IDs of the control plane nodes"
     )
-    diloco: bool = Field(
+    enable_multinode_training: bool = Field(
         ...,
-        description="Add the volcano workload type to the cluster to support Diloco workloads",
+        description="Enable multinode AI model training for the cluster",
     )
-    telemetry_enabled: bool = Field(..., description="Enable telemetry for the cluster")
+    enable_telemetry: bool = Field(..., description="Enable telemetry for the cluster")
 
 
 class AddNodesRequestDTO(BaseModel):

@@ -127,10 +127,9 @@ DEFAULT_DEPLOY_CLUSTER_REQUEST_COLUMNS_RENDERING_MAP = {
     "name": get_column("Name"),
     "cluster_type": get_column("Cluster Type"),
     "gpu_type": get_column("GPU Type"),
-    "diloco": get_column("Diloco"),
-    "telemetry_enabled": get_column("Telemetry Enabled"),
+    "enable_multinode_training": get_column("Multinode Training"),
+    "enable_telemetry": get_column("Telemetry Enabled"),
     "worker_node_ids": get_column("Worker Node IDs"),
-    "control_plane_node_ids": get_column("Control Plane Node IDs"),
 }
 
 
