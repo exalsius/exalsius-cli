@@ -1,4 +1,4 @@
-from typing import List, Optional, Protocol, TypeVar
+from typing import Callable, List, Optional, Protocol, TypeVar
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -71,7 +71,10 @@ class InteractiveDisplay(Protocol[T_Choice]):
     """Protocol for interactive display operations."""
 
     def ask_text(
-        self, message: StrictStr, default: Optional[StrictStr] = None
+        self,
+        message: StrictStr,
+        default: Optional[StrictStr] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
     ) -> StrictStr: ...
     def ask_select_required(
         self,

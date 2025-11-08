@@ -21,11 +21,14 @@ from exls.clusters.dtos import (
     ListClustersRequestDTO,
     RemoveNodeRequestDTO,
 )
-from exls.clusters.interactive.flow import ClusterInteractiveFlow
+from exls.clusters.interactive.flow import (
+    ClusterFlowInterruptionException,
+    ClusterInteractiveFlow,
+)
 from exls.clusters.service import ClustersService, get_clusters_service
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
-from exls.core.base.exceptions import ExalsiusError, ExalsiusWarning
+from exls.core.base.exceptions import ExalsiusError
 from exls.core.base.service import ServiceError
 from exls.core.commons.service import (
     generate_random_name,
@@ -212,11 +215,13 @@ def deploy_cluster(
     """
     Create a cluster.
     """
-    display_manager = TableClusterDisplayManager()
     config: AppConfig = get_config_from_ctx(ctx)
     access_token: str = get_access_token_from_ctx(ctx)
+
     node_service: NodeService = get_node_service(config, access_token)
     cluster_service: ClustersService = get_clusters_service(config, access_token)
+
+    display_manager = TableClusterDisplayManager()
 
     try:
         nodes_list_request: NodesListRequestDTO = NodesListRequestDTO(
@@ -248,7 +253,7 @@ def deploy_cluster(
         )
         try:
             deploy_request = interactive_flow.run()
-        except ExalsiusWarning as e:
+        except ClusterFlowInterruptionException as e:
             display_manager.display_info(str(e))
             raise typer.Exit(0)
         except ExalsiusError as e:
