@@ -15,6 +15,7 @@ from exls.core.base.display import (
     BaseSpinnerDisplay,
     ErrorDisplayModel,
     InteractiveDisplay,
+    UserCancellationException,
 )
 from exls.core.base.render import (
     BaseListRenderer,
@@ -292,7 +293,7 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
             validate=_validate_text,
         ).ask()
         if result is None:
-            raise KeyboardInterrupt("User cancelled")
+            raise UserCancellationException("User cancelled")
         return result
 
     def ask_select_required(
@@ -304,7 +305,7 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
         """Ask the user to select one option from a list."""
         result = questionary.select(message, choices=choices, default=default).ask()
         if result is None:
-            raise KeyboardInterrupt("User cancelled")
+            raise UserCancellationException("User cancelled")
         return result
 
     def ask_select_optional(
@@ -315,14 +316,14 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
     ) -> Optional[questionary.Choice]:
         result = questionary.select(message, choices=choices, default=default).ask()
         if result is None:
-            raise KeyboardInterrupt("User cancelled")
+            raise UserCancellationException("User cancelled")
         return result
 
     def ask_confirm(self, message: str, default: bool = False) -> bool:
         """Ask a yes/no confirmation question."""
         result = questionary.confirm(message, default=default).ask()
         if result is None:
-            raise KeyboardInterrupt("User cancelled")
+            raise UserCancellationException("User cancelled")
         return result
 
     def ask_checkbox(
@@ -341,7 +342,7 @@ class QuestionaryInteractionHandler(InteractiveDisplay[questionary.Choice]):
             message, choices=choices, validate=_validate_checkbox
         ).ask()
         if result is None:
-            raise KeyboardInterrupt("User cancelled")
+            raise UserCancellationException("User cancelled")
         return result
 
 
