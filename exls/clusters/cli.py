@@ -25,6 +25,7 @@ from exls.clusters.interactive.flow import ClusterInteractiveFlow
 from exls.clusters.service import ClustersService, get_clusters_service
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
+from exls.core.base.exceptions import ExalsiusError, ExalsiusWarning
 from exls.core.base.service import ServiceError
 from exls.core.commons.service import (
     generate_random_name,
@@ -247,14 +248,12 @@ def deploy_cluster(
         )
         try:
             deploy_request = interactive_flow.run()
-        except Exception as e:
+        except ExalsiusWarning as e:
+            display_manager.display_info(str(e))
+            raise typer.Exit(0)
+        except ExalsiusError as e:
             display_manager.display_error(ErrorDisplayModel(message=str(e)))
             raise typer.Exit(1)
-        if not deploy_request:
-            display_manager.display_error(
-                ErrorDisplayModel(message="Cluster creation cancelled by user.")
-            )
-            raise typer.Exit()
     else:
         # Validate worker node IDs
         validation_error: Optional[ErrorDisplayModel] = _validate_node_ids(
