@@ -1,9 +1,10 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import typer
 
 from exls.config import AppConfig
 from exls.core.base.display import ErrorDisplayModel
+from exls.core.base.exceptions import ExalsiusError
 from exls.core.base.service import ServiceError
 from exls.core.commons.service import (
     generate_random_name,
@@ -21,10 +22,11 @@ from exls.nodes.dtos import (
     NodesListRequestDTO,
     NodeTypesDTO,
 )
-from exls.nodes.interactive.orchestrator_flow import NodeImportOrchestratorFlow
+from exls.nodes.interactive.ssh_flow import (
+    NodeImportSshFlow,
+    NodeImportSshFlowInterruptionException,
+)
 from exls.nodes.service import NodeService, get_node_service
-from exls.offers.dtos import OfferDTO, OffersListRequestDTO
-from exls.offers.service import OffersService, get_offers_service
 
 nodes_app = typer.Typer()
 
@@ -139,9 +141,7 @@ def import_ssh(
     display_manager.display_node(node)
 
 
-@nodes_app.command(
-    "import-offer", help="Import a node from an offer into the node pool."
-)
+# TODO: This is an experimental feature for now, so we're not exposing it yet.
 def import_offer(
     ctx: typer.Context,
     offer_id: str = typer.Argument(help="The ID of the offer to import"),
@@ -171,7 +171,9 @@ def import_offer(
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    display_manager.display_success(f"Nodes {nodes} imported successfully")
+    display_manager.display_success(
+        f"Successfully imported {len(nodes)} nodes from offer {offer_id}"
+    )
     display_manager.display_nodes(nodes)
 
 
@@ -183,10 +185,11 @@ def import_nodes(ctx: typer.Context):
 
     node_service: NodeService = get_node_service(config, access_token)
     ssh_keys_service: SshKeysService = get_ssh_keys_service(config, access_token)
-    offers_service: OffersService = get_offers_service(config, access_token)
 
-    table_display_manager = TableNodesDisplayManager()
-    display_manager = ComposingNodeDisplayManager(display_manager=table_display_manager)
+    display_manager: TableNodesDisplayManager = TableNodesDisplayManager()
+    composing_display_manager: ComposingNodeDisplayManager = (
+        ComposingNodeDisplayManager(display_manager=display_manager)
+    )
 
     try:
         ssh_keys: List[SshKeyDTO] = ssh_keys_service.list_ssh_keys(
@@ -198,16 +201,9 @@ def import_nodes(ctx: typer.Context):
         )
         raise typer.Exit(1)
 
-    try:
-        offers: List[OfferDTO] = offers_service.list_offers(OffersListRequestDTO())
-    except ServiceError as e:
-        display_manager.display_error(
-            ErrorDisplayModel(message=f"Failed to load offers: {str(e)}")
-        )
-        raise typer.Exit(1)
-
     # Validate at least one import method is available
-    if not ssh_keys and not offers:
+    # TODO: Ask to start ssh key import flow
+    if not ssh_keys:
         display_manager.display_error(
             ErrorDisplayModel(
                 message="No SSH keys or offers available. Please add an SSH key using 'exls management ssh-keys add' or wait for offers to become available."
@@ -215,58 +211,25 @@ def import_nodes(ctx: typer.Context):
         )
         raise typer.Exit(1)
 
-    orchestrator_flow = NodeImportOrchestratorFlow(
-        ssh_keys=ssh_keys,
-        offers=offers,
-        display_manager=display_manager,
-    )
+    # TODO: We support only SSH import for now, but we should support offer import in the future.
 
     try:
-        import_dtos: List[
-            Union[NodesImportSSHRequestDTO, NodesImportFromOfferRequestDTO]
-        ] = orchestrator_flow.run()
-    except Exception as e:
+        flow: NodeImportSshFlow = NodeImportSshFlow(
+            available_ssh_keys=ssh_keys, display_manager=composing_display_manager
+        )
+        import_request: NodesImportSSHRequestDTO = flow.run()
+    except NodeImportSshFlowInterruptionException as e:
+        display_manager.display_info(str(e))
+        raise typer.Exit(0)
+    except ExalsiusError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    if not import_dtos:
-        display_manager.display_info("No nodes were imported.")
-        raise typer.Exit()
-
-    imported_nodes: List[NodeDTO] = []
-    for dto in import_dtos:
-        try:
-            if isinstance(dto, NodesImportSSHRequestDTO):
-                node: NodeDTO = node_service.import_ssh_node(dto)
-                imported_nodes.append(node)
-                display_manager.display_success(
-                    f"Node {node.hostname} (ID: {node.id}) imported successfully!"
-                )
-            else:  # NodesImportFromOfferRequestDTO
-                nodes: List[NodeDTO] = node_service.import_from_offer(dto)
-                imported_nodes.extend(nodes)
-                if len(nodes) == 1:
-                    display_manager.display_success(
-                        f"Node {nodes[0].hostname} (ID: {nodes[0].id}) imported successfully!"
-                    )
-                else:
-                    display_manager.display_success(
-                        f"{len(nodes)} nodes imported successfully!"
-                    )
-                    for node in nodes:
-                        display_manager.display_info(
-                            f"  - {node.hostname} (ID: {node.id})"
-                        )
-        except ServiceError as e:
-            display_manager.display_error(
-                ErrorDisplayModel(message=f"Import failed: {str(e)}")
-            )
-
-    if imported_nodes:
-        display_manager.display_success(
-            f"\n✅ Import session completed! Total nodes imported: {len(imported_nodes)}"
-        )
-        display_manager.display_nodes(imported_nodes)
-    else:
-        display_manager.display_error(ErrorDisplayModel(message="All imports failed."))
+    try:
+        node: NodeDTO = node_service.import_ssh_node(import_request)
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
+
+    display_manager.display_success(f"Node {node.hostname} imported successfully")
+    display_manager.display_node(node)

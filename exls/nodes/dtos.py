@@ -45,6 +45,11 @@ class AllowedNodeStatusFiltersDTO(StrEnum):
     FAILED = "failed"
 
 
+class NodeImportTypeDTO(StrEnum):
+    SSH = "ssh"
+    OFFER = "offer"
+
+
 class NodeDTO(BaseModel):
     id: StrictStr
     hostname: StrictStr
