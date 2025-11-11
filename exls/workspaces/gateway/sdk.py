@@ -8,18 +8,18 @@ from exalsius_api_client.models.workspace_delete_response import WorkspaceDelete
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
-from exls.workspaces.common.domain import (
+from exls.workspaces.domain import (
     Workspace,
 )
-from exls.workspaces.common.gateway.base import WorkspacesGateway
-from exls.workspaces.common.gateway.commands import (
+from exls.workspaces.gateway.base import WorkspacesGateway
+from exls.workspaces.gateway.commands import (
     DeleteWorkspaceSdkCommand,
     DeployWorkspaceSdkCommand,
     GetWorkspaceSdkCommand,
     ListWorkspacesSdkCommand,
 )
-from exls.workspaces.common.gateway.dtos import DeployWorkspaceParams
-from exls.workspaces.common.gateway.mappers import to_create_request
+from exls.workspaces.gateway.dtos import DeployWorkspaceParams
+from exls.workspaces.gateway.mappers import deploy_workspace_params_to_create_request
 
 
 class WorkspacesGatewaySdk(WorkspacesGateway):
@@ -47,7 +47,10 @@ class WorkspacesGatewaySdk(WorkspacesGateway):
         return self._create_from_sdk_model(sdk_model=response.workspace)
 
     def deploy(self, deploy_params: DeployWorkspaceParams) -> str:
-        request: WorkspaceCreateRequest = to_create_request(params=deploy_params)
+        """Deploy a workspace. Accepts DeployWorkspaceParams or WorkspaceDeployConfigDTO."""
+        request: WorkspaceCreateRequest = deploy_workspace_params_to_create_request(
+            params=deploy_params
+        )
         command: DeployWorkspaceSdkCommand = DeployWorkspaceSdkCommand(
             self._workspaces_api, params=request
         )

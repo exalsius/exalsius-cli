@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from exls.workspaces.common.domain import (
+from exls.workspaces.domain import (
     Workspace,
 )
-from exls.workspaces.common.gateway.dtos import DeployWorkspaceParams
+from exls.workspaces.gateway.dtos import DeployWorkspaceParams
 
 
 class WorkspacesGateway(ABC):

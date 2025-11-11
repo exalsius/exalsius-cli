@@ -35,6 +35,10 @@ from exls.core.commons.render.text import (
     RichTextSuccessMessageRenderer,
     TextRenderConfig,
 )
+from exls.core.commons.render.yaml import (
+    YamlMessageRenderer,
+    YamlSingleItemStringRenderer,
+)
 
 DEFAULT_THEME = Theme(
     {
@@ -235,6 +239,35 @@ class BaseJsonDisplayManager(SimpleDisplayManager):
         )
 
 
+class BaseYamlDisplayManager(SimpleDisplayManager):
+    """Base YAML display manager that uses renderers to display messages."""
+
+    def __init__(
+        self,
+        info_renderer: BaseSingleItemRenderer[str, str] = YamlMessageRenderer(),
+        success_renderer: BaseSingleItemRenderer[str, str] = YamlMessageRenderer(),
+        error_renderer: BaseSingleItemRenderer[
+            ErrorDisplayModel, str
+        ] = YamlSingleItemStringRenderer[ErrorDisplayModel](),
+        theme: Theme = DEFAULT_THEME,
+    ):
+        super().__init__(
+            info_renderer=info_renderer,
+            success_renderer=success_renderer,
+            error_renderer=error_renderer,
+            theme=theme,
+        )
+        self.info_display: BaseSingleItemDisplay[str, str] = ConsoleSingleItemDisplay(
+            renderer=info_renderer, theme=theme
+        )
+        self.success_display: BaseSingleItemDisplay[str, str] = (
+            ConsoleSingleItemDisplay(renderer=success_renderer, theme=theme)
+        )
+        self.error_display: BaseSingleItemDisplay[ErrorDisplayModel, str] = (
+            ConsoleSingleItemDisplay(renderer=error_renderer, theme=theme)
+        )
+
+
 class BaseTableDisplayManager(SimpleDisplayManager):
     """Base table display manager that uses renderers to display messages."""
 
@@ -392,7 +425,8 @@ def positive_integer_validator(text: str) -> bool | str:
 
 
 class ComposingDisplayManager(
-    BaseDisplayManager, InteractiveDisplay[questionary.Choice]
+    BaseDisplayManager,
+    InteractiveDisplay[questionary.Choice],
 ):
     """A display manager that composes text display with an interactive handler."""
 

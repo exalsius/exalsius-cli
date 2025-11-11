@@ -5,6 +5,7 @@ import typer
 from pydantic import StrictStr
 
 from exls.clusters.display import (
+    BaseClusterDisplayManager,
     ComposingClusterDisplayManager,
     TableClusterDisplayManager,
 )
@@ -221,7 +222,7 @@ def deploy_cluster(
     node_service: NodeService = get_node_service(config, access_token)
     cluster_service: ClustersService = get_clusters_service(config, access_token)
 
-    display_manager = TableClusterDisplayManager()
+    display_manager: BaseClusterDisplayManager = TableClusterDisplayManager()
 
     try:
         nodes_list_request: NodesListRequestDTO = NodesListRequestDTO(
@@ -285,7 +286,12 @@ def deploy_cluster(
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    display_manager.display_success(f"Cluster {cluster.id} created successfully.")
+    display_manager.display_success(
+        f"Started cluster deployment for cluster {cluster.id}!"
+    )
+    display_manager.display_success(
+        f"You can check the status of the deployment with `exls clusters get {cluster.id}`"
+    )
 
 
 @clusters_app.command("list-nodes", help="List all nodes of a cluster")

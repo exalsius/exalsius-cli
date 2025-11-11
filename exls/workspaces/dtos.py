@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
 from exls.clusters.domain import Cluster
-from exls.workspaces.common.domain import (
+from exls.workspaces.domain import (
     Resources,
     Workspace,
     WorkspaceAccessInformation,
@@ -21,6 +21,9 @@ class WorkspaceDTO(BaseModel):
     workspace_id: str = Field(..., description="The ID of the workspace")
     cluster_id: str = Field(..., description="The ID of the cluster")
     cluster_name: str = Field(..., description="The name of the cluster")
+    workspace_template_name: str = Field(
+        ..., description="The name of the workspace template"
+    )
     workspace_name: str = Field(..., description="The name of the workspace")
     workspace_status: str = Field(..., description="The status of the workspace")
     workspace_created_at: datetime = Field(
@@ -39,6 +42,7 @@ class WorkspaceDTO(BaseModel):
             workspace_id=workspace.id,
             cluster_id=cluster.id,
             cluster_name=cluster.name,
+            workspace_template_name=workspace.template_name,
             workspace_name=workspace.name,
             workspace_status=workspace.workspace_status,
             workspace_created_at=workspace.created_at,
@@ -79,20 +83,22 @@ class WorkspaceResourcesRequestDTO(BaseModel):
     cpu_cores: int = Field(..., description="The number of CPU cores")
     memory_gb: int = Field(..., description="The amount of memory in GB")
     pvc_storage_gb: int = Field(..., description="The amount of PVC storage in GB")
-    ephemeral_storage_gb: Optional[int] = Field(
-        None, description="The amount of ephemeral storage in GB"
-    )
 
 
 class DeployWorkspaceRequestDTO(BaseModel):
     cluster_id: str = Field(..., description="The ID of the cluster")
-    name: str = Field(..., description="The name of the workspace")
+    cluster_name: str = Field(..., description="The name of the cluster")
+    workspace_name: str = Field(..., description="The name of the workspace")
+    workspace_template_name: str = Field(
+        ..., description="The name of the workspace template"
+    )
     resources: WorkspaceResourcesRequestDTO = Field(
         ..., description="The resources of the workspace"
     )
     to_be_deleted_at: Optional[datetime] = Field(
         None, description="The date and time when the workspace should be deleted"
     )
+    variables: Dict[str, Any] = Field(..., description="The variables of the workspace")
 
 
 class WorkspaceAccessInformationDTO(BaseModel):
