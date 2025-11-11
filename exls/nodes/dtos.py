@@ -107,6 +107,7 @@ class NodesImportSSHRequestDTO(BaseModel):
     hostname: str = Field(..., description="The hostname of the node")
     endpoint: str = Field(..., description="The endpoint of the node")
     username: str = Field(..., description="The username of the node")
+    ssh_key_name: str = Field(..., description="The name of the SSH key to use")
     ssh_key_id: str = Field(..., description="The ID of the SSH key to use")
 
 

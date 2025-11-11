@@ -54,6 +54,10 @@ class BaseNodesDisplayManager(BaseDisplayManager, ABC):
     def display_import_offer_request(self, dto: NodesImportFromOfferRequestDTO):
         pass
 
+    @abstractmethod
+    def display_import_ssh_requests(self, dto: List[NodesImportSSHRequestDTO]):
+        pass
+
 
 class JsonNodesDisplayManager(BaseJsonDisplayManager, BaseNodesDisplayManager):
     def __init__(
@@ -79,6 +83,9 @@ class JsonNodesDisplayManager(BaseJsonDisplayManager, BaseNodesDisplayManager):
         import_ssh_request_renderer: JsonSingleItemStringRenderer[
             NodesImportSSHRequestDTO
         ] = JsonSingleItemStringRenderer[NodesImportSSHRequestDTO](),
+        import_ssh_requests_renderer: JsonListStringRenderer[
+            NodesImportSSHRequestDTO
+        ] = JsonListStringRenderer[NodesImportSSHRequestDTO](),
         import_offer_request_renderer: JsonSingleItemStringRenderer[
             NodesImportFromOfferRequestDTO
         ] = JsonSingleItemStringRenderer[NodesImportFromOfferRequestDTO](),
@@ -100,6 +107,9 @@ class JsonNodesDisplayManager(BaseJsonDisplayManager, BaseNodesDisplayManager):
         self.offers_list_display = ConsoleListDisplay(renderer=offers_list_renderer)
         self.import_ssh_request_display = ConsoleSingleItemDisplay(
             renderer=import_ssh_request_renderer
+        )
+        self.import_ssh_requests_display = ConsoleListDisplay(
+            renderer=import_ssh_requests_renderer
         )
         self.import_offer_request_display = ConsoleSingleItemDisplay(
             renderer=import_offer_request_renderer
@@ -132,6 +142,9 @@ class JsonNodesDisplayManager(BaseJsonDisplayManager, BaseNodesDisplayManager):
 
     def display_import_offer_request(self, dto: NodesImportFromOfferRequestDTO):
         self.import_offer_request_display.display(dto)
+
+    def display_import_ssh_requests(self, dto: List[NodesImportSSHRequestDTO]):
+        self.import_ssh_requests_display.display(dto)
 
 
 DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP = {
@@ -171,7 +184,7 @@ DEFAULT_IMPORT_SSH_REQUEST_COLUMNS_RENDERING_MAP = {
     "hostname": get_column("Hostname"),
     "endpoint": get_column("Endpoint"),
     "username": get_column("Username"),
-    "ssh_key_id": get_column("SSH Key ID"),
+    "ssh_key_name": get_column("SSH Key"),
 }
 
 DEFAULT_IMPORT_OFFER_REQUEST_COLUMNS_RENDERING_MAP = {
@@ -213,6 +226,11 @@ class TableNodesDisplayManager(BaseTableDisplayManager, BaseNodesDisplayManager)
         ] = TableSingleItemRenderer[NodesImportSSHRequestDTO](
             columns_map=DEFAULT_IMPORT_SSH_REQUEST_COLUMNS_RENDERING_MAP
         ),
+        import_ssh_requests_renderer: TableListRenderer[
+            NodesImportSSHRequestDTO
+        ] = TableListRenderer[NodesImportSSHRequestDTO](
+            columns_rendering_map=DEFAULT_IMPORT_SSH_REQUEST_COLUMNS_RENDERING_MAP
+        ),
         import_offer_request_renderer: TableSingleItemRenderer[
             NodesImportFromOfferRequestDTO
         ] = TableSingleItemRenderer[NodesImportFromOfferRequestDTO](
@@ -236,6 +254,9 @@ class TableNodesDisplayManager(BaseTableDisplayManager, BaseNodesDisplayManager)
         self.offers_list_display = ConsoleListDisplay(renderer=offers_list_renderer)
         self.import_ssh_request_display = ConsoleSingleItemDisplay(
             renderer=import_ssh_request_renderer
+        )
+        self.import_ssh_requests_display = ConsoleListDisplay(
+            renderer=import_ssh_requests_renderer
         )
         self.import_offer_request_display = ConsoleSingleItemDisplay(
             renderer=import_offer_request_renderer
@@ -270,6 +291,9 @@ class TableNodesDisplayManager(BaseTableDisplayManager, BaseNodesDisplayManager)
     def display_import_offer_request(self, dto: NodesImportFromOfferRequestDTO):
         self.import_offer_request_display.display(dto)
 
+    def display_import_ssh_requests(self, dto: List[NodesImportSSHRequestDTO]):
+        self.import_ssh_requests_display.display(dto)
+
 
 class ComposingNodeDisplayManager(ComposingDisplayManager):
     def __init__(
@@ -296,3 +320,6 @@ class ComposingNodeDisplayManager(ComposingDisplayManager):
 
     def display_import_offer_request(self, dto: NodesImportFromOfferRequestDTO):
         self.display_manager.display_import_offer_request(dto)
+
+    def display_import_ssh_requests(self, dto: List[NodesImportSSHRequestDTO]):
+        self.display_manager.display_import_ssh_requests(dto)

@@ -14,7 +14,7 @@ from exls.clusters.interactive.mappers import (
     nodes_to_questionary_choices,
 )
 from exls.core.base.display import UserCancellationException
-from exls.core.base.exceptions import ExalsiusError
+from exls.core.commons.decorators import handle_interactive_flow_errors
 from exls.core.commons.service import generate_random_name
 from exls.nodes.dtos import NodeDTO
 
@@ -38,64 +38,57 @@ class ClusterInteractiveFlow:
         self._display_manager: ComposingClusterDisplayManager = display_manager
         self._available_nodes: List[NodeDTO] = available_nodes
 
+    @handle_interactive_flow_errors(
+        "cluster creation", ClusterFlowInterruptionException
+    )
     def run(self) -> DeployClusterRequestDTO:
-        try:
-            self._display_manager.display_info(
-                "🚀 Cluster Creation - Interactive Mode: This will guide you through creating a new cluster",
-            )
+        self._display_manager.display_info(
+            "🚀 Cluster Creation - Interactive Mode: This will guide you through creating a new cluster",
+        )
 
-            self._display_manager.display_info("📋 Step 1: Cluster Configuration:")
-            name: StrictStr = self._display_manager.ask_text(
-                "Cluster name:", default=generate_random_name(prefix="exls-cluster")
-            )
+        self._display_manager.display_info("📋 Step 1: Cluster Configuration:")
+        name: StrictStr = self._display_manager.ask_text(
+            "Cluster name:", default=generate_random_name(prefix="exls-cluster")
+        )
 
-            gpu_type_choices: List[questionary.Choice] = (
-                allowed_gpu_types_to_questionary_choices(
-                    default=AllowedGpuTypesDTO.NVIDIA
-                )
-            )
-            gpu_type_choice: questionary.Choice = (
-                self._display_manager.ask_select_required(
-                    "GPU type:",
-                    choices=gpu_type_choices,
-                    default=gpu_type_choices[0],
-                )
-            )
-            gpu_type: AllowedGpuTypesDTO = AllowedGpuTypesDTO(gpu_type_choice.value)
+        gpu_type_choices: List[questionary.Choice] = (
+            allowed_gpu_types_to_questionary_choices(default=AllowedGpuTypesDTO.NVIDIA)
+        )
+        gpu_type_choice: questionary.Choice = self._display_manager.ask_select_required(
+            "GPU type:",
+            choices=gpu_type_choices,
+            default=gpu_type_choices[0],
+        )
+        gpu_type: AllowedGpuTypesDTO = AllowedGpuTypesDTO(gpu_type_choice.value)
 
-            multinode_training_enabled: bool = self._display_manager.ask_confirm(
-                "Enable multinode AI model training?", default=False
-            )
+        multinode_training_enabled: bool = self._display_manager.ask_confirm(
+            "Enable multinode AI model training?", default=False
+        )
 
-            telemetry_enabled: bool = self._display_manager.ask_confirm(
-                "Enable telemetry?", default=False
-            )
+        telemetry_enabled: bool = self._display_manager.ask_confirm(
+            "Enable telemetry?", default=False
+        )
 
-            self._display_manager.display_info("🖥️  Step 2: Node Selection:")
-            worker_node_ids: List[StrictStr] = self._prompt_node_selection(
-                title="Select worker nodes to add (Space to select, Enter to confirm):",
-                nodes=self._available_nodes,
-                min_choices=1,
-            )
-            clusterer_request: DeployClusterRequestDTO = DeployClusterRequestDTO(
-                name=name,
-                cluster_type=AllowedClusterTypesDTO.REMOTE,
-                gpu_type=gpu_type,
-                enable_multinode_training=multinode_training_enabled,
-                enable_telemetry=telemetry_enabled,
-                worker_node_ids=worker_node_ids,
-                control_plane_node_ids=[],
-            )
+        self._display_manager.display_info("🖥️  Step 2: Node Selection:")
+        worker_node_ids: List[StrictStr] = self._prompt_node_selection(
+            title="Select worker nodes to add (Space to select, Enter to confirm):",
+            nodes=self._available_nodes,
+            min_choices=1,
+        )
+        clusterer_request: DeployClusterRequestDTO = DeployClusterRequestDTO(
+            name=name,
+            cluster_type=AllowedClusterTypesDTO.REMOTE,
+            gpu_type=gpu_type,
+            enable_multinode_training=multinode_training_enabled,
+            enable_telemetry=telemetry_enabled,
+            worker_node_ids=worker_node_ids,
+            control_plane_node_ids=[],
+        )
 
-            if not self._display_summary(clusterer_request):
-                raise ClusterFlowInterruptionException(
-                    "Cluster creation cancelled by user."
-                )
-        except UserCancellationException as e:
-            raise ClusterFlowInterruptionException(e) from e
-        except Exception as e:
-            raise ExalsiusError(f"An unexpected error occurred: {str(e)}") from e
-
+        if not self._display_summary(clusterer_request):
+            raise ClusterFlowInterruptionException(
+                "Cluster creation cancelled by user."
+            )
         return clusterer_request
 
     def _prompt_node_selection(

@@ -1,6 +1,7 @@
 from typing import List
 
 from exls.config import AppConfig
+from exls.core.base.service import ServiceError
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
 from exls.nodes.domain import BaseNode
@@ -47,15 +48,28 @@ class NodeService:
         return self.nodes_gateway.delete(node_id)
 
     @handle_service_errors("importing ssh node")
-    def import_ssh_node(self, dto: NodesImportSSHRequestDTO) -> NodeDTO:
+    def import_ssh_node(self, node_import_request: NodesImportSSHRequestDTO) -> NodeDTO:
         import_ssh_params: NodeImportSshParams = NodeImportSshParams(
-            hostname=dto.hostname,
-            endpoint=dto.endpoint,
-            username=dto.username,
-            ssh_key_id=dto.ssh_key_id,
+            hostname=node_import_request.hostname,
+            endpoint=node_import_request.endpoint,
+            username=node_import_request.username,
+            ssh_key_id=node_import_request.ssh_key_id,
         )
-        node = self.nodes_gateway.import_ssh(import_ssh_params)
+        node: BaseNode = self.nodes_gateway.import_ssh(import_ssh_params)
         return node_dto_from_domain(node)
+
+    @handle_service_errors("importing ssh nodes")
+    def import_ssh_nodes(
+        self, node_import_requests: List[NodesImportSSHRequestDTO]
+    ) -> List[NodeDTO]:
+        if len(node_import_requests) == 0:
+            raise ServiceError(
+                message="SSH import request must contain at least one node to import"
+            )
+        return [
+            self.import_ssh_node(node_import_request)
+            for node_import_request in node_import_requests
+        ]
 
     @handle_service_errors("importing nodes from offer")
     def import_from_offer(self, dto: NodesImportFromOfferRequestDTO) -> List[NodeDTO]:

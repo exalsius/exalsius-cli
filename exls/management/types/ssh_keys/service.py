@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Optional
 
 from exls.config import AppConfig
+from exls.core.base.service import ServiceError
 from exls.core.commons.decorators import handle_service_errors
 from exls.core.commons.factories import GatewayFactory
 from exls.core.commons.gateways.fileio import StringFileIOGateway
+from exls.management.types.ssh_keys.domain import SshKey
 from exls.management.types.ssh_keys.dtos import (
     AddSshKeyRequestDTO,
     ListSshKeysRequestDTO,
@@ -26,8 +28,18 @@ class SshKeysService:
 
     @handle_service_errors("listing ssh keys")
     def list_ssh_keys(self, request: ListSshKeysRequestDTO) -> List[SshKeyDTO]:
-        ssh_keys = self.ssh_keys_gateway.list()
+        ssh_keys: List[SshKey] = self.ssh_keys_gateway.list()
         return [SshKeyDTO.from_domain(key) for key in ssh_keys]
+
+    @handle_service_errors("getting ssh key")
+    def get_ssh_key(self, ssh_key_id: str) -> SshKeyDTO:
+        ssh_keys: List[SshKey] = self.ssh_keys_gateway.list()
+        ssh_key: Optional[SshKey] = next(
+            (key for key in ssh_keys if key.id == ssh_key_id), None
+        )
+        if ssh_key is None:
+            raise ServiceError(message=f"SSH key with ID {ssh_key_id} not found")
+        return SshKeyDTO.from_domain(ssh_key)
 
     @handle_service_errors("adding ssh key")
     def add_ssh_key(self, request: AddSshKeyRequestDTO) -> str:

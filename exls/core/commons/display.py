@@ -364,12 +364,21 @@ def kubernetes_name_validator(text: str) -> bool | str:
 
 
 def ipv4_address_validator(text: str) -> bool | str:
-    """Validator for IPv4 addresses."""
-    if not re.match(
-        r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+    """Validator for IPv4 addresses with an optional port."""
+    if not text:
+        return "The value cannot be empty."
+    match = re.match(
+        r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?::(\d{1,5}))?$",
         text,
-    ):
-        return "Please enter a valid IPv4 address."
+    )
+    if not match:
+        return "Please enter a valid IPv4 address, with an optional port."
+
+    if (port_str := match.group(1)) is not None:
+        port = int(port_str)
+        if not 0 <= port <= 65535:
+            return f"Port number must be between 0 and 65535, but got {port}."
+
     return True
 
 
