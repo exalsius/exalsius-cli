@@ -12,7 +12,6 @@ def requested_resources_params_from_request_dto(
         cpu_cores=request_dto.cpu_cores,
         memory_gb=request_dto.memory_gb,
         pvc_storage_gb=request_dto.pvc_storage_gb,
-        ephemeral_storage_gb=request_dto.ephemeral_storage_gb,
     )
 
 
@@ -26,7 +25,6 @@ def deploy_workspace_request_dto_to_deploy_workspace_params(
         cpu_cores=request_dto.resources.cpu_cores,
         memory_gb=request_dto.resources.memory_gb,
         pvc_storage_gb=request_dto.resources.pvc_storage_gb,
-        ephemeral_storage_gb=request_dto.resources.ephemeral_storage_gb,
     )
     return DeployWorkspaceParams(
         cluster_id=request_dto.cluster_id,

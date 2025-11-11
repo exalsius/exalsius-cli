@@ -11,9 +11,6 @@ class RequestedResourcesParams(BaseModel):
     cpu_cores: int = Field(..., description="The number of CPU cores")
     memory_gb: int = Field(..., description="The amount of memory in GB")
     pvc_storage_gb: int = Field(..., description="The amount of PVC storage in GB")
-    ephemeral_storage_gb: Optional[int] = Field(
-        None, description="The amount of ephemeral storage in GB"
-    )
 
 
 class DeployWorkspaceParams(BaseModel):

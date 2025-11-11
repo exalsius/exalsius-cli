@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from pydantic import BaseModel, Field
 
@@ -10,14 +10,10 @@ class WorkspaceDeploymentResourcesConfigDTO(BaseModel):
     pvc_storage_gb: int = Field(
         default=100, description="The amount of PVC storage in GB"
     )
-    ephemeral_storage_gb: Optional[int] = Field(
-        default=None, description="The amount of ephemeral storage in GB"
-    )
 
 
 class WorkspaceDeploymentConfigDTO(BaseModel):
     cluster_id: str = Field(..., description="The ID of the cluster")
-    cluster_name: str = Field(..., description="The name of the cluster")
     workspace_name: str = Field(..., description="The name of the workspace")
     workspace_template_name: str = Field(
         ..., description="The name of the workspace template"

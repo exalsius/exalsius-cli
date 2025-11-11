@@ -41,7 +41,7 @@ def templates_to_questionary_choices(
 
 
 def workspace_deployment_config_to_deploy_workspace_request_dto(
-    deployment_config: WorkspaceDeploymentConfigDTO,
+    deployment_config: WorkspaceDeploymentConfigDTO, cluster: ClusterDTO
 ) -> DeployWorkspaceRequestDTO:
     """Convert a WorkspaceDeploymentConfigDTO to a DeployWorkspaceRequestDTO."""
     resources: WorkspaceResourcesRequestDTO = WorkspaceResourcesRequestDTO(
@@ -51,12 +51,11 @@ def workspace_deployment_config_to_deploy_workspace_request_dto(
         cpu_cores=deployment_config.resources.cpu_cores,
         memory_gb=deployment_config.resources.memory_gb,
         pvc_storage_gb=deployment_config.resources.pvc_storage_gb,
-        ephemeral_storage_gb=deployment_config.resources.ephemeral_storage_gb,
     )
 
     return DeployWorkspaceRequestDTO(
         cluster_id=deployment_config.cluster_id,
-        cluster_name=deployment_config.cluster_name,
+        cluster_name=cluster.name,
         workspace_name=deployment_config.workspace_name,
         workspace_template_name=deployment_config.workspace_template_name,
         resources=resources,

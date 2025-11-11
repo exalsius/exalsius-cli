@@ -82,17 +82,13 @@ class WorkspaceInteractiveFlow:
         cluster_choices: List[questionary.Choice] = clusters_to_questionary_choices(
             self._clusters
         )
-        cluster_name = self._display_manager.ask_select_required(
+        cluster_id = self._display_manager.ask_select_required(
             "Select cluster to deploy the workspace to:",
             choices=cluster_choices,
             default=cluster_choices[0],
         )
         cluster: Optional[ClusterDTO] = next(
-            (
-                cluster
-                for cluster in self._clusters
-                if cluster.name == str(cluster_name)
-            ),
+            (cluster for cluster in self._clusters if cluster.id == str(cluster_id)),
             None,
         )
         if not cluster:
@@ -129,7 +125,6 @@ class WorkspaceInteractiveFlow:
         workspace_deployment_config: WorkspaceDeploymentConfigDTO = (
             WorkspaceDeploymentConfigDTO(
                 cluster_id=cluster.id,
-                cluster_name=cluster.name,
                 workspace_name=workspace_name,
                 workspace_template_name=workspace_template.name,
                 resources=resources,
@@ -144,7 +139,7 @@ class WorkspaceInteractiveFlow:
         )
         deploy_workspace_request_dto: DeployWorkspaceRequestDTO = (
             workspace_deployment_config_to_deploy_workspace_request_dto(
-                deployment_config=workspace_deployment_config_edited
+                deployment_config=workspace_deployment_config_edited, cluster=cluster
             )
         )
         self._display_manager.display_deploy_workspace_request_dto(

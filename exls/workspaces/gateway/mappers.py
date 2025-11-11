@@ -21,8 +21,6 @@ def deploy_workspace_params_to_create_request(
     """
 
     variables: Dict[str, Any] = params.variables
-    if params.resources.ephemeral_storage_gb is not None:
-        variables["ephemeral_storage_gb"] = params.resources.ephemeral_storage_gb
     template = WorkspaceTemplate(
         name=params.template_name,
         description="",  # Template description is not stored in config

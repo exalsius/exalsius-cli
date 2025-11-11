@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import typer
 from pydantic import ValidationError
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from exls.clusters.dtos import ClusterDTO
 from exls.core.base.display import BaseTextEditor, UserCancellationException
@@ -145,13 +147,14 @@ DEFAULT_WORKSPACE_TEMPLATES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "description": get_column("Description"),
 }
 
-DEFAULT_DEPLOY_CONFIG_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
-    "cluster_id": get_column("Cluster ID"),
-    "name": get_column("Workspace Name"),
+DEFAULT_DEPLOY_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+    "workspace_name": get_column("Workspace Name"),
+    "workspace_template_name": get_column("Template"),
+    "cluster_name": get_column("Deployed to Cluster"),
     "resources.gpu_count": get_column("GPUs"),
     "resources.cpu_cores": get_column("CPU Cores"),
     "resources.memory_gb": get_column("Memory (GB)"),
-    "resources.storage_gb": get_column("Storage (GB)"),
+    "resources.pvc_storage_gb": get_column("Storage (GB)"),
 }
 
 
@@ -176,10 +179,10 @@ class TableWorkspacesDisplayManager(
         ] = TableListRenderer[WorkspaceTemplateDTO](
             columns_rendering_map=DEFAULT_WORKSPACE_TEMPLATES_COLUMNS_RENDERING_MAP
         ),
-        deploy_config_renderer: TableSingleItemRenderer[
+        deploy_request_renderer: TableSingleItemRenderer[
             DeployWorkspaceRequestDTO
         ] = TableSingleItemRenderer[DeployWorkspaceRequestDTO](
-            columns_map=DEFAULT_DEPLOY_CONFIG_COLUMNS_RENDERING_MAP
+            columns_map=DEFAULT_DEPLOY_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP
         ),
     ):
         super().__init__()
@@ -194,7 +197,7 @@ class TableWorkspacesDisplayManager(
             renderer=templates_list_renderer
         )
         self.deploy_workspace_request_dto_display = ConsoleSingleItemDisplay(
-            renderer=deploy_config_renderer
+            renderer=deploy_request_renderer
         )
 
     def display_workspaces(self, workspaces: List[WorkspaceDTO]):
@@ -243,15 +246,20 @@ class TextEditorWorkspaceDeployConfigManager(
         if edited_yaml_string is None:
             raise UserCancellationException("User cancelled text editor")
 
+        yaml = YAML(typ="safe")
         try:
-            return WorkspaceDeploymentConfigDTO.model_validate_json(edited_yaml_string)
+            data_dict: Dict[str, Any] = yaml.load(edited_yaml_string)  # type: ignore
+            return WorkspaceDeploymentConfigDTO.model_validate(data_dict)
+        except YAMLError as e:
+            raise ExalsiusError(f"Invalid YAML format: {e}") from e
         except ValidationError as e:
             raise ExalsiusError(f"Invalid YAML: {str(e)}") from e
 
 
 DEFAULT_WORKSPACE_DEPLOYMENT_CONFIG_COMMENTS: Dict[str, str] = {
     "cluster_id": "The ID of the cluster to deploy the workspace to",
-    "name": "The name of your workspace",
+    "workspace_name": "The name of your workspace",
+    "workspace_template_name": "The name of the workspace template to use",
     "resources": "The resources you want to allocate to your workspace",
     "variables": "The variables you want to set for your workspace. Please adjust the values as needed.",
 }
