@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 import questionary
 from pydantic import StrictStr
 
 from exls.core.base.display import UserCancellationException
-from exls.core.base.exceptions import ExalsiusError
+from exls.core.commons.decorators import handle_interactive_flow_errors
 from exls.core.commons.display import ipv4_address_validator, non_empty_string_validator
 from exls.core.commons.service import generate_random_name
 from exls.management.types.ssh_keys.dtos import SshKeyDTO
@@ -34,63 +34,99 @@ class NodeImportSshFlow:
         self._available_ssh_keys: List[SshKeyDTO] = available_ssh_keys
         self._display_manager: ComposingNodeDisplayManager = display_manager
 
-    def run(self) -> NodesImportSSHRequestDTO:
+    @handle_interactive_flow_errors(
+        "node import", NodeImportSshFlowInterruptionException
+    )
+    def _run_single_node_import(self) -> NodesImportSSHRequestDTO:
+        hostname: StrictStr = self._display_manager.ask_text(
+            "Hostname:",
+            default=generate_random_name(prefix="n"),
+            validator=non_empty_string_validator,
+        )
+
+        endpoint: StrictStr = self._display_manager.ask_text(
+            "Endpoint (IP address or hostname and port, e.g. 192.168.1.1:22):",
+            validator=ipv4_address_validator,
+        )
+
+        username: StrictStr = self._display_manager.ask_text(
+            "Username:",
+            default="root",
+            validator=non_empty_string_validator,
+        )
+
+        ssh_key_choices: List[questionary.Choice] = ssh_keys_to_questionary_choices(
+            self._available_ssh_keys
+        )
+        ssh_key_choice: questionary.Choice = self._display_manager.ask_select_required(
+            "Select SSH key:",
+            choices=ssh_key_choices,
+            default=ssh_key_choices[0],
+        )
+        ssh_key: Optional[SshKeyDTO] = next(
+            (key for key in self._available_ssh_keys if key.id == str(ssh_key_choice)),
+            None,
+        )
+        if not ssh_key:
+            raise RuntimeError("Selected SSH key not found.")
+
+        node_import_request: NodesImportSSHRequestDTO = NodesImportSSHRequestDTO(
+            hostname=hostname,
+            endpoint=endpoint,
+            username=username,
+            ssh_key_name=ssh_key.name,
+            ssh_key_id=ssh_key.id,
+        )
+
+        return node_import_request
+
+    @handle_interactive_flow_errors(
+        "node import", NodeImportSshFlowInterruptionException
+    )
+    def _confirm_import(
+        self, node_import_requests: List[NodesImportSSHRequestDTO]
+    ) -> None:
+        if not node_import_requests:
+            return
+
+        self._display_manager.display_info("Importing the following nodes:")
+        self._display_manager.display_import_ssh_requests(node_import_requests)
+        confirmed = self._display_manager.ask_confirm(
+            "Import these nodes?", default=True
+        )
+        if not confirmed:
+            raise NodeImportSshFlowInterruptionException(
+                "Node import cancelled by user."
+            )
+
+    def run(self) -> List[NodesImportSSHRequestDTO]:
         """
         Collect SSH node import details and return DTO.
 
         Returns:
-            NodesImportSSHRequestDTO if successful
+            A list of NodesImportSSHRequestDTO objects.
         """
-        try:
-            self._display_manager.display_info(
-                "🚀 SSH Node Import - Interactive Mode: This will guide you through importing a node"
-            )
+        node_import_requests: List[NodesImportSSHRequestDTO] = []
+        self._display_manager.display_info(
+            "🚀 SSH Node Import - Interactive Mode: This will guide you through the process of importing nodes"
+        )
+        while True:
+            try:
+                node_import_requests.append(self._run_single_node_import())
+                self._display_manager.display_info("Your current list of nodes:")
+                self._display_manager.display_import_ssh_requests(node_import_requests)
+            except NodeImportSshFlowInterruptionException:
+                if not node_import_requests:
+                    raise
+                self._display_manager.display_info("Cancelled node import.")
+                break
 
-            hostname: StrictStr = self._display_manager.ask_text(
-                "Hostname:",
-                default=generate_random_name(prefix="n"),
-                validator=non_empty_string_validator,
+            add_another = self._display_manager.ask_confirm(
+                "Do you want to import another node?", default=False
             )
+            if not add_another:
+                break
 
-            endpoint: StrictStr = self._display_manager.ask_text(
-                "Endpoint (IP address or hostname and port, e.g. 192.168.1.1:22):",
-                validator=ipv4_address_validator,
-            )
+        self._confirm_import(node_import_requests)
 
-            username: StrictStr = self._display_manager.ask_text(
-                "Username:",
-                default="root",
-                validator=non_empty_string_validator,
-            )
-
-            ssh_key_choices: List[questionary.Choice] = ssh_keys_to_questionary_choices(
-                self._available_ssh_keys
-            )
-            ssh_key_id = self._display_manager.ask_select_required(
-                "Select SSH key:",
-                choices=ssh_key_choices,
-                default=ssh_key_choices[0],
-            )
-
-            node_import_request: NodesImportSSHRequestDTO = NodesImportSSHRequestDTO(
-                hostname=hostname,
-                endpoint=endpoint,
-                username=username,
-                ssh_key_id=str(ssh_key_id),
-            )
-
-            self._display_manager.display_import_ssh_request(node_import_request)
-            confirmed = self._display_manager.ask_confirm(
-                "Import node with these settings?", default=True
-            )
-            if not confirmed:
-                raise NodeImportSshFlowInterruptionException(
-                    "SSH node import cancelled by user."
-                )
-
-        except UserCancellationException as e:
-            raise NodeImportSshFlowInterruptionException(e) from e
-        except Exception as e:
-            raise ExalsiusError(f"An unexpected error occurred: {str(e)}") from e
-
-        return node_import_request
+        return node_import_requests

@@ -1,7 +1,9 @@
 from functools import wraps
-from typing import Any, Callable
+from typing import Any, Callable, Type
 
 from exls.core.base.commands import CommandError
+from exls.core.base.display import UserCancellationException
+from exls.core.base.exceptions import ExalsiusError
 from exls.core.base.service import ServiceError, ServiceWarning
 
 
@@ -31,6 +33,34 @@ def handle_service_errors(operation_name: str) -> Callable[..., Any]:
                 # return a ServiceError from the service layer.
                 raise ServiceError(
                     message=f"unexpected error while {operation_name}: {e}",
+                ) from e
+
+        return wrapper
+
+    return decorator
+
+
+def handle_interactive_flow_errors(
+    operation_name: str, to_exception: Type[UserCancellationException]
+) -> Callable[..., Any]:
+    """
+    A decorator to handle common interactive flow errors.
+
+    It catches UserCancellationException and generic Exceptions and re-raises them
+    as a consistent to_exception exception.
+    """
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return func(*args, **kwargs)
+            except UserCancellationException as e:
+                raise to_exception(e) from e
+            except Exception as e:
+                # Any exception apart from UserCancellationException is unexpected and should be wrapped.
+                raise ExalsiusError(
+                    f"An unexpected error occurred during {operation_name}: {str(e)}"
                 ) from e
 
         return wrapper

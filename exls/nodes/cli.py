@@ -120,17 +120,23 @@ def import_ssh(
     ssh_key_id: str = typer.Option(help="The ID of the SSH key to import"),
 ):
     """Import a self-managed node into the node pool."""
+    config: AppConfig = get_config_from_ctx(ctx)
+    access_token: str = get_access_token_from_ctx(ctx)
+
+    node_service: NodeService = get_node_service(config, access_token)
+    ssh_keys_service: SshKeysService = get_ssh_keys_service(config, access_token)
+
     display_manager = TableNodesDisplayManager()
 
-    service: NodeService = _get_node_service(ctx)
-
     try:
-        node: NodeDTO = service.import_ssh_node(
+        ssh_key: SshKeyDTO = ssh_keys_service.get_ssh_key(ssh_key_id)
+        node: NodeDTO = node_service.import_ssh_node(
             NodesImportSSHRequestDTO(
                 hostname=hostname,
                 endpoint=endpoint,
                 username=username,
-                ssh_key_id=ssh_key_id,
+                ssh_key_name=ssh_key.name,
+                ssh_key_id=ssh_key.id,
             )
         )
     except ServiceError as e:
@@ -217,19 +223,19 @@ def import_nodes(ctx: typer.Context):
         flow: NodeImportSshFlow = NodeImportSshFlow(
             available_ssh_keys=ssh_keys, display_manager=composing_display_manager
         )
-        import_request: NodesImportSSHRequestDTO = flow.run()
-    except NodeImportSshFlowInterruptionException as e:
-        display_manager.display_info(str(e))
+        import_requests: List[NodesImportSSHRequestDTO] = flow.run()
+    except NodeImportSshFlowInterruptionException:
+        # display_manager.display_info(str(e))
         raise typer.Exit(0)
     except ExalsiusError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
     try:
-        node: NodeDTO = node_service.import_ssh_node(import_request)
+        nodes: List[NodeDTO] = node_service.import_ssh_nodes(import_requests)
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
 
-    display_manager.display_success(f"Node {node.hostname} imported successfully")
-    display_manager.display_node(node)
+    display_manager.display_success(f"Successfully imported {len(nodes)} nodes")
+    display_manager.display_nodes(nodes)

@@ -35,6 +35,7 @@ class NodeImportSshParams(BaseModel):
     username: StrictStr = Field(..., description="The username of the node")
     ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key to use")
 
+    # Needs to be moved to mapper if we implement more gateways
     def to_sdk_request(self) -> NodeImportSshRequest:
         return NodeImportSshRequest(
             hostname=self.hostname,
