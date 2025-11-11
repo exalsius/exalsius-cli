@@ -18,6 +18,7 @@ dependencies = [
     "qrcode[pil]>=8.2",
     "coolname>=2.2.0",
     "questionary>=2.1.1",
+    "ruamel-yaml>=0.18.16",
 ]
 
 [tool.setuptools.packages.find]

@@ -12,6 +12,7 @@ from exls.core.base.render import (
 )
 
 T_Choice = TypeVar("T_Choice")
+T_TextEditor_Output_Cov = TypeVar("T_TextEditor_Output_Cov", covariant=True)
 
 
 class UserCancellationException(ExalsiusWarning):
@@ -65,6 +66,17 @@ class BaseSpinnerDisplay(Protocol[T_RenderInput_Contra, T_RenderOutput_Cov]):
 
     def start_display(self, data: T_RenderInput_Contra) -> None: ...
     def stop_display(self) -> None: ...
+
+
+class BaseTextEditor(Protocol[T_RenderInput_Contra, T_TextEditor_Output_Cov]):
+    """Base display manager for text editor items."""
+
+    @property
+    def renderer(
+        self,
+    ) -> BaseSingleItemRenderer[T_RenderInput_Contra, str]: ...
+
+    def display(self, data: T_RenderInput_Contra) -> T_TextEditor_Output_Cov: ...
 
 
 class InteractiveDisplay(Protocol[T_Choice]):

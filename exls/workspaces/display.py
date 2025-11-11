@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Optional
+
+import typer
+from pydantic import ValidationError
 
 from exls.clusters.dtos import ClusterDTO
+from exls.core.base.display import BaseTextEditor, UserCancellationException
+from exls.core.base.exceptions import ExalsiusError
+from exls.core.base.render import BaseSingleItemRenderer
 from exls.core.commons.display import (
     BaseDisplayManager,
     BaseJsonDisplayManager,
@@ -20,12 +26,17 @@ from exls.core.commons.render.table import (
     TableSingleItemRenderer,
     get_column,
 )
+from exls.core.commons.render.yaml import YamlSingleItemStringRenderer
 from exls.management.types.workspace_templates.dtos import WorkspaceTemplateDTO
-from exls.workspaces.common.deploy_dtos import WorkspaceDeployConfigDTO
-from exls.workspaces.common.dtos import WorkspaceAccessInformationDTO, WorkspaceDTO
+from exls.workspaces.dtos import (
+    DeployWorkspaceRequestDTO,
+    WorkspaceAccessInformationDTO,
+    WorkspaceDTO,
+)
+from exls.workspaces.interactive.dtos import WorkspaceDeploymentConfigDTO
 
 
-class BaseWorkspaceDeployDisplayManager(BaseDisplayManager, ABC):
+class BaseWorkspaceDisplayManager(BaseDisplayManager, ABC):
     """Base display manager for workspace deployment operations."""
 
     @abstractmethod
@@ -49,14 +60,12 @@ class BaseWorkspaceDeployDisplayManager(BaseDisplayManager, ABC):
         pass
 
     @abstractmethod
-    def display_deploy_config(self, config: WorkspaceDeployConfigDTO):
-        """Display workspace deployment configuration."""
+    def display_deploy_workspace_request_dto(self, dto: DeployWorkspaceRequestDTO):
+        """Display deploy workspace request DTO."""
         pass
 
 
-class JsonWorkspacesDisplayManager(
-    BaseJsonDisplayManager, BaseWorkspaceDeployDisplayManager
-):
+class JsonWorkspacesDisplayManager(BaseJsonDisplayManager, BaseWorkspaceDisplayManager):
     def __init__(
         self,
         workspaces_list_renderer: JsonListStringRenderer[
@@ -75,8 +84,8 @@ class JsonWorkspacesDisplayManager(
             WorkspaceTemplateDTO
         ] = JsonListStringRenderer[WorkspaceTemplateDTO](),
         deploy_config_renderer: JsonSingleItemStringRenderer[
-            WorkspaceDeployConfigDTO
-        ] = JsonSingleItemStringRenderer[WorkspaceDeployConfigDTO](),
+            DeployWorkspaceRequestDTO
+        ] = JsonSingleItemStringRenderer[DeployWorkspaceRequestDTO](),
     ):
         super().__init__()
         self.workspaces_list_display = ConsoleListDisplay(
@@ -111,13 +120,14 @@ class JsonWorkspacesDisplayManager(
     def display_workspace_templates(self, templates: List[WorkspaceTemplateDTO]):
         self.templates_list_display.display(templates)
 
-    def display_deploy_config(self, config: WorkspaceDeployConfigDTO):
-        self.deploy_config_display.display(config)
+    def display_deploy_workspace_request_dto(self, dto: DeployWorkspaceRequestDTO):
+        self.deploy_config_display.display(dto)
 
 
 DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "workspace_id": get_column("ID", no_wrap=True),
     "workspace_name": get_column("Name"),
+    "workspace_template_name": get_column("Template"),
     "workspace_status": get_column("Status"),
     "workspace_created_at": get_column("Created At"),
     "cluster_name": get_column("Deployed to Cluster"),
@@ -137,8 +147,7 @@ DEFAULT_WORKSPACE_TEMPLATES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
 
 DEFAULT_DEPLOY_CONFIG_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "cluster_id": get_column("Cluster ID"),
-    "template_name": get_column("Template"),
-    "workspace_name": get_column("Workspace Name"),
+    "name": get_column("Workspace Name"),
     "resources.gpu_count": get_column("GPUs"),
     "resources.cpu_cores": get_column("CPU Cores"),
     "resources.memory_gb": get_column("Memory (GB)"),
@@ -147,7 +156,7 @@ DEFAULT_DEPLOY_CONFIG_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
 
 
 class TableWorkspacesDisplayManager(
-    BaseTableDisplayManager, BaseWorkspaceDeployDisplayManager
+    BaseTableDisplayManager, BaseWorkspaceDisplayManager
 ):
     def __init__(
         self,
@@ -168,8 +177,8 @@ class TableWorkspacesDisplayManager(
             columns_rendering_map=DEFAULT_WORKSPACE_TEMPLATES_COLUMNS_RENDERING_MAP
         ),
         deploy_config_renderer: TableSingleItemRenderer[
-            WorkspaceDeployConfigDTO
-        ] = TableSingleItemRenderer[WorkspaceDeployConfigDTO](
+            DeployWorkspaceRequestDTO
+        ] = TableSingleItemRenderer[DeployWorkspaceRequestDTO](
             columns_map=DEFAULT_DEPLOY_CONFIG_COLUMNS_RENDERING_MAP
         ),
     ):
@@ -184,7 +193,7 @@ class TableWorkspacesDisplayManager(
         self.templates_list_display = ConsoleListDisplay(
             renderer=templates_list_renderer
         )
-        self.deploy_config_display = ConsoleSingleItemDisplay(
+        self.deploy_workspace_request_dto_display = ConsoleSingleItemDisplay(
             renderer=deploy_config_renderer
         )
 
@@ -200,19 +209,67 @@ class TableWorkspacesDisplayManager(
     def display_workspace_templates(self, templates: List[WorkspaceTemplateDTO]):
         self.templates_list_display.display(templates)
 
-    def display_deploy_config(self, config: WorkspaceDeployConfigDTO):
-        self.deploy_config_display.display(config)
+    def display_deploy_workspace_request_dto(self, dto: DeployWorkspaceRequestDTO):
+        self.deploy_workspace_request_dto_display.display(dto)
 
 
-class ComposingWorkspaceDeployDisplayManager(ComposingDisplayManager):
+class TextEditorWorkspaceDeployConfigManager(
+    BaseTextEditor[WorkspaceDeploymentConfigDTO, WorkspaceDeploymentConfigDTO]
+):
+    """Display manager for workspace deployment configuration in a text editor."""
+
+    def __init__(
+        self,
+        renderer: YamlSingleItemStringRenderer[
+            WorkspaceDeploymentConfigDTO
+        ] = YamlSingleItemStringRenderer[WorkspaceDeploymentConfigDTO](),
+    ):
+        self._renderer: YamlSingleItemStringRenderer[WorkspaceDeploymentConfigDTO] = (
+            renderer
+        )
+
+    @property
+    def renderer(self) -> BaseSingleItemRenderer[WorkspaceDeploymentConfigDTO, str]:
+        return self._renderer
+
+    def display(
+        self,
+        data: WorkspaceDeploymentConfigDTO,
+        comments: Optional[Dict[str, str]] = None,
+    ) -> WorkspaceDeploymentConfigDTO:
+        # TODO: We need to move this deeper into commons
+        yaml_string: str = self._renderer.render(data, comments=comments)
+        edited_yaml_string: Optional[str] = typer.edit(yaml_string)
+        if edited_yaml_string is None:
+            raise UserCancellationException("User cancelled text editor")
+
+        try:
+            return WorkspaceDeploymentConfigDTO.model_validate_json(edited_yaml_string)
+        except ValidationError as e:
+            raise ExalsiusError(f"Invalid YAML: {str(e)}") from e
+
+
+DEFAULT_WORKSPACE_DEPLOYMENT_CONFIG_COMMENTS: Dict[str, str] = {
+    "cluster_id": "The ID of the cluster to deploy the workspace to",
+    "name": "The name of your workspace",
+    "resources": "The resources you want to allocate to your workspace",
+    "variables": "The variables you want to set for your workspace. Please adjust the values as needed.",
+}
+
+
+class ComposingWorkspaceDisplayManager(ComposingDisplayManager):
     """Composing display manager for workspace deployment operations."""
 
     def __init__(
         self,
-        display_manager: BaseWorkspaceDeployDisplayManager,
+        display_manager: BaseWorkspaceDisplayManager,
+        workspace_deployment_text_editor: TextEditorWorkspaceDeployConfigManager = TextEditorWorkspaceDeployConfigManager(),
     ):
         super().__init__(display_manager=display_manager)
-        self.display_manager: BaseWorkspaceDeployDisplayManager = display_manager
+        self.display_manager: BaseWorkspaceDisplayManager = display_manager
+        self.workspace_deployment_text_editor_display: (
+            TextEditorWorkspaceDeployConfigManager
+        ) = workspace_deployment_text_editor
 
     def display_workspaces(self, workspaces: List[WorkspaceDTO]):
         self.display_manager.display_workspaces(workspaces)
@@ -226,5 +283,12 @@ class ComposingWorkspaceDeployDisplayManager(ComposingDisplayManager):
     def display_workspace_templates(self, templates: List[WorkspaceTemplateDTO]):
         self.display_manager.display_workspace_templates(templates)
 
-    def display_deploy_config(self, config: WorkspaceDeployConfigDTO):
-        self.display_manager.display_deploy_config(config)
+    def display_deploy_workspace_request_dto(self, dto: DeployWorkspaceRequestDTO):
+        self.display_manager.display_deploy_workspace_request_dto(dto)
+
+    def edit_workspace_deployment_config(
+        self, deployment_config: WorkspaceDeploymentConfigDTO
+    ):
+        return self.workspace_deployment_text_editor_display.display(
+            deployment_config, comments=DEFAULT_WORKSPACE_DEPLOYMENT_CONFIG_COMMENTS
+        )

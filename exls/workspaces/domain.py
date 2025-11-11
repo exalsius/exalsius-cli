@@ -57,6 +57,10 @@ class Workspace(BaseModel):
         return self.sdk_model.cluster_id
 
     @property
+    def template_name(self) -> StrictStr:
+        return self.sdk_model.template.name
+
+    @property
     def name(self) -> StrictStr:
         return self.sdk_model.name
 

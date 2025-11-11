@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -18,8 +18,8 @@ class RequestedResourcesParams(BaseModel):
 
 class DeployWorkspaceParams(BaseModel):
     cluster_id: StrictStr = Field(..., description="The ID of the cluster")
-    template_id: StrictStr = Field(..., description="The ID of the template")
-    name: StrictStr = Field(..., description="The name of the workspace")
+    template_name: StrictStr = Field(..., description="The ID of the template")
+    workspace_name: StrictStr = Field(..., description="The name of the workspace")
     resources: RequestedResourcesParams = Field(
         ..., description="The resources of the workspace"
     )
@@ -29,3 +29,4 @@ class DeployWorkspaceParams(BaseModel):
     to_be_deleted_at: Optional[datetime] = Field(
         None, description="The date and time when the workspace should be deleted"
     )
+    variables: Dict[str, Any] = Field(..., description="The variables of the workspace")

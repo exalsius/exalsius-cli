@@ -45,8 +45,8 @@ from exls.offers.gateway.base import OffersGateway
 from exls.offers.gateway.sdk import OffersGatewaySdk
 from exls.services.gateway.base import ServicesGateway
 from exls.services.gateway.sdk import ServicesGatewaySdk
-from exls.workspaces.common.gateway.base import WorkspacesGateway
-from exls.workspaces.common.gateway.sdk import WorkspacesGatewaySdk
+from exls.workspaces.gateway.base import WorkspacesGateway
+from exls.workspaces.gateway.sdk import WorkspacesGatewaySdk
 
 
 class GatewayFactory:
