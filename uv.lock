@@ -475,8 +475,8 @@ wheels = [
 
 [[package]]
 name = "exalsius-api-client"
-version = "1.21.6"
-source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.22.0#1ad1e108ce45c4d6e76e7bae0cbffc192f6c5683" }
+version = "1.25.1"
+source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.26.1#5397fcbf9af94c50b50abbc66774882b697b16f0" }
 dependencies = [
     { name = "pydantic" },
     { name = "python-dateutil" },
@@ -521,7 +521,7 @@ dev = [
 requires-dist = [
     { name = "auth0-python", specifier = ">=4.10.0" },
     { name = "coolname", specifier = ">=2.2.0" },
-    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.22.0" },
+    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.26.1" },
     { name = "filelock", specifier = ">=3.17.0" },
     { name = "keyring", specifier = ">=25.6.0" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
