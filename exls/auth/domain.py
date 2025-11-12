@@ -53,4 +53,5 @@ class Token(BaseModel):
 
 class User(BaseModel):
     email: StrictStr = Field(..., description="The email")
+    nickname: StrictStr = Field(..., description="The nickname")
     sub: StrictStr = Field(..., description="The subject")

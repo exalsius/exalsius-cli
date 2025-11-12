@@ -98,6 +98,7 @@ class AuthenticationDTO(BaseModel):
 class UserInfoDTO(BaseModel):
     # We can add more fields here if needed
     email: str = Field(..., description="The email")
+    nickname: str = Field(..., description="The nickname")
     sub: str = Field(..., description="The subject")
     access_token: str = Field(..., description="The access token")
 
@@ -105,6 +106,7 @@ class UserInfoDTO(BaseModel):
     def from_token_domain(cls, user: User, token: Token) -> UserInfoDTO:
         return cls(
             email=user.email,
+            nickname=user.nickname,
             sub=user.sub,
             access_token=token.access_token,
         )
@@ -115,6 +117,7 @@ class UserInfoDTO(BaseModel):
     ) -> UserInfoDTO:
         return cls(
             email=user.email,
+            nickname=user.nickname,
             sub=user.sub,
             access_token=loaded_token.access_token,
         )

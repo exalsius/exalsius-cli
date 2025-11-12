@@ -32,6 +32,7 @@ class Auth0AuthenticationParams(Auth0BaseParams):
 
 class Auth0ValidateTokenParams(Auth0BaseParams):
     id_token: StrictStr = Field(..., description="The ID token")
+    leeway: int = Field(..., description="The leeway in seconds")
 
 
 class Auth0RefreshTokenParams(Auth0BaseParams):
@@ -74,6 +75,7 @@ class Auth0HTTPErrorResponse(BaseModel):
 
 class Auth0UserResponse(BaseModel):
     email: StrictStr = Field(..., description="The email")
+    nickname: StrictStr = Field(..., description="The nickname")
     sub: StrictStr = Field(..., description="The subject")
 
     model_config = {"extra": "allow"}
