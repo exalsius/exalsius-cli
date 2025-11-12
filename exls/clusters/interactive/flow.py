@@ -5,12 +5,16 @@ from pydantic import StrictStr
 
 from exls.clusters.display import ComposingClusterDisplayManager
 from exls.clusters.dtos import (
+    AddNodesRequestDTO,
+    AllowedClusterNodeRoleDTO,
     AllowedClusterTypesDTO,
     AllowedGpuTypesDTO,
+    ClusterDTO,
     DeployClusterRequestDTO,
 )
 from exls.clusters.interactive.mappers import (
     allowed_gpu_types_to_questionary_choices,
+    clusters_to_questionary_choices,
     nodes_to_questionary_choices,
 )
 from exls.core.base.display import UserCancellationException
@@ -108,3 +112,75 @@ class ClusterInteractiveFlow:
         return self._display_manager.ask_confirm(
             "Create cluster with these settings?", default=True
         )
+
+
+class AddNodesInteractiveFlow:
+    """Interactive flow for adding nodes to a cluster."""
+
+    def __init__(
+        self,
+        clusters: List[ClusterDTO],
+        available_nodes: List[NodeDTO],
+        display_manager: ComposingClusterDisplayManager,
+    ):
+        if not clusters:
+            raise ValueError(
+                "No clusters available. Please deploy a cluster first using 'exls clusters deploy'."
+            )
+        if not available_nodes:
+            raise ValueError(
+                "No available nodes to add to the cluster. Please import nodes first."
+            )
+        self._clusters: List[ClusterDTO] = clusters
+        self._available_nodes: List[NodeDTO] = available_nodes
+        self._display_manager: ComposingClusterDisplayManager = display_manager
+
+    @handle_interactive_flow_errors(
+        "adding nodes to cluster", ClusterFlowInterruptionException
+    )
+    def run(self) -> AddNodesRequestDTO:
+        self._display_manager.display_info(
+            "🖥️  Add Nodes to Cluster - Interactive Mode: This will guide you through adding nodes to a cluster",
+        )
+
+        # Step 1: Cluster Selection
+        self._display_manager.display_info("📋 Step 1: Cluster Selection:")
+        cluster_id: str = self._select_cluster()
+
+        # Step 2: Node Selection
+        self._display_manager.display_info("🖥️  Step 2: Node Selection:")
+        node_ids: List[StrictStr] = self._select_nodes()
+
+        # Create request
+        add_nodes_request: AddNodesRequestDTO = AddNodesRequestDTO(
+            cluster_id=cluster_id,
+            node_ids=node_ids,
+            node_role=AllowedClusterNodeRoleDTO.WORKER,
+        )
+
+        return add_nodes_request
+
+    def _select_cluster(self) -> str:
+        """Prompt user to select a cluster."""
+        self._display_manager.display_clusters(self._clusters)
+
+        cluster_choices: List[questionary.Choice] = clusters_to_questionary_choices(
+            self._clusters
+        )
+        cluster_id = self._display_manager.ask_select_required(
+            "Select cluster to add nodes to:",
+            choices=cluster_choices,
+            default=cluster_choices[0],
+        )
+        return str(cluster_id)
+
+    def _select_nodes(self) -> List[StrictStr]:
+        """Prompt user to select nodes to add."""
+        selected_node_choices: List[questionary.Choice] = (
+            self._display_manager.ask_checkbox(
+                message="Select nodes to add (Space to select, Enter to confirm):",
+                choices=nodes_to_questionary_choices(self._available_nodes),
+                min_choices=1,
+            )
+        )
+        return [str(selected_node) for selected_node in selected_node_choices]

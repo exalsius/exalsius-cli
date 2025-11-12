@@ -23,6 +23,7 @@ from exls.clusters.dtos import (
     RemoveNodeRequestDTO,
 )
 from exls.clusters.interactive.flow import (
+    AddNodesInteractiveFlow,
     ClusterFlowInterruptionException,
     ClusterInteractiveFlow,
 )
@@ -319,8 +320,8 @@ def list_nodes(
 @clusters_app.command("add-nodes", help="Add nodes to a cluster")
 def add_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to add a node to"
+    cluster_id: Optional[str] = typer.Argument(
+        None, help="The ID of the cluster to add a node to"
     ),
     worker_node_ids: List[StrictStr] = typer.Option(
         [],
@@ -338,19 +339,67 @@ def add_nodes(
     node_service: NodeService = get_node_service(config, access_token)
     service: ClustersService = get_clusters_service(config, access_token)
 
-    try:
-        available_nodes: List[NodeDTO] = node_service.list_nodes(None)
-    except ServiceError as e:
-        display_manager.display_error(ErrorDisplayModel(message=str(e)))
-        raise typer.Exit(1)
+    if cluster_id is None:
+        try:
+            clusters: List[ClusterDTO] = service.list_clusters(ListClustersRequestDTO())
+        except ServiceError as e:
+            display_manager.display_error(ErrorDisplayModel(message=str(e)))
+            raise typer.Exit(1)
 
-    validation_error: Optional[ErrorDisplayModel] = _validate_node_ids(
-        available_nodes=available_nodes,
-        node_ids=worker_node_ids,
-    )
-    if validation_error:
-        display_manager.display_error(error=validation_error)
-        raise typer.Exit()
+        if len(clusters) == 0:
+            display_manager.display_error(
+                ErrorDisplayModel(message="No clusters available.")
+            )
+            raise typer.Exit(1)
+
+        try:
+            available_nodes: List[NodeDTO] = node_service.list_nodes(
+                NodesListRequestDTO(status=AllowedNodeStatusFiltersDTO.AVAILABLE)
+            )
+        except ServiceError as e:
+            display_manager.display_error(ErrorDisplayModel(message=str(e)))
+            raise typer.Exit(1)
+
+        if len(available_nodes) == 0:
+            display_manager.display_error(
+                ErrorDisplayModel(message="No available nodes to add to the cluster.")
+            )
+            raise typer.Exit(1)
+
+        display: ComposingClusterDisplayManager = ComposingClusterDisplayManager(
+            display_manager=display_manager
+        )
+
+        interactive_flow: AddNodesInteractiveFlow = AddNodesInteractiveFlow(
+            clusters, available_nodes, display
+        )
+        try:
+            add_nodes_request: AddNodesRequestDTO = interactive_flow.run()
+            cluster_id = add_nodes_request.cluster_id
+            worker_node_ids = add_nodes_request.node_ids
+        except ClusterFlowInterruptionException as e:
+            display_manager.display_info(str(e))
+            raise typer.Exit(0)
+        except ExalsiusError as e:
+            display_manager.display_error(ErrorDisplayModel(message=str(e)))
+            raise typer.Exit(1)
+
+    else:
+        try:
+            all_available_nodes: List[NodeDTO] = node_service.list_nodes(
+                NodesListRequestDTO(status=AllowedNodeStatusFiltersDTO.AVAILABLE)
+            )
+        except ServiceError as e:
+            display_manager.display_error(ErrorDisplayModel(message=str(e)))
+            raise typer.Exit(1)
+
+        validation_error: Optional[ErrorDisplayModel] = _validate_node_ids(
+            available_nodes=all_available_nodes,
+            node_ids=worker_node_ids,
+        )
+        if validation_error:
+            display_manager.display_error(error=validation_error)
+            raise typer.Exit()
 
     try:
         nodes: List[ClusterNodeDTO] = service.add_cluster_nodes(
