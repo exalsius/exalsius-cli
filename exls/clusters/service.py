@@ -183,7 +183,6 @@ class ClustersService:
                 raise ServiceError(
                     message=f"cluster node resources for node {node_id} not found",
                 )
-            print(resources_by_node_id[node_id])
             cluster_node_resources_dtos.append(
                 ClusterNodeResourcesDTO.from_base_dto_and_resources(
                     base_dto=cluster_node_dtos_by_id[node_id],

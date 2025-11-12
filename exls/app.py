@@ -120,10 +120,10 @@ def __root(  # pyright: ignore[reportUnusedFunction]
                 ErrorDisplayModel(message="You are not logged in. Please log in.")
             )
             raise typer.Exit(1)
-        except ServiceError:
+        except ServiceError as e:
             display_manager.display_error(
                 ErrorDisplayModel(
-                    message="Failed to acquire access token. Please log in again."
+                    message=f"Failed to acquire access token. Please log in again. \nError: {str(e)}"
                 )
             )
             raise typer.Exit(1)

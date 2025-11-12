@@ -177,7 +177,8 @@ class JsonAuthDisplayManager(BaseJsonDisplayManager, BaseConsoleAuthDisplayManag
 
 DEFAULT_USER_INFO_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "email": get_column("Email"),
-    "sub": get_column("Sub"),
+    "nickname": get_column("Username"),
+    "sub": get_column("Subject"),
 }
 
 

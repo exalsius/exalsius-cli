@@ -49,6 +49,7 @@ def auth0_validate_token_params_from_access_token_and_config(
         client_id=config.client_id,
         domain=config.domain,
         id_token=id_token,
+        leeway=config.leeway,
     )
 
 
@@ -117,6 +118,7 @@ def device_code_from_response(response: Auth0DeviceCodeResponse) -> DeviceCode:
 def user_from_response(response: Auth0UserResponse) -> User:
     return User(
         email=response.email,
+        nickname=response.nickname,
         sub=response.sub,
     )
 

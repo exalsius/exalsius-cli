@@ -26,13 +26,13 @@ def handle_service_errors(operation_name: str) -> Callable[..., Any]:
                 raise e
             except CommandError as e:
                 raise ServiceError(
-                    message=f"error {operation_name}: {e.message}",
+                    message=f"error {operation_name}: {str(e)}",
                 ) from e
             except Exception as e:
                 # We catch the generic exception to ensure we always
                 # return a ServiceError from the service layer.
                 raise ServiceError(
-                    message=f"unexpected error while {operation_name}: {e}",
+                    message=f"unexpected error while {operation_name}: {str(e)}",
                 ) from e
 
         return wrapper

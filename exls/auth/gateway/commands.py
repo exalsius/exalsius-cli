@@ -95,6 +95,7 @@ class Auth0ValidateTokenCommand(BaseCommand[Auth0UserResponse]):
             signature_verifier=sv,
             issuer=issuer,
             audience=self.params.client_id,
+            leeway=self.params.leeway,
         )
         try:
             resp: Dict[str, Any] = tv.verify(self.params.id_token)

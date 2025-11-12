@@ -71,6 +71,10 @@ class Auth0Config(BaseSettings):
         default=3,
         description="The number of times to retry polling for authentication",
     )
+    leeway: int = Field(
+        default=3600,
+        description="The leeway in seconds to validate the token",
+    )
 
 
 class Auth0NodeAgentConfig(BaseSettings):
