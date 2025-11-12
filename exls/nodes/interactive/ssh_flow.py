@@ -51,7 +51,7 @@ class NodeImportSshFlow:
 
         username: StrictStr = self._display_manager.ask_text(
             "Username:",
-            default="root",
+            default="ubuntu",
             validator=non_empty_string_validator,
         )
 
