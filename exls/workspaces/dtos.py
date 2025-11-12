@@ -34,7 +34,9 @@ class WorkspaceDTO(BaseModel):
     )
 
     @classmethod
-    def from_domain(cls, workspace: Workspace, cluster: Cluster) -> WorkspaceDTO:
+    def from_domain(
+        cls, workspace: Workspace, cluster: Cluster, cluster_node_ip: str
+    ) -> WorkspaceDTO:
         access_information: WorkspaceAccessInformation | None = None
         if workspace.access_information:
             access_information = workspace.access_information[0]
@@ -48,7 +50,7 @@ class WorkspaceDTO(BaseModel):
             workspace_created_at=workspace.created_at,
             workspace_access_information=(
                 WorkspaceAccessInformationDTO.from_domain(
-                    access_information, workspace.id
+                    access_information, workspace.id, cluster_node_ip
                 )
                 if access_information
                 else None
@@ -110,10 +112,17 @@ class WorkspaceAccessInformationDTO(BaseModel):
 
     @classmethod
     def from_domain(
-        cls, domain_obj: WorkspaceAccessInformation, workspace_id: str
+        cls,
+        domain_obj: WorkspaceAccessInformation,
+        workspace_id: str,
+        cluster_node_ip: str,
     ) -> WorkspaceAccessInformationDTO:
         return cls(
             workspace_id=workspace_id,
             access_type=domain_obj.access_type,
-            access_endpoint=domain_obj.endpoint,
+            access_endpoint=domain_obj.access_protocol.lower()
+            + "://"
+            + cluster_node_ip
+            + ":"
+            + str(domain_obj.port_number),
         )

@@ -44,7 +44,7 @@ from exls.core.commons.service import (
     validate_kubernetes_name,
 )
 from exls.nodes.dtos import AllowedNodeStatusFiltersDTO, NodeDTO, NodesListRequestDTO
-from exls.nodes.service import NodeService, get_node_service
+from exls.nodes.service import NodesService, get_node_service
 
 clusters_app = typer.Typer()
 
@@ -224,7 +224,7 @@ def deploy_cluster(
     config: AppConfig = get_config_from_ctx(ctx)
     access_token: str = get_access_token_from_ctx(ctx)
 
-    node_service: NodeService = get_node_service(config, access_token)
+    node_service: NodesService = get_node_service(config, access_token)
     cluster_service: ClustersService = get_clusters_service(config, access_token)
 
     display_manager: BaseClusterDisplayManager = TableClusterDisplayManager()
@@ -379,7 +379,7 @@ def add_nodes(
     display_manager = TableClusterDisplayManager()
     config: AppConfig = get_config_from_ctx(ctx)
     access_token: str = get_access_token_from_ctx(ctx)
-    node_service: NodeService = get_node_service(config, access_token)
+    node_service: NodesService = get_node_service(config, access_token)
     service: ClustersService = get_clusters_service(config, access_token)
 
     try:

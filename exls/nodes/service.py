@@ -21,7 +21,7 @@ from exls.nodes.gateway.dtos import (
 )
 
 
-class NodeService:
+class NodesService:
     def __init__(self, nodes_gateway: NodesGateway):
         self.nodes_gateway: NodesGateway = nodes_gateway
 
@@ -29,7 +29,7 @@ class NodeService:
     def list_nodes(self, request: NodesListRequestDTO) -> List[NodeDTO]:
         assert request is not None
         node_filter_params: NodeFilterParams = NodeFilterParams(
-            node_type=request.node_type.value if request.node_type else None,
+            node_type=request.node_type.value.upper() if request.node_type else None,
             status=(
                 AllowedNodeStatusFilters(request.status.value.upper())
                 if request.status is not None
@@ -83,9 +83,9 @@ class NodeService:
         return [node_dto_from_domain(node) for node in nodes]
 
 
-def get_node_service(config: AppConfig, access_token: str) -> NodeService:
+def get_node_service(config: AppConfig, access_token: str) -> NodesService:
     gateway_factory: GatewayFactory = GatewayFactory(config=config)
     nodes_gateway: NodesGateway = gateway_factory.create_nodes_gateway(
         access_token=access_token
     )
-    return NodeService(nodes_gateway)
+    return NodesService(nodes_gateway)

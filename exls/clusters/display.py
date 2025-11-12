@@ -128,8 +128,7 @@ DEFAULT_CLUSTER_NODES_COLUMNS_RENDERING_MAP = {
 }
 
 DEFAULT_CLUSTER_RESOURCES_COLUMNS_RENDERING_MAP = {
-    "cluster_name": get_column("Cluster Name"),
-    "node_hostname": get_column("Node Hostname"),
+    "node_id": get_column("Node ID"),
     "free_resources.gpu_type": get_column("GPU Type"),
     "free_resources.gpu_count": get_column("GPU Count"),
     "free_resources.cpu": get_column("CPU Cores"),

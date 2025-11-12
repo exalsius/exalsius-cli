@@ -26,12 +26,12 @@ from exls.nodes.interactive.ssh_flow import (
     NodeImportSshFlow,
     NodeImportSshFlowInterruptionException,
 )
-from exls.nodes.service import NodeService, get_node_service
+from exls.nodes.service import NodesService, get_node_service
 
 nodes_app = typer.Typer()
 
 
-def _get_node_service(ctx: typer.Context) -> NodeService:
+def _get_node_service(ctx: typer.Context) -> NodesService:
     access_token: str = get_access_token_from_ctx(ctx)
     config: AppConfig = get_config_from_ctx(ctx)
     return get_node_service(config, access_token)
@@ -57,7 +57,7 @@ def list_nodes(
     """List all nodes in the node pool"""
     display_manager = TableNodesDisplayManager()
 
-    service: NodeService = _get_node_service(ctx)
+    service: NodesService = _get_node_service(ctx)
 
     try:
         nodes: List[NodeDTO] = service.list_nodes(
@@ -78,7 +78,7 @@ def get_node(
     """Get a node in the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    service: NodeService = _get_node_service(ctx)
+    service: NodesService = _get_node_service(ctx)
 
     try:
         node: NodeDTO = service.get_node(node_id)
@@ -97,7 +97,7 @@ def delete_node(
     """Delete a node in the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    service: NodeService = _get_node_service(ctx)
+    service: NodesService = _get_node_service(ctx)
 
     try:
         service.delete_node(node_id)
@@ -123,7 +123,7 @@ def import_ssh(
     config: AppConfig = get_config_from_ctx(ctx)
     access_token: str = get_access_token_from_ctx(ctx)
 
-    node_service: NodeService = get_node_service(config, access_token)
+    node_service: NodesService = get_node_service(config, access_token)
     ssh_keys_service: SshKeysService = get_ssh_keys_service(config, access_token)
 
     display_manager = TableNodesDisplayManager()
@@ -163,7 +163,7 @@ def import_offer(
     """Import a node from an offer into the node pool."""
     display_manager = TableNodesDisplayManager()
 
-    service: NodeService = _get_node_service(ctx)
+    service: NodesService = _get_node_service(ctx)
 
     try:
         nodes: List[NodeDTO] = service.import_from_offer(
@@ -189,7 +189,7 @@ def import_nodes(ctx: typer.Context):
     config: AppConfig = get_config_from_ctx(ctx)
     access_token: str = get_access_token_from_ctx(ctx)
 
-    node_service: NodeService = get_node_service(config, access_token)
+    node_service: NodesService = get_node_service(config, access_token)
     ssh_keys_service: SshKeysService = get_ssh_keys_service(config, access_token)
 
     display_manager: TableNodesDisplayManager = TableNodesDisplayManager()

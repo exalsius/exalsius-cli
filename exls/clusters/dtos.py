@@ -155,7 +155,8 @@ class ResourcesDTO(BaseModel):
         )
 
 
-class ClusterNodeResourcesDTO(ClusterNodeDTO):
+class ClusterNodeResourcesDTO(BaseModel):
+    node_id: StrictStr = Field(..., description="The ID of the node")
     free_resources: ResourcesDTO = Field(
         ..., description="The free resources of the node"
     )
@@ -164,13 +165,12 @@ class ClusterNodeResourcesDTO(ClusterNodeDTO):
     )
 
     @classmethod
-    def from_base_dto_and_resources(
+    def from_resources(
         cls,
-        base_dto: ClusterNodeDTO,
         cluster_node_resources: ClusterNodeResources,
     ) -> ClusterNodeResourcesDTO:
         return cls(
-            **base_dto.model_dump(),
+            node_id=cluster_node_resources.node_id,
             free_resources=ResourcesDTO.from_domain(
                 cluster_node_resources.free_resources
             ),
