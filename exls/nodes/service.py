@@ -27,6 +27,7 @@ class NodeService:
 
     @handle_service_errors("listing nodes")
     def list_nodes(self, request: NodesListRequestDTO) -> List[NodeDTO]:
+        assert request is not None
         node_filter_params: NodeFilterParams = NodeFilterParams(
             node_type=request.node_type.value if request.node_type else None,
             status=(

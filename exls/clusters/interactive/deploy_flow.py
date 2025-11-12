@@ -21,11 +21,11 @@ from exls.nodes.dtos import NodeDTO
 # TODO: We need a better solution for type-save conversion from questionary.Choice to the actual type.
 
 
-class ClusterFlowInterruptionException(UserCancellationException):
+class DeployClusterFlowInterruptionException(UserCancellationException):
     """Raised when the user cancels an interactive cluster flow."""
 
 
-class ClusterInteractiveFlow:
+class DeployClusterInteractiveFlow:
     def __init__(
         self,
         available_nodes: List[NodeDTO],
@@ -39,7 +39,7 @@ class ClusterInteractiveFlow:
         self._available_nodes: List[NodeDTO] = available_nodes
 
     @handle_interactive_flow_errors(
-        "cluster creation", ClusterFlowInterruptionException
+        "cluster creation", DeployClusterFlowInterruptionException
     )
     def run(self) -> DeployClusterRequestDTO:
         self._display_manager.display_info(
@@ -86,7 +86,7 @@ class ClusterInteractiveFlow:
         )
 
         if not self._display_summary(clusterer_request):
-            raise ClusterFlowInterruptionException(
+            raise DeployClusterFlowInterruptionException(
                 "Cluster creation cancelled by user."
             )
         return clusterer_request

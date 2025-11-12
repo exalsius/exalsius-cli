@@ -22,9 +22,14 @@ from exls.clusters.dtos import (
     ListClustersRequestDTO,
     RemoveNodeRequestDTO,
 )
-from exls.clusters.interactive.flow import (
+from exls.clusters.interactive.cluster_flows import (
+    AddNodesInteractiveFlow,
     ClusterFlowInterruptionException,
-    ClusterInteractiveFlow,
+    ListNodesInteractiveFlow,
+)
+from exls.clusters.interactive.deploy_flow import (
+    DeployClusterFlowInterruptionException,
+    DeployClusterInteractiveFlow,
 )
 from exls.clusters.service import ClustersService, get_clusters_service
 from exls.config import AppConfig
@@ -249,12 +254,12 @@ def deploy_cluster(
             display_manager=display_manager
         )
 
-        interactive_flow: ClusterInteractiveFlow = ClusterInteractiveFlow(
+        interactive_flow: DeployClusterInteractiveFlow = DeployClusterInteractiveFlow(
             available_nodes, display
         )
         try:
             deploy_request = interactive_flow.run()
-        except ClusterFlowInterruptionException as e:
+        except DeployClusterFlowInterruptionException as e:
             display_manager.display_info(str(e))
             raise typer.Exit(0)
         except ExalsiusError as e:
@@ -297,8 +302,11 @@ def deploy_cluster(
 @clusters_app.command("list-nodes", help="List all nodes of a cluster")
 def list_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to list nodes of"
+    cluster_id: str = typer.Argument("", help="The ID of the cluster to list nodes of"),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="Enable interactive mode to list nodes of the cluster",
     ),
 ):
     """
@@ -308,7 +316,40 @@ def list_nodes(
     service: ClustersService = _get_clusters_service(ctx)
 
     try:
-        nodes: List[ClusterNodeDTO] = service.get_cluster_nodes(cluster_id)
+        available_clusters: List[ClusterDTO] = service.list_clusters(
+            ListClustersRequestDTO()
+        )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
+        raise typer.Exit(1)
+    if len(available_clusters) == 0:
+        display_manager.display_error(
+            ErrorDisplayModel(
+                message="No available clusters found. Please create a cluster first."
+            )
+        )
+        raise typer.Exit()
+
+    if interactive or _called_with_any_user_input(ctx):
+        display: ComposingClusterDisplayManager = ComposingClusterDisplayManager(
+            display_manager=display_manager
+        )
+        interactive_flow: ListNodesInteractiveFlow = ListNodesInteractiveFlow(
+            available_clusters, display
+        )
+        try:
+            selected_cluster_id: str = interactive_flow.run()
+        except ClusterFlowInterruptionException as e:
+            display_manager.display_info(str(e))
+            raise typer.Exit(0)
+        except ExalsiusError as e:
+            display_manager.display_error(ErrorDisplayModel(message=str(e)))
+            raise typer.Exit(1)
+    else:
+        selected_cluster_id = cluster_id
+
+    try:
+        nodes: List[ClusterNodeDTO] = service.get_cluster_nodes(selected_cluster_id)
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
@@ -319,14 +360,17 @@ def list_nodes(
 @clusters_app.command("add-nodes", help="Add nodes to a cluster")
 def add_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to add a node to"
-    ),
+    cluster_id: str = typer.Argument("", help="The ID of the cluster to add a node to"),
     worker_node_ids: List[StrictStr] = typer.Option(
         [],
         "--worker-nodes",
         help="The IDs of the worker nodes to add to the cluster.",
         show_default=False,
+    ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="Enable interactive mode to add nodes to the cluster",
     ),
 ):
     """
@@ -339,10 +383,34 @@ def add_nodes(
     service: ClustersService = get_clusters_service(config, access_token)
 
     try:
-        available_nodes: List[NodeDTO] = node_service.list_nodes(None)
+        available_nodes: List[NodeDTO] = node_service.list_nodes(
+            NodesListRequestDTO(status=AllowedNodeStatusFiltersDTO.AVAILABLE)
+        )
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)
+    if len(available_nodes) == 0:
+        display_manager.display_error(
+            ErrorDisplayModel(
+                message="No available nodes in the node pool found. Please import nodes first."
+            )
+        )
+        raise typer.Exit()
+
+    try:
+        available_clusters: List[ClusterDTO] = service.list_clusters(
+            ListClustersRequestDTO()
+        )
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
+        raise typer.Exit(1)
+    if len(available_clusters) == 0:
+        display_manager.display_error(
+            ErrorDisplayModel(
+                message="No available clusters found. Please create a cluster first."
+            )
+        )
+        raise typer.Exit()
 
     validation_error: Optional[ErrorDisplayModel] = _validate_node_ids(
         available_nodes=available_nodes,
@@ -352,14 +420,32 @@ def add_nodes(
         display_manager.display_error(error=validation_error)
         raise typer.Exit()
 
-    try:
-        nodes: List[ClusterNodeDTO] = service.add_cluster_nodes(
-            AddNodesRequestDTO(
-                cluster_id=cluster_id,
-                node_ids=worker_node_ids,
-                node_role=AllowedClusterNodeRoleDTO.WORKER,
-            )
+    if interactive or _called_with_any_user_input(ctx):
+        display: ComposingClusterDisplayManager = ComposingClusterDisplayManager(
+            display_manager=display_manager
         )
+        interactive_flow: AddNodesInteractiveFlow = AddNodesInteractiveFlow(
+            available_clusters=available_clusters,
+            available_nodes=available_nodes,
+            display_manager=display,
+        )
+        try:
+            add_nodes_request: AddNodesRequestDTO = interactive_flow.run()
+        except ClusterFlowInterruptionException as e:
+            display_manager.display_info(str(e))
+            raise typer.Exit(0)
+        except ExalsiusError as e:
+            display_manager.display_error(ErrorDisplayModel(message=str(e)))
+            raise typer.Exit(1)
+    else:
+        add_nodes_request = AddNodesRequestDTO(
+            cluster_id=cluster_id,
+            node_ids=worker_node_ids,
+            node_role=AllowedClusterNodeRoleDTO.WORKER,
+        )
+
+    try:
+        nodes: List[ClusterNodeDTO] = service.add_cluster_nodes(add_nodes_request)
     except ServiceError as e:
         display_manager.display_error(ErrorDisplayModel(message=str(e)))
         raise typer.Exit(1)

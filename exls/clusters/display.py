@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from exls.clusters.dtos import (
+    AddNodesRequestDTO,
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
@@ -47,6 +48,10 @@ class BaseClusterDisplayManager(BaseDisplayManager, ABC):
     def display_deploy_cluster_request(self, data: DeployClusterRequestDTO):
         pass
 
+    @abstractmethod
+    def display_add_nodes_request(self, data: AddNodesRequestDTO):
+        pass
+
 
 class JsonClusterDisplayManager(BaseJsonDisplayManager, BaseClusterDisplayManager):
     def __init__(
@@ -66,6 +71,9 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager, BaseClusterDisplayManage
         deploy_cluster_request_renderer: JsonSingleItemStringRenderer[
             DeployClusterRequestDTO
         ] = JsonSingleItemStringRenderer[DeployClusterRequestDTO](),
+        add_nodes_request_renderer: JsonSingleItemStringRenderer[
+            AddNodesRequestDTO
+        ] = JsonSingleItemStringRenderer[AddNodesRequestDTO](),
     ):
         super().__init__()
         self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
@@ -80,6 +88,9 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager, BaseClusterDisplayManage
         )
         self.deploy_cluster_request_display = ConsoleSingleItemDisplay(
             renderer=deploy_cluster_request_renderer
+        )
+        self.add_nodes_request_display = ConsoleSingleItemDisplay(
+            renderer=add_nodes_request_renderer
         )
 
     def display_clusters(self, data: List[ClusterDTO]):
@@ -96,6 +107,9 @@ class JsonClusterDisplayManager(BaseJsonDisplayManager, BaseClusterDisplayManage
 
     def display_deploy_cluster_request(self, data: DeployClusterRequestDTO):
         self.deploy_cluster_request_display.display(data)
+
+    def display_add_nodes_request(self, data: AddNodesRequestDTO):
+        self.add_nodes_request_display.display(data)
 
 
 DEFAULT_COLUMNS_RENDERING_MAP = {
@@ -132,6 +146,11 @@ DEFAULT_DEPLOY_CLUSTER_REQUEST_COLUMNS_RENDERING_MAP = {
     "worker_node_ids": get_column("Worker Node IDs"),
 }
 
+DEFAULT_ADD_NODES_REQUEST_COLUMNS_RENDERING_MAP = {
+    "cluster_id": get_column("Cluster ID"),
+    "node_ids": get_column("Node IDs"),
+}
+
 
 class TableClusterDisplayManager(BaseTableDisplayManager, BaseClusterDisplayManager):
     def __init__(
@@ -159,6 +178,11 @@ class TableClusterDisplayManager(BaseTableDisplayManager, BaseClusterDisplayMana
         ] = TableSingleItemRenderer[DeployClusterRequestDTO](
             columns_map=DEFAULT_DEPLOY_CLUSTER_REQUEST_COLUMNS_RENDERING_MAP
         ),
+        add_nodes_request_renderer: TableSingleItemRenderer[
+            AddNodesRequestDTO
+        ] = TableSingleItemRenderer[AddNodesRequestDTO](
+            columns_map=DEFAULT_ADD_NODES_REQUEST_COLUMNS_RENDERING_MAP
+        ),
     ):
         super().__init__()
         self.cluster_list_display = ConsoleListDisplay(renderer=cluster_list_renderer)
@@ -173,6 +197,9 @@ class TableClusterDisplayManager(BaseTableDisplayManager, BaseClusterDisplayMana
         )
         self.deploy_cluster_request_display = ConsoleSingleItemDisplay(
             renderer=deploy_cluster_request_renderer
+        )
+        self.add_nodes_request_display = ConsoleSingleItemDisplay(
+            renderer=add_nodes_request_renderer
         )
 
     def display_clusters(self, data: List[ClusterDTO]):
@@ -189,6 +216,9 @@ class TableClusterDisplayManager(BaseTableDisplayManager, BaseClusterDisplayMana
 
     def display_deploy_cluster_request(self, data: DeployClusterRequestDTO):
         self.deploy_cluster_request_display.display(data)
+
+    def display_add_nodes_request(self, data: AddNodesRequestDTO):
+        self.add_nodes_request_display.display(data)
 
 
 class ComposingClusterDisplayManager(ComposingDisplayManager):
@@ -217,3 +247,6 @@ class ComposingClusterDisplayManager(ComposingDisplayManager):
         self, deploy_cluster_request: DeployClusterRequestDTO
     ):
         self.display_manager.display_deploy_cluster_request(deploy_cluster_request)
+
+    def display_add_nodes_request(self, add_nodes_request: AddNodesRequestDTO):
+        self.display_manager.display_add_nodes_request(add_nodes_request)

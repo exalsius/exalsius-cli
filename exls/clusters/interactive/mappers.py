@@ -2,7 +2,7 @@ from typing import List
 
 import questionary
 
-from exls.clusters.dtos import AllowedClusterTypesDTO, AllowedGpuTypesDTO
+from exls.clusters.dtos import AllowedClusterTypesDTO, AllowedGpuTypesDTO, ClusterDTO
 from exls.nodes.dtos import NodeDTO
 
 
@@ -63,3 +63,16 @@ def nodes_to_questionary_choices(
     nodes: List[NodeDTO],
 ) -> List[questionary.Choice]:
     return [node_to_questionary_choice(node) for node in nodes]
+
+
+def cluster_to_questionary_choice(cluster: ClusterDTO) -> questionary.Choice:
+    return questionary.Choice(
+        title=f"{cluster.name} ({cluster.id[:8]})",
+        value=cluster.id,
+    )
+
+
+def clusters_to_questionary_choices(
+    clusters: List[ClusterDTO],
+) -> List[questionary.Choice]:
+    return [cluster_to_questionary_choice(cluster) for cluster in clusters]
