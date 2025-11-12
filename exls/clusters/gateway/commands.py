@@ -3,6 +3,9 @@ from typing import Optional
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
+from exalsius_api_client.models.cluster_dashboard_url_response import (
+    ClusterDashboardUrlResponse,
+)
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
 from exalsius_api_client.models.cluster_kubeconfig_response import (
@@ -139,4 +142,15 @@ class GetKubeconfigSdkCommand(BaseClustersSdkCommand[str, ClusterKubeconfigRespo
                 "Kubeconfig response is empty", self.__class__.__name__
             )
 
+        return response
+
+
+class GetDashboardUrlSdkCommand(
+    BaseClustersSdkCommand[str, ClusterDashboardUrlResponse]
+):
+    def _execute_api_call(self, params: Optional[str]) -> ClusterDashboardUrlResponse:
+        assert params is not None
+        response: ClusterDashboardUrlResponse = self.api_client.get_dashboard_url(
+            cluster_id=params
+        )
         return response
