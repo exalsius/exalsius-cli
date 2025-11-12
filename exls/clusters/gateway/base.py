@@ -56,3 +56,7 @@ class ClustersGateway(ABC):
     @abstractmethod
     def get_kubeconfig(self, cluster_id: str) -> Dict[str, Any]:
         raise NotImplementedError
+
+    @abstractmethod
+    def get_dashboard_url(self, cluster_id: str) -> str:
+        raise NotImplementedError

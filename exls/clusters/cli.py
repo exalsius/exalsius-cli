@@ -18,6 +18,7 @@ from exls.clusters.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
+    DashboardUrlResponseDTO,
     DeployClusterRequestDTO,
     ListClustersRequestDTO,
     RemoveNodeRequestDTO,
@@ -43,6 +44,7 @@ from exls.core.commons.service import (
     help_if_no_subcommand,
     validate_kubernetes_name,
 )
+from exls.core.commons.url_utils import open_url_in_browser
 from exls.nodes.dtos import AllowedNodeStatusFiltersDTO, NodeDTO, NodesListRequestDTO
 from exls.nodes.service import NodesService, get_node_service
 
@@ -509,6 +511,46 @@ def get_cluster_resources(
         raise typer.Exit(1)
 
     display_manager.display_cluster_resources(available_cluster_resources)
+
+
+@clusters_app.command(
+    "get-dashboard-url", help="Get the monitoring dashboard URL of a cluster"
+)
+def get_dashboard_url(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        ..., help="The ID of the cluster to get the monitoring dashboard URL of"
+    ),
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the dashboard URL in the default browser",
+    ),
+):
+    """
+    Get the monitoring dashboard URL of a cluster.
+    """
+    display_manager = TableClusterDisplayManager()
+    service: ClustersService = _get_clusters_service(ctx)
+
+    try:
+        dashboard_url: DashboardUrlResponseDTO = service.get_dashboard_url(cluster_id)
+    except ServiceError as e:
+        display_manager.display_error(ErrorDisplayModel(message=str(e)))
+        raise typer.Exit(1)
+
+    if open_browser:
+        if open_url_in_browser(dashboard_url.url):
+            display_manager.display_success("Opening dashboard in browser...")
+        else:
+            display_manager.display_error(
+                ErrorDisplayModel(
+                    message="Failed to open browser. Please open the URL manually."
+                )
+            )
+
+    display_manager.display_success("Monitoring Dashboard URL:")
+    display_manager.display_info(dashboard_url.url)
 
 
 @clusters_app.command(

@@ -7,6 +7,7 @@ from exls.clusters.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
+    DashboardUrlResponseDTO,
     DeployClusterRequestDTO,
     ListClustersRequestDTO,
     RemoveNodeRequestDTO,
@@ -191,6 +192,13 @@ class ClustersService:
         self.yaml_fileio_gateway.write_file(
             file_path=Path(kubeconfig_file_path), content=kubeconfig_content
         )
+
+    @handle_service_errors("getting dashboard url")
+    def get_dashboard_url(self, cluster_id: str) -> DashboardUrlResponseDTO:
+        dashboard_url: str = self.clusters_gateway.get_dashboard_url(
+            cluster_id=cluster_id
+        )
+        return DashboardUrlResponseDTO(url=dashboard_url)
 
 
 def get_clusters_service(config: AppConfig, access_token: str) -> ClustersService:

@@ -4,6 +4,9 @@ import yaml
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.cluster import Cluster as SdkCluster
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
+from exalsius_api_client.models.cluster_dashboard_url_response import (
+    ClusterDashboardUrlResponse,
+)
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
 from exalsius_api_client.models.cluster_kubeconfig_response import (
@@ -34,6 +37,7 @@ from exls.clusters.gateway.commands import (
     GetClusterNodesSdkCommand,
     GetClusterResourcesSdkCommand,
     GetClusterSdkCommand,
+    GetDashboardUrlSdkCommand,
     GetKubeconfigSdkCommand,
     ListClustersSdkCommand,
     RemoveNodeSdkCommand,
@@ -169,3 +173,10 @@ class ClustersGatewaySdk(ClustersGateway):
             raise UnexpectedSdkCommandResponseError(
                 f"Failed to parse kubeconfig: {str(e)}", self.__class__.__name__
             )
+
+    def get_dashboard_url(self, cluster_id: str) -> str:
+        command: GetDashboardUrlSdkCommand = GetDashboardUrlSdkCommand(
+            self._clusters_api, cluster_id
+        )
+        response: ClusterDashboardUrlResponse = command.execute()
+        return response.url

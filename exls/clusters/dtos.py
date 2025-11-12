@@ -178,3 +178,7 @@ class ClusterNodeResourcesDTO(BaseModel):
                 cluster_node_resources.occupied_resources
             ),
         )
+
+
+class DashboardUrlResponseDTO(BaseModel):
+    url: StrictStr = Field(..., description="The dashboard URL")
