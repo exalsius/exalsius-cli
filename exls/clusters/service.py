@@ -118,7 +118,6 @@ class ClustersService:
     @handle_service_errors("adding cluster nodes")
     def add_cluster_nodes(self, request: AddNodesRequestDTO) -> List[ClusterNodeDTO]:
         cluster: Cluster = self.clusters_gateway.get(cluster_id=request.cluster_id)
-
         add_nodes_params: AddNodesParams = (
             cluster_add_nodes_params_from_add_nodes_request_dto(request_dto=request)
         )
