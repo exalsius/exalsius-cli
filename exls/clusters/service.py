@@ -160,14 +160,6 @@ class ClustersService:
 
     @handle_service_errors("getting cluster resources")
     def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeResourcesDTO]:
-        cluster_node_dtos: List[ClusterNodeDTO] = self.get_cluster_nodes(
-            cluster_id=cluster_id
-        )
-
-        cluster_node_dtos_by_id: Dict[str, ClusterNodeDTO] = {
-            dto.node_id: dto for dto in cluster_node_dtos
-        }
-
         cluster_resources: List[ClusterNodeResources] = (
             self.clusters_gateway.get_cluster_resources(cluster_id=cluster_id)
         )
@@ -177,14 +169,10 @@ class ClustersService:
         }
 
         cluster_node_resources_dtos: List[ClusterNodeResourcesDTO] = []
-        for node_id in cluster_node_dtos_by_id:
-            if node_id not in resources_by_node_id:
-                raise ServiceError(
-                    message=f"cluster node resources for node {node_id} not found",
-                )
+        for node_id in resources_by_node_id.keys():
+            # TODO: Handle case where node ID is not found in resources
             cluster_node_resources_dtos.append(
-                ClusterNodeResourcesDTO.from_base_dto_and_resources(
-                    base_dto=cluster_node_dtos_by_id[node_id],
+                ClusterNodeResourcesDTO.from_resources(
                     cluster_node_resources=resources_by_node_id[node_id],
                 )
             )

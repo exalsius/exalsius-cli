@@ -36,7 +36,7 @@ def _(node: SelfManagedNode) -> SelfManagedNodeDTO:
 
 class NodeTypesDTO(StrEnum):
     CLOUD = "cloud"
-    SELF_MANAGED = "self-managed"
+    SELF_MANAGED = "self_managed"
 
 
 class AllowedNodeStatusFiltersDTO(StrEnum):

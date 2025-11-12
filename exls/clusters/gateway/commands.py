@@ -125,7 +125,6 @@ class GetClusterResourcesSdkCommand(
         response: ClusterResourcesListResponse = self.api_client.get_cluster_resources(
             cluster_id=params
         )
-
         return response
 
 
