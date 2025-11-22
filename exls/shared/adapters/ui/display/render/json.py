@@ -58,9 +58,9 @@ class _BaseJsonRenderer:
     ) -> JsonRenderContext:
         """Resolve the render context."""
         if render_context:
-            assert isinstance(render_context, JsonRenderContext), (
-                "Render context must be a JsonRenderContext"
-            )
+            assert isinstance(
+                render_context, JsonRenderContext
+            ), "Render context must be a JsonRenderContext"
         return (
             render_context
             if render_context

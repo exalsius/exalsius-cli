@@ -1,9 +1,9 @@
 from typing import List
 
 import questionary
+
 from exls.clusters.dtos import ClusterDTO
 from exls.management.types.workspace_templates.dtos import WorkspaceTemplateDTO
-
 from exls.workspaces.adapters.dtos import (
     DeployWorkspaceRequestDTO,
     WorkspaceResourcesRequestDTO,

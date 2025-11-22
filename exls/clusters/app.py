@@ -35,7 +35,9 @@ from exls.shared.core.service import ServiceError
 clusters_app = typer.Typer()
 
 
-def _called_with_any_user_input(ctx: typer.Context) -> bool:  # pyright: ignore[reportUnusedFunction]
+def _called_with_any_user_input(
+    ctx: typer.Context,
+) -> bool:  # pyright: ignore[reportUnusedFunction]
     """
     Return True if the command was invoked with ANY non-default option/argument.
     """

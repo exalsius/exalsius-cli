@@ -123,9 +123,9 @@ class TableRenderContext(BaseRenderContext):
         no_wrap: Optional[bool] = None,
         justify: Optional[JustifyMethod] = None,
         style: Optional[StyleType] = None,
-        value_formatter: Callable[[Any], str] = lambda x: str(x)
-        if x is not None
-        else "",
+        value_formatter: Callable[[Any], str] = lambda x: (
+            str(x) if x is not None else ""
+        ),
     ) -> Column:
         """
         Get a column with default styling based on the header.
@@ -235,9 +235,9 @@ class _BaseTableRenderer:
     ) -> TableRenderContext:
         """Resolve the render context."""
         if render_context:
-            assert isinstance(render_context, TableRenderContext), (
-                "Render context must be a TableRenderContext"
-            )
+            assert isinstance(
+                render_context, TableRenderContext
+            ), "Render context must be a TableRenderContext"
             return render_context
 
         assert columns, "If no render context is provided, columns must be set"

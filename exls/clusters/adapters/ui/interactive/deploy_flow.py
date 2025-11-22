@@ -1,8 +1,6 @@
 from typing import List
 
 import questionary
-from exls.nodes.dtos import NodeDTO
-from exls.shared.adapters.cli.decorators import handle_interactive_flow_errors
 from pydantic import StrictStr
 
 from exls.clusters.adapters.dtos import (
@@ -15,6 +13,8 @@ from exls.clusters.adapters.ui.interactive.mappers import (
     allowed_gpu_types_to_questionary_choices,
     nodes_to_questionary_choices,
 )
+from exls.nodes.dtos import NodeDTO
+from exls.shared.adapters.cli.decorators import handle_interactive_flow_errors
 from exls.shared.core.domain import generate_random_name
 from exls.shared.core.ports import UserCancellationException
 

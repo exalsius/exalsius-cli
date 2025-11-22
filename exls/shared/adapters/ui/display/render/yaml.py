@@ -59,9 +59,9 @@ class _BaseYamlRenderer:
         self, render_context: Optional[BaseRenderContext]
     ) -> YamlRenderContext:
         """Resolve the render context."""
-        assert isinstance(render_context, (YamlRenderContext, type(None))), (
-            "Render context must be a YamlRenderContext"
-        )
+        assert isinstance(
+            render_context, (YamlRenderContext, type(None))
+        ), "Render context must be a YamlRenderContext"
         return (
             render_context
             if render_context

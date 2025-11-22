@@ -75,9 +75,9 @@ class _BaseRichTextRenderer:
         self, render_context: Optional[BaseRenderContext]
     ) -> TextRenderContext:
         """Resolve the render context."""
-        assert isinstance(render_context, (TextRenderContext, type(None))), (
-            "Render context must be a TextRenderContext"
-        )
+        assert isinstance(
+            render_context, (TextRenderContext, type(None))
+        ), "Render context must be a TextRenderContext"
         return (
             render_context
             if render_context

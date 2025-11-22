@@ -1,12 +1,12 @@
 from typing import List
 
 import questionary
+from typing_extensions import Optional
+
 from exls.clusters.dtos import ClusterDTO
 from exls.management.types.workspace_templates.dtos import WorkspaceTemplateDTO
 from exls.shared.adapters.cli.decorators import handle_interactive_flow_errors
 from exls.shared.adapters.cli.display import non_empty_string_validator
-from typing_extensions import Optional
-
 from exls.shared.core.domain import generate_random_name
 from exls.shared.core.ports import UserCancellationException
 from exls.workspaces.adapters.dtos import DeployWorkspaceRequestDTO

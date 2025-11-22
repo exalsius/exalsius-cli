@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import List
 
 import questionary
-from exls.shared.core.exceptions import ExalsiusError
 from pydantic import StrictStr
 
 from exls.nodes.adapters.cli.display import ComposingNodeDisplayManager
@@ -15,6 +14,7 @@ from exls.shared.adapters.cli.display import (
     positive_integer_validator,
 )
 from exls.shared.core.domain import generate_random_name
+from exls.shared.core.exceptions import ExalsiusError
 from exls.shared.core.ports import UserCancellationException
 
 

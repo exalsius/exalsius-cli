@@ -55,7 +55,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
 
-@cluster_templates_app.command("list", help="List all cluster templates.")
+@cluster_templates_app.command("list", help="List all available cluster templates.")
 def list_cluster_templates(
     ctx: typer.Context,
 ):
