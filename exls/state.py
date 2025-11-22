@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from exls import config as cli_config
+from exls.shared.adapters.ui.display.values import OutputFormat
 
 
 class AppState(BaseModel):
@@ -21,4 +22,13 @@ class AppState(BaseModel):
     access_token: Optional[str] = Field(
         default=None,
         description="The access token",
+    )
+
+    message_output_format: Optional[OutputFormat] = Field(
+        default=None,
+        description=f"The output format to use for the CLI ({', '.join([f.value for f in OutputFormat])}).",
+    )
+    object_output_format: Optional[OutputFormat] = Field(
+        default=None,
+        description=f"The output format to use for the CLI ({', '.join([f.value for f in OutputFormat])}).",
     )

@@ -4,21 +4,22 @@ from typing import Optional
 import typer
 
 from exls import config as cli_config
-from exls.auth.cli import login, logout
-from exls.auth.dtos import AcquiredAccessTokenDTO
-from exls.auth.service import Auth0Service, NotLoggedInWarning, get_auth_service
-from exls.clusters.cli import clusters_app
-from exls.core.base.display import ErrorDisplayModel
-from exls.core.base.service import ServiceError
-from exls.core.commons.display import SimpleTextDisplayManager
-from exls.core.commons.service import help_if_no_subcommand
+from exls.auth.adapters.bundle import AuthBundle
+from exls.auth.adapters.dtos import AcquiredAccessTokenDTO
+from exls.auth.adapters.ui.display.display import AuthInteractionManager
+from exls.auth.app import login, logout
+from exls.auth.core.service import AuthService, NotLoggedInWarning
+from exls.clusters.app import clusters_app
 from exls.logging import setup_logging
-from exls.management.cli import management_app
-from exls.nodes.cli import nodes_app
-from exls.offers.cli import offers_app
-from exls.services.cli import services_app
+from exls.management.app import management_app
+from exls.nodes.app import nodes_app
+from exls.offers.app import offers_app
+from exls.services.app import services_app
+from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.core.service import ServiceError
 from exls.state import AppState
-from exls.workspaces.cli import workspaces_app
+from exls.workspaces.app import workspaces_app
 
 NON_AUTH_COMMANDS = ["login", "logout"]
 
@@ -96,6 +97,11 @@ def __root(  # pyright: ignore[reportUnusedFunction]
         "--log-file",
         help="Redirect logs to a file.",
     ),
+    format: Optional[OutputFormat] = typer.Option(
+        None,
+        "--format",
+        help=f"Set the output format ({', '.join([f.value for f in OutputFormat])}).",
+    ),
 ):
     """
     exalsius CLI - A tool for distributed training and infrastructure management
@@ -109,31 +115,42 @@ def __root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
-        auth_service: Auth0Service = get_auth_service(config)
-        display_manager: SimpleTextDisplayManager = SimpleTextDisplayManager()
+        auth_service: AuthService = AuthBundle(ctx).get_auth_service(config=config)
+        interaction_manager: AuthInteractionManager = AuthBundle(
+            ctx
+        ).get_interaction_manager()
         try:
+            auth_session = auth_service.acquire_access_token()
             acquired_access_token: AcquiredAccessTokenDTO = (
-                auth_service.acquire_access_token()
+                AcquiredAccessTokenDTO.from_loaded_token(auth_session.token)
             )
         except NotLoggedInWarning:
-            display_manager.display_error(
-                ErrorDisplayModel(message="You are not logged in. Please log in.")
+            interaction_manager.display_info_message(
+                "You are not logged in. Please log in.",
+                output_format=format or OutputFormat.TEXT,
             )
             raise typer.Exit(1)
         except ServiceError as e:
-            display_manager.display_error(
-                ErrorDisplayModel(
-                    message=f"Failed to acquire access token. Please log in again. \nError: {str(e)}"
-                )
+            interaction_manager.display_info_message(
+                f"Failed to acquire access token. Please log in again. Error: {str(e)}",
+                output_format=format or OutputFormat.TEXT,
             )
             raise typer.Exit(1)
 
         # Each command is responsible for checking the session for none and acquiring a new access token if needed
         ctx.obj = AppState(
-            config=config, access_token=acquired_access_token.access_token
+            config=config,
+            access_token=acquired_access_token.access_token,
+            message_output_format=format,
+            object_output_format=format,
         )
     else:
-        ctx.obj = AppState(config=config, access_token=None)
+        ctx.obj = AppState(
+            config=config,
+            access_token=None,
+            message_output_format=format,
+            object_output_format=format,
+        )
     logging.debug(f"Using config: {ctx.obj.config}")
 
 
