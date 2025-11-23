@@ -1,8 +1,9 @@
 from functools import wraps
 from typing import Any, Callable, Type
 
+import typer
+
 from exls.shared.adapters.ui.display.display import UserCancellationException
-from exls.shared.core.domain import ExalsiusError
 from exls.shared.core.ports.command import CommandError
 from exls.shared.core.service import ServiceError, ServiceWarning
 
@@ -57,11 +58,48 @@ def handle_interactive_flow_errors(
                 return func(*args, **kwargs)
             except UserCancellationException as e:
                 raise to_exception(e) from e
-            except Exception as e:
-                # Any exception apart from UserCancellationException is unexpected and should be wrapped.
-                raise ExalsiusError(
-                    f"An unexpected error occurred during {operation_name}: {str(e)}"
-                ) from e
+
+        return wrapper
+
+    return decorator
+
+
+def handle_cli_errors(bundle_class: Type[Any]) -> Callable[..., Any]:
+    """
+    A decorator to handle ServiceError in CLI commands.
+
+    It catches ServiceError, instantiates the bundle to get the display manager,
+    displays the error message, and exits with code 1.
+    """
+
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return func(*args, **kwargs)
+            except ServiceError as e:
+                # Try to find ctx in args or kwargs
+                ctx: typer.Context | None = None
+                for arg in args:
+                    if isinstance(arg, typer.Context):
+                        ctx = arg
+                        break
+                if not ctx:
+                    ctx = kwargs.get("ctx")
+
+                if ctx:
+                    bundle = bundle_class(ctx)
+                    if hasattr(bundle, "get_interaction_manager"):
+                        display_manager = bundle.get_interaction_manager()
+                        display_manager.display_error_message(
+                            str(e), output_format=bundle.message_output_format
+                        )
+                    else:
+                        typer.echo(f"Error: {e}", err=True)
+                else:
+                    typer.echo(f"Error: {e}", err=True)
+
+                raise typer.Exit(1)
 
         return wrapper
 

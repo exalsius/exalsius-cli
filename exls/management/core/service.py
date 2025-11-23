@@ -1,7 +1,7 @@
+from pathlib import Path
 from typing import List, Optional
 
 from exls.management.core.domain import (
-    AddSshKeyRequest,
     ClusterTemplate,
     Credentials,
     ServiceTemplate,
@@ -44,12 +44,10 @@ class ManagementService:
         return self.management_gateway.list_ssh_keys()
 
     @handle_service_errors("adding ssh key")
-    def add_ssh_key(self, request: AddSshKeyRequest) -> SshKey:
-        key_content_base64: str = self.fileio_gateway.read_file(
-            file_path=request.key_path
-        )
+    def add_ssh_key(self, name: str, key_path: Path) -> SshKey:
+        key_content_base64: str = self.fileio_gateway.read_file(file_path=key_path)
         ssh_key_id: str = self.management_gateway.add_ssh_key(
-            name=request.name, base64_key_content=key_content_base64
+            name=name, base64_key_content=key_content_base64
         )
         ssh_keys: List[SshKey] = self.management_gateway.list_ssh_keys()
         ssh_key: Optional[SshKey] = next(
@@ -57,7 +55,7 @@ class ManagementService:
         )
         if ssh_key is None:
             raise ServiceError(
-                message=f"Unexpected error: SSH key {request.name} was not added"
+                message=f"Unexpected error: SSH key {name} was not added"
             )
         return ssh_key
 

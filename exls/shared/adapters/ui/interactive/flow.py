@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, TypeVar
+from typing import Any, Dict, Generic, List, TypeVar, Union
 
-from pydantic import BaseModel
+from exls.shared.adapters.ui.display.interfaces import (
+    IBaseInputManager,
+    IMessageOutputManager,
+)
 
-from exls.shared.core.ports.display import OutputManager
-
-T_Display = TypeVar("T_Display", bound=OutputManager[BaseModel])
+T_Display = TypeVar("T_Display", bound=Union[IBaseInputManager, IMessageOutputManager])
 
 
 class FlowContext(Dict[str, Any]):

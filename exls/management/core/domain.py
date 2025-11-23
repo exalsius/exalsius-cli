@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, StrictStr
@@ -44,8 +43,3 @@ class WorkspaceTemplate(BaseModel):
 class SshKey(BaseModel):
     id: StrictStr = Field(..., description="The ID of the SSH key")
     name: StrictStr = Field(..., description="The name of the SSH key")
-
-
-class AddSshKeyRequest(BaseModel):
-    name: StrictStr = Field(..., description="The name of the SSH key")
-    key_path: Path = Field(..., description="The path to the SSH private key file")
