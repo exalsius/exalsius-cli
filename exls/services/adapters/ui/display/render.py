@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
 from exls.services.adapters.dtos import ServiceDTO
-from exls.shared.adapters.ui.display.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 
 DEFAULT_SERVICES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),

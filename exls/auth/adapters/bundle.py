@@ -4,15 +4,15 @@ from exls.auth.adapters.gateway.factory import (
     create_auth_gateway,
     create_token_storage_gateway,
 )
-from exls.auth.adapters.ui.display.display import AuthInteractionManager
+from exls.auth.adapters.ui.display.display import IOAuthFacade
 from exls.auth.core.ports import IAuthGateway, ITokenStorageGateway
 from exls.auth.core.service import AuthService
 from exls.config import AppConfig
-from exls.shared.adapters.bundle import SharedBundle
-from exls.shared.adapters.ui.display.factory import InteractionManagerFactory
+from exls.shared.adapters.bundle import BaseBundle
+from exls.shared.adapters.ui.factory import IOFactory
 
 
-class AuthBundle(SharedBundle):
+class AuthBundle(BaseBundle):
     def __init__(self, ctx: typer.Context):
         super().__init__(ctx)
 
@@ -25,9 +25,9 @@ class AuthBundle(SharedBundle):
             token_storage_gateway=token_storage_gateway,
         )
 
-    def get_interaction_manager(self) -> AuthInteractionManager:
-        interaction_manager_factory = InteractionManagerFactory()
-        return AuthInteractionManager(
-            input_manager=interaction_manager_factory.get_input_manager(),
-            output_manager=interaction_manager_factory.get_output_manager(),
+    def get_io_facade(self) -> IOAuthFacade:
+        io_facade_factory: IOFactory = IOFactory()
+        return IOAuthFacade(
+            input_manager=io_facade_factory.get_input_manager(),
+            output_manager=io_facade_factory.get_output_manager(),
         )

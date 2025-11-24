@@ -3,7 +3,7 @@ from typing import List
 from exls.offers.core.domain import Offer
 from exls.offers.core.ports import IOffersGateway
 from exls.offers.core.requests import OffersFilterCriteria
-from exls.shared.adapters.decorators import handle_service_errors
+from exls.shared.adapters.decorators import handle_service_layer_errors
 
 
 class OffersService:
@@ -16,7 +16,7 @@ class OffersService:
         ]
         return filtered_offers
 
-    @handle_service_errors("listing offers")
+    @handle_service_layer_errors("listing offers")
     def list_offers(self, request: OffersFilterCriteria) -> List[Offer]:
         offers: List[Offer] = self.offers_gateway.list(request)
         offers = self._sanity_filter_offers(offers)

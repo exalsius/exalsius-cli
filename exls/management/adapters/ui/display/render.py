@@ -10,7 +10,7 @@ from exls.management.adapters.dtos import (
     SshKeyDTO,
     WorkspaceTemplateDTO,
 )
-from exls.shared.adapters.ui.display.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 
 DEFAULT_CLUSTER_TEMPLATES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "name": TableRenderContext.get_column("Name"),

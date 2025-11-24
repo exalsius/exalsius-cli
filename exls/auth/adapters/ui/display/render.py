@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
 from exls.auth.adapters.dtos import UserInfoDTO
-from exls.shared.adapters.ui.display.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 
 DEFAULT_USER_INFO_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "email": TableRenderContext.get_column("Email"),

@@ -3,8 +3,8 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
 from exls.offers.adapters.dtos import OfferDTO
-from exls.shared.adapters.ui.display.render.service import format_float
-from exls.shared.adapters.ui.display.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.service import format_float
+from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 
 DEFAULT_OFFER_COLUMNS_RENDERING_MAP = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),

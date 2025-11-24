@@ -1,16 +1,14 @@
 import typer
 
-from exls.shared.adapters.bundle import SharedBundle
-from exls.shared.adapters.ui.display.factory import InteractionManagerFactory
+from exls.shared.adapters.bundle import BaseBundle
+from exls.shared.adapters.ui.factory import IOFactory
 from exls.workspaces.adapters.gateway.sdk import create_workspaces_gateway
-from exls.workspaces.adapters.ui.display.display import (
-    WorkspacesInteractionManager,
-)
+from exls.workspaces.adapters.ui.display.display import IOWorkspacesFacade
 from exls.workspaces.core.ports import IWorkspacesGateway
 from exls.workspaces.core.service import WorkspacesService
 
 
-class WorkspacesBundle(SharedBundle):
+class WorkspacesBundle(BaseBundle):
     def __init__(self, ctx: typer.Context):
         super().__init__(ctx)
 
@@ -23,9 +21,9 @@ class WorkspacesBundle(SharedBundle):
             workspace_creation_polling_config=self.config.workspace_creation_polling,
         )
 
-    def get_interaction_manager(self) -> WorkspacesInteractionManager:
-        interaction_manager_factory = InteractionManagerFactory()
-        return WorkspacesInteractionManager(
-            input_manager=interaction_manager_factory.get_input_manager(),
-            output_manager=interaction_manager_factory.get_output_manager(),
+    def get_io_facade(self) -> IOWorkspacesFacade:
+        io_facade_factory: IOFactory = IOFactory()
+        return IOWorkspacesFacade(
+            input_manager=io_facade_factory.get_input_manager(),
+            output_manager=io_facade_factory.get_output_manager(),
         )

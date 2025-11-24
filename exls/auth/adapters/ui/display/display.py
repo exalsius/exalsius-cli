@@ -8,11 +8,10 @@ import qrcode
 from pydantic import BaseModel
 
 from exls.auth.adapters.dtos import DeviceCodeAuthenticationDTO
-from exls.auth.adapters.ui.display.interfaces import IAuthInputManager
 from exls.auth.adapters.ui.display.render import get_columns_rendering_map
-from exls.shared.adapters.ui.display.display import BaseModelInteractionManager
-from exls.shared.adapters.ui.display.render.table import Column
-from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.output.render.table import Column
+from exls.shared.adapters.ui.output.values import OutputFormat
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +77,11 @@ def _open_browser_for_device_code_authentication(uri: str) -> bool:
     return _open_browser(webbrowser.get(), uri)
 
 
-class AuthInteractionManager(BaseModelInteractionManager, IAuthInputManager):
+class IOAuthFacade(IOBaseModelFacade):
     def get_columns_rendering_map(
-        self, dto_type: Type[BaseModel]
+        self, data_type: Type[BaseModel]
     ) -> Optional[Dict[str, Column]]:
-        return get_columns_rendering_map(dto_type)
+        return get_columns_rendering_map(data_type)
 
     @staticmethod
     def _generate_qr_code(uri: str) -> qrcode.QRCode[Any]:

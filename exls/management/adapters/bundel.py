@@ -1,23 +1,20 @@
 import typer
 
 from exls.management.adapters.gateway.sdk import create_management_gateway
-from exls.management.adapters.ui.display.display import ManagementInteractionManager
+from exls.management.adapters.ui.display.display import IOManagementFacade
 from exls.management.core.ports import IManagementGateway
 from exls.management.core.service import ManagementService
-from exls.shared.adapters.bundle import SharedBundle
+from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.gateway.file.gateways import (
     IFileReadGateway,
     StringBase64FileReadGateway,
 )
-from exls.shared.adapters.ui.display.factory import InteractionManagerFactory
+from exls.shared.adapters.ui.factory import IOFactory
 
 
-class ManagementBundle(SharedBundle):
+class ManagementBundle(BaseBundle):
     def __init__(self, ctx: typer.Context):
         super().__init__(ctx)
-
-    def get_string_base64_file_reader(self) -> StringBase64FileReadGateway:
-        return StringBase64FileReadGateway()
 
     def get_management_service(self) -> ManagementService:
         management_gateway: IManagementGateway = create_management_gateway(
@@ -28,9 +25,9 @@ class ManagementBundle(SharedBundle):
             management_gateway=management_gateway, fileio_gateway=fileio_gateway
         )
 
-    def get_interaction_manager(self) -> ManagementInteractionManager:
-        interaction_manager_factory = InteractionManagerFactory()
-        return ManagementInteractionManager(
-            input_manager=interaction_manager_factory.get_input_manager(),
-            output_manager=interaction_manager_factory.get_output_manager(),
+    def get_io_facade(self) -> IOManagementFacade:
+        io_facade_factory: IOFactory = IOFactory()
+        return IOManagementFacade(
+            input_manager=io_facade_factory.get_input_manager(),
+            output_manager=io_facade_factory.get_output_manager(),
         )

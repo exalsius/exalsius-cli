@@ -9,7 +9,7 @@ from exls.management.core.domain import (
     WorkspaceTemplate,
 )
 from exls.management.core.ports import IManagementGateway
-from exls.shared.adapters.decorators import handle_service_errors
+from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.adapters.gateway.file.gateways import IFileReadGateway
 from exls.shared.core.service import ServiceError
 
@@ -23,27 +23,27 @@ class ManagementService:
         self.management_gateway: IManagementGateway = management_gateway
         self.fileio_gateway: IFileReadGateway[str] = fileio_gateway
 
-    @handle_service_errors("listing cluster templates")
+    @handle_service_layer_errors("listing cluster templates")
     def list_cluster_templates(self) -> List[ClusterTemplate]:
         return self.management_gateway.list_cluster_templates()
 
-    @handle_service_errors("listing credentials")
+    @handle_service_layer_errors("listing credentials")
     def list_credentials(self) -> List[Credentials]:
         return self.management_gateway.list_credentials()
 
-    @handle_service_errors("listing service templates")
+    @handle_service_layer_errors("listing service templates")
     def list_service_templates(self) -> List[ServiceTemplate]:
         return self.management_gateway.list_service_templates()
 
-    @handle_service_errors("listing workspace templates")
+    @handle_service_layer_errors("listing workspace templates")
     def list_workspace_templates(self) -> List[WorkspaceTemplate]:
         return self.management_gateway.list_workspace_templates()
 
-    @handle_service_errors("listing ssh keys")
+    @handle_service_layer_errors("listing ssh keys")
     def list_ssh_keys(self) -> List[SshKey]:
         return self.management_gateway.list_ssh_keys()
 
-    @handle_service_errors("adding ssh key")
+    @handle_service_layer_errors("adding ssh key")
     def add_ssh_key(self, name: str, key_path: Path) -> SshKey:
         key_content_base64: str = self.fileio_gateway.read_file(file_path=key_path)
         ssh_key_id: str = self.management_gateway.add_ssh_key(
@@ -59,6 +59,6 @@ class ManagementService:
             )
         return ssh_key
 
-    @handle_service_errors("deleting ssh key")
+    @handle_service_layer_errors("deleting ssh key")
     def delete_ssh_key(self, ssh_key_id: str) -> str:
         return self.management_gateway.delete_ssh_key(ssh_key_id)

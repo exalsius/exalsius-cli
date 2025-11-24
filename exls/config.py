@@ -20,7 +20,7 @@ from exls.defaults import (
     CONFIG_ENV_PREFIX,
     CONFIG_LOCK_FILE,
 )
-from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.output.values import OutputFormat
 
 logger = logging.getLogger("cli.config")
 

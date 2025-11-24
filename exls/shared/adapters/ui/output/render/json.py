@@ -15,11 +15,11 @@ from pydantic import BaseModel, Field, PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from exls.config import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
-from exls.shared.adapters.ui.display.interfaces import (
+from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
 )
-from exls.shared.adapters.ui.display.render.entities import BaseRenderContext
+from exls.shared.adapters.ui.output.render.entities import BaseRenderContext
 
 T = TypeVar("T", bound=BaseModel)
 

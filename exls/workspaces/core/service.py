@@ -2,7 +2,7 @@ import time
 from typing import List
 
 from exls.config import ConfigWorkspaceCreationPolling
-from exls.shared.adapters.decorators import handle_service_errors
+from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.core.service import ServiceError
 from exls.workspaces.core.domain import DeployWorkspaceRequest, Workspace
 from exls.workspaces.core.ports import IWorkspacesGateway
@@ -19,23 +19,23 @@ class WorkspacesService:
         )
         self.workspaces_gateway: IWorkspacesGateway = workspaces_gateway
 
-    @handle_service_errors("listing workspaces")
+    @handle_service_layer_errors("listing workspaces")
     def list_workspaces(self, cluster_id: str) -> List[Workspace]:
         return self.workspaces_gateway.list(cluster_id=cluster_id)
 
-    @handle_service_errors("getting workspace")
+    @handle_service_layer_errors("getting workspace")
     def get_workspace(self, workspace_id: str) -> Workspace:
         return self.workspaces_gateway.get(workspace_id=workspace_id)
 
-    @handle_service_errors("deleting workspace")
+    @handle_service_layer_errors("deleting workspace")
     def delete_workspace(self, workspace_id: str) -> None:
         self.workspaces_gateway.delete(workspace_id=workspace_id)
 
-    @handle_service_errors("deploying workspace")
+    @handle_service_layer_errors("deploying workspace")
     def deploy_workspace(self, request: DeployWorkspaceRequest) -> str:
         return self.workspaces_gateway.deploy(request=request)
 
-    @handle_service_errors("polling workspace creation")
+    @handle_service_layer_errors("polling workspace creation")
     def poll_workspace_creation(self, workspace_id: str) -> str:
         timeout = self.workspace_creation_polling_config.timeout_seconds
         polling_interval = (

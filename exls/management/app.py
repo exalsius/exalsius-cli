@@ -11,7 +11,7 @@ from exls.management.adapters.dtos import (
     SshKeyDTO,
     WorkspaceTemplateDTO,
 )
-from exls.management.adapters.ui.display.display import ManagementInteractionManager
+from exls.management.adapters.ui.display.display import IOManagementFacade
 from exls.management.adapters.ui.mapper import (
     cluster_template_dto_from_domain,
     credentials_dto_from_domain,
@@ -27,8 +27,8 @@ from exls.management.core.domain import (
     WorkspaceTemplate,
 )
 from exls.management.core.service import ManagementService
+from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
-from exls.shared.core.service import ServiceError
 
 management_app = typer.Typer()
 
@@ -56,135 +56,106 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 
 
 @cluster_templates_app.command("list", help="List all available cluster templates.")
+@handle_application_layer_errors(ManagementBundle)
 def list_cluster_templates(
     ctx: typer.Context,
 ):
     """List all cluster templates."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
-    try:
-        domain_cluster_templates: List[ClusterTemplate] = (
-            service.list_cluster_templates()
-        )
-        dto_cluster_templates: List[ClusterTemplateDTO] = [
-            cluster_template_dto_from_domain(domain=cluster_template)
-            for cluster_template in domain_cluster_templates
-        ]
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
+    domain_cluster_templates: List[ClusterTemplate] = service.list_cluster_templates()
+    dto_cluster_templates: List[ClusterTemplateDTO] = [
+        cluster_template_dto_from_domain(domain=cluster_template)
+        for cluster_template in domain_cluster_templates
+    ]
 
-    display_manager.display_data(
+    io_facade.display_data(
         dto_cluster_templates, output_format=bundle.object_output_format
     )
 
 
 @credentials_app.command("list", help="List all available credentials")
+@handle_application_layer_errors(ManagementBundle)
 def list_credentials(ctx: typer.Context):
     """List all available credentials."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
-    try:
-        domain_credentials: List[Credentials] = service.list_credentials()
-        dto_credentials: List[CredentialsDTO] = [
-            credentials_dto_from_domain(domain=credential)
-            for credential in domain_credentials
-        ]
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
 
-    display_manager.display_data(
-        dto_credentials, output_format=bundle.object_output_format
-    )
+    domain_credentials: List[Credentials] = service.list_credentials()
+    dto_credentials: List[CredentialsDTO] = [
+        credentials_dto_from_domain(domain=credential)
+        for credential in domain_credentials
+    ]
+
+    io_facade.display_data(dto_credentials, output_format=bundle.object_output_format)
 
 
 @service_templates_app.command("list", help="List all available service templates")
+@handle_application_layer_errors(ManagementBundle)
 def list_service_templates(
     ctx: typer.Context,
 ):
     """List all available service templates."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
-    try:
-        domain_service_templates: List[ServiceTemplate] = (
-            service.list_service_templates()
-        )
-        dto_service_templates: List[ServiceTemplateDTO] = [
-            service_template_dto_from_domain(domain=service_template)
-            for service_template in domain_service_templates
-        ]
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
+    domain_service_templates: List[ServiceTemplate] = service.list_service_templates()
+    dto_service_templates: List[ServiceTemplateDTO] = [
+        service_template_dto_from_domain(domain=service_template)
+        for service_template in domain_service_templates
+    ]
 
-    display_manager.display_data(
+    io_facade.display_data(
         dto_service_templates, output_format=bundle.object_output_format
     )
 
 
 @workspace_templates_app.command("list", help="List all available workspace templates")
+@handle_application_layer_errors(ManagementBundle)
 def list_workspace_templates(
     ctx: typer.Context,
 ):
     """List all available workspace templates."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
-    try:
-        domain_workspace_templates: List[WorkspaceTemplate] = (
-            service.list_workspace_templates()
-        )
-        dto_workspace_templates: List[WorkspaceTemplateDTO] = [
-            workspace_template_dto_from_domain(domain=workspace_template)
-            for workspace_template in domain_workspace_templates
-        ]
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
 
-    display_manager.display_data(
+    domain_workspace_templates: List[WorkspaceTemplate] = (
+        service.list_workspace_templates()
+    )
+    dto_workspace_templates: List[WorkspaceTemplateDTO] = [
+        workspace_template_dto_from_domain(domain=workspace_template)
+        for workspace_template in domain_workspace_templates
+    ]
+
+    io_facade.display_data(
         dto_workspace_templates, output_format=bundle.object_output_format
     )
 
 
 @ssh_keys_app.command("list", help="List all available SSH keys")
+@handle_application_layer_errors(ManagementBundle)
 def list_ssh_keys(
     ctx: typer.Context,
 ):
     """List all available SSH keys."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
-    try:
-        domain_ssh_keys: List[SshKey] = service.list_ssh_keys()
-        dto_ssh_keys: List[SshKeyDTO] = [
-            ssh_key_dto_from_domain(domain=ssh_key) for ssh_key in domain_ssh_keys
-        ]
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
 
-    display_manager.display_data(
-        dto_ssh_keys, output_format=bundle.object_output_format
-    )
+    domain_ssh_keys: List[SshKey] = service.list_ssh_keys()
+    dto_ssh_keys: List[SshKeyDTO] = [
+        ssh_key_dto_from_domain(domain=ssh_key) for ssh_key in domain_ssh_keys
+    ]
+
+    io_facade.display_data(dto_ssh_keys, output_format=bundle.object_output_format)
 
 
 @ssh_keys_app.command("add", help="Add a new SSH key")
+@handle_application_layer_errors(ManagementBundle)
 def add_ssh_key(
     ctx: typer.Context,
     name: str = typer.Option(..., "--name", "-n", help="Name for the SSH key"),
@@ -194,38 +165,29 @@ def add_ssh_key(
 ):
     """Add a new SSH key to the management cluster."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
-    try:
-        domain_ssh_key: SshKey = service.add_ssh_key(name=name, key_path=key_path)
-        dto_ssh_key: SshKeyDTO = ssh_key_dto_from_domain(domain=domain_ssh_key)
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
 
-    display_manager.display_data(dto_ssh_key, output_format=bundle.object_output_format)
+    domain_ssh_key: SshKey = service.add_ssh_key(name=name, key_path=key_path)
+    dto_ssh_key: SshKeyDTO = ssh_key_dto_from_domain(domain=domain_ssh_key)
+
+    io_facade.display_data(dto_ssh_key, output_format=bundle.object_output_format)
 
 
 @ssh_keys_app.command("delete", help="Delete an SSH key")
+@handle_application_layer_errors(ManagementBundle)
 def delete_ssh_key(
     ctx: typer.Context,
     ssh_key_id: str = typer.Argument(..., help="ID of the SSH key to delete"),
 ):
     """Delete an SSH key from the management cluster."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    display_manager: ManagementInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
-    try:
-        deleted_ssh_key_id: str = service.delete_ssh_key(ssh_key_id)
-    except ServiceError as e:
-        display_manager.display_error_message(
-            str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
 
-    display_manager.display_success_message(
+    deleted_ssh_key_id: str = service.delete_ssh_key(ssh_key_id)
+
+    io_facade.display_success_message(
         f"SSH key {deleted_ssh_key_id} deleted successfully",
         output_format=bundle.message_output_format,
     )

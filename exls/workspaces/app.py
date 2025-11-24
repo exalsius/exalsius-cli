@@ -3,12 +3,13 @@ from typing import List
 
 import typer
 
+from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
-from exls.shared.core.service import ServiceError
 from exls.workspaces.adapters.bundle import WorkspacesBundle
 from exls.workspaces.adapters.dtos import (
     WorkspaceDTO,
 )
+from exls.workspaces.adapters.ui.display.display import IOWorkspacesFacade
 from exls.workspaces.adapters.ui.mapper import (
     workspace_dto_from_domain,
 )
@@ -30,6 +31,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 
 
 @workspaces_app.command("list", help="List all workspaces of a cluster")
+@handle_application_layer_errors(WorkspacesBundle)
 def list_workspaces(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -37,22 +39,19 @@ def list_workspaces(
     ),
 ):
     bundle = WorkspacesBundle(ctx)
-    interaction_manager = bundle.get_interaction_manager()
+    io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    try:
-        workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
-        workspace_dtos: List[WorkspaceDTO] = [
-            workspace_dto_from_domain(workspace) for workspace in workspaces
-        ]
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
+    workspace_dtos: List[WorkspaceDTO] = [
+        workspace_dto_from_domain(workspace) for workspace in workspaces
+    ]
 
-    interaction_manager.display_data(workspace_dtos, bundle.object_output_format)
+    io_facade.display_data(workspace_dtos, bundle.object_output_format)
 
 
 @workspaces_app.command("get", help="Get a workspace of a cluster")
+@handle_application_layer_errors(WorkspacesBundle)
 def get_workspace(
     ctx: typer.Context,
     workspace_id: str = typer.Argument(
@@ -60,20 +59,17 @@ def get_workspace(
     ),
 ):
     bundle = WorkspacesBundle(ctx)
-    interaction_manager = bundle.get_interaction_manager()
+    io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    try:
-        workspace: Workspace = service.get_workspace(workspace_id)
-        workspace_dto: WorkspaceDTO = workspace_dto_from_domain(workspace)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    workspace: Workspace = service.get_workspace(workspace_id)
+    workspace_dto: WorkspaceDTO = workspace_dto_from_domain(workspace)
 
-    interaction_manager.display_data(workspace_dto, bundle.object_output_format)
+    io_facade.display_data(workspace_dto, bundle.object_output_format)
 
 
 @workspaces_app.command("delete", help="Delete a workspace of a cluster")
+@handle_application_layer_errors(WorkspacesBundle)
 def delete_workspace(
     ctx: typer.Context,
     workspace_id: str = typer.Argument(
@@ -81,16 +77,12 @@ def delete_workspace(
     ),
 ):
     bundle = WorkspacesBundle(ctx)
-    interaction_manager = bundle.get_interaction_manager()
+    io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    try:
-        service.delete_workspace(workspace_id=workspace_id)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    service.delete_workspace(workspace_id=workspace_id)
 
-    interaction_manager.display_success_message(
+    io_facade.display_success_message(
         f"Workspace {workspace_id} deleted successfully.", bundle.message_output_format
     )
 

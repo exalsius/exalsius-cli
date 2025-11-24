@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional, Type
 
 from pydantic import BaseModel
 
-from exls.shared.adapters.ui.display.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.workspaces.adapters.dtos import DeployWorkspaceRequestDTO, WorkspaceDTO
 
 # Check this when implementing config edit feature

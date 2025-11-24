@@ -8,8 +8,8 @@ from exls.nodes.adapters.dtos import (
     ImportSelfmanagedNodeRequestDTO,
     SelfManagedNodeDTO,
 )
-from exls.shared.adapters.ui.display.render.service import format_datetime, format_na
-from exls.shared.adapters.ui.display.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.service import format_datetime, format_na
+from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 
 DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),

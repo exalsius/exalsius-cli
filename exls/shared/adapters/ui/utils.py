@@ -4,7 +4,7 @@ from typing import Optional, cast
 import typer
 
 from exls.config import AppConfig
-from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.service import ServiceError
 from exls.state import AppState
 

@@ -13,11 +13,8 @@ from exls.nodes.adapters.dtos import (
     ImportSelfmanagedNodeRequestDTO,
     NodeDTO,
 )
-from exls.nodes.adapters.ui.display.display import NodesInteractionManager
-from exls.nodes.adapters.ui.interactive.ssh_flow import (
-    NodeImportSshFlow,
-    NodeImportSshFlowInterruptionException,
-)
+from exls.nodes.adapters.ui.display.display import IONodesFacade
+from exls.nodes.adapters.ui.flows.node_import import SelfmanagedNodeImportFlow
 from exls.nodes.adapters.ui.mappers import node_dto_from_domain
 from exls.nodes.adapters.values import NodeTypesDTO
 from exls.nodes.core.domain import BaseNode, SelfManagedNode
@@ -27,7 +24,8 @@ from exls.nodes.core.requests import (
     NodesFilterCriteria,
 )
 from exls.nodes.core.service import NodesService
-from exls.shared.adapters.decorators import handle_cli_errors
+from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.input.values import UserCancellationException
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.domain import generate_random_name
 from exls.shared.core.service import ServiceError
@@ -46,7 +44,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 
 
 @nodes_app.command("list", help="List all nodes in the node pool.")
-@handle_cli_errors(NodesBundle)
+@handle_application_layer_errors(NodesBundle)
 def list_nodes(
     ctx: typer.Context,
     node_type: Optional[NodeTypesDTO] = typer.Option(
@@ -57,20 +55,18 @@ def list_nodes(
 
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
-    interactive_manager: NodesInteractionManager = bundle.get_interaction_manager()
+    io_facade: IONodesFacade = bundle.get_io_facade()
 
     domain_nodes: List[BaseNode] = service.list_nodes(
         NodesFilterCriteria(node_type=node_type.value.upper() if node_type else None)
     )
     dtos_nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in domain_nodes]
 
-    interactive_manager.display_data(
-        data=dtos_nodes, output_format=bundle.object_output_format
-    )
+    io_facade.display_data(data=dtos_nodes, output_format=bundle.object_output_format)
 
 
 @nodes_app.command("get", help="Get a node in the node pool.")
-@handle_cli_errors(NodesBundle)
+@handle_application_layer_errors(NodesBundle)
 def get_node(
     ctx: typer.Context,
     node_id: str = typer.Argument(help="The ID of the node to get"),
@@ -78,18 +74,16 @@ def get_node(
     """Get a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
-    interactive_manager: NodesInteractionManager = bundle.get_interaction_manager()
+    io_facade: IONodesFacade = bundle.get_io_facade()
 
     domain_node: BaseNode = service.get_node(node_id)
     node_dto: NodeDTO = node_dto_from_domain(domain_node)
 
-    interactive_manager.display_data(
-        data=node_dto, output_format=bundle.object_output_format
-    )
+    io_facade.display_data(data=node_dto, output_format=bundle.object_output_format)
 
 
 @nodes_app.command("delete", help="Delete a node in the node pool.")
-@handle_cli_errors(NodesBundle)
+@handle_application_layer_errors(NodesBundle)
 def delete_node(
     ctx: typer.Context,
     node_id: str = typer.Argument(help="The ID of the node to delete"),
@@ -97,18 +91,18 @@ def delete_node(
     """Delete a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
-    interactive_manager: NodesInteractionManager = bundle.get_interaction_manager()
+    io_facade: IONodesFacade = bundle.get_io_facade()
 
     deleted_node_id: str = service.delete_node(node_id)
 
-    interactive_manager.display_success_message(
+    io_facade.display_success_message(
         f"Node {deleted_node_id} deleted successfully",
         output_format=bundle.message_output_format,
     )
 
 
 @nodes_app.command("import-ssh", help="Import a self-managed node into the node pool.")
-@handle_cli_errors(NodesBundle)
+@handle_application_layer_errors(NodesBundle)
 def import_selfmanaged_node(
     ctx: typer.Context,
     hostname: str = typer.Option(
@@ -128,7 +122,7 @@ def import_selfmanaged_node(
     """Import a self-managed node into the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
-    interactive_manager: NodesInteractionManager = bundle.get_interaction_manager()
+    io_facade: IONodesFacade = bundle.get_io_facade()
 
     final_ssh_key_id: Optional[str] = ssh_key_id
 
@@ -139,7 +133,7 @@ def import_selfmanaged_node(
         final_ssh_key_id = domain_ssh_key.id
 
     if not final_ssh_key_id:
-        interactive_manager.display_error_message(
+        io_facade.display_error_message(
             "No SSH key ID provided and no SSH key path or name provided",
             output_format=bundle.message_output_format,
         )
@@ -157,22 +151,20 @@ def import_selfmanaged_node(
     )
     dtos_nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in domain_nodes]
 
-    interactive_manager.display_success_message(
+    io_facade.display_success_message(
         message=f"Nodes {', '.join([node.hostname for node in domain_nodes])} imported successfully",
         output_format=bundle.message_output_format,
     )
-    interactive_manager.display_data(
-        data=dtos_nodes, output_format=bundle.object_output_format
-    )
+    io_facade.display_data(data=dtos_nodes, output_format=bundle.object_output_format)
 
 
 @nodes_app.command("import", help="Import nodes using interactive mode")
-@handle_cli_errors(NodesBundle)
+@handle_application_layer_errors(NodesBundle)
 def import_nodes(ctx: typer.Context):
     """Import nodes using interactive mode."""
     bundle: NodesBundle = NodesBundle(ctx)
     node_service: NodesService = bundle.get_nodes_service()
-    interactive_manager: NodesInteractionManager = bundle.get_interaction_manager()
+    io_facade: IONodesFacade = bundle.get_io_facade()
 
     management_bundle: ManagementBundle = ManagementBundle(ctx)
     management_service: ManagementService = management_bundle.get_management_service()
@@ -183,7 +175,7 @@ def import_nodes(ctx: typer.Context):
             ssh_key_dto_from_domain(key) for key in domain_ssh_keys
         ]
     except ServiceError as e:
-        interactive_manager.display_error_message(
+        io_facade.display_error_message(
             message=f"Failed to load SSH keys: {str(e)}",
             output_format=bundle.message_output_format,
         )
@@ -192,7 +184,7 @@ def import_nodes(ctx: typer.Context):
     # Validate at least one import method is available
     # TODO: Ask to start ssh key import flow
     if not ssh_keys:
-        interactive_manager.display_error_message(
+        io_facade.display_error_message(
             message="No SSH keys or offers available. Please add an SSH key using 'exls management ssh-keys add' or wait for offers to become available.",
             output_format=bundle.message_output_format,
         )
@@ -201,13 +193,13 @@ def import_nodes(ctx: typer.Context):
     # TODO: We support only SSH import for now, but we should support offer import in the future.
 
     try:
-        flow: NodeImportSshFlow = NodeImportSshFlow(
-            interaction_manager=interactive_manager,
+        flow: SelfmanagedNodeImportFlow = SelfmanagedNodeImportFlow(
+            io_facade=io_facade,
             available_ssh_keys=ssh_keys,
         )
         import_requests_dtos: List[ImportSelfmanagedNodeRequestDTO] = flow.run()
-    except NodeImportSshFlowInterruptionException as e:
-        interactive_manager.display_info_message(
+    except UserCancellationException as e:
+        io_facade.display_info_message(
             message=str(e), output_format=bundle.message_output_format
         )
         raise typer.Exit(1)
@@ -226,8 +218,8 @@ def import_nodes(ctx: typer.Context):
     )
     nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in domain_nodes]
 
-    interactive_manager.display_success_message(
+    io_facade.display_success_message(
         f"Successfully imported {len(nodes)} nodes",
         output_format=bundle.message_output_format,
     )
-    interactive_manager.display_data(nodes, output_format=bundle.object_output_format)
+    io_facade.display_data(nodes, output_format=bundle.object_output_format)

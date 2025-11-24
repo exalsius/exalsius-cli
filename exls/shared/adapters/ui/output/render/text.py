@@ -4,11 +4,11 @@ from typing import List, Optional, Sequence, TypeVar
 
 from pydantic import BaseModel, Field
 
-from exls.shared.adapters.ui.display.interfaces import (
+from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
 )
-from exls.shared.adapters.ui.display.render.entities import (
+from exls.shared.adapters.ui.output.render.entities import (
     BaseRenderContext,
     TextMessageItem,
 )

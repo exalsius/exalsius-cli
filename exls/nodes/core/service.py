@@ -9,7 +9,7 @@ from exls.nodes.core.requests import (
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
 )
-from exls.shared.adapters.decorators import handle_service_errors
+from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.core.service import ServiceError
 
 
@@ -18,20 +18,20 @@ class NodesService:
         self.nodes_gateway: INodesGateway = nodes_gateway
         self.ssh_key_provider: ISshKeyProvider = ssh_key_provider
 
-    @handle_service_errors("listing nodes")
+    @handle_service_layer_errors("listing nodes")
     def list_nodes(self, request: NodesFilterCriteria) -> List[BaseNode]:
         assert request is not None
         return self.nodes_gateway.list(request)
 
-    @handle_service_errors("getting node")
+    @handle_service_layer_errors("getting node")
     def get_node(self, node_id: str) -> BaseNode:
         return self.nodes_gateway.get(node_id)
 
-    @handle_service_errors("deleting node")
+    @handle_service_layer_errors("deleting node")
     def delete_node(self, node_id: str) -> str:
         return self.nodes_gateway.delete(node_id)
 
-    @handle_service_errors("importing self-managed nodes")
+    @handle_service_layer_errors("importing self-managed nodes")
     def import_selfmanaged_nodes(
         self, node_import_requests: List[ImportSelfmanagedNodeRequest]
     ) -> List[SelfManagedNode]:
@@ -72,12 +72,12 @@ class NodesService:
 
         return nodes
 
-    @handle_service_errors("adding ssh key")
+    @handle_service_layer_errors("adding ssh key")
     def add_ssh_key(self, name: str, key_path: Path) -> NodeSshKey:
         # Forward the request to the SSH key provider
         return self.ssh_key_provider.add_key(name=name, key_path=key_path)
 
-    @handle_service_errors("importing cloud nodes")
+    @handle_service_layer_errors("importing cloud nodes")
     def import_cloud_nodes(self, request: ImportCloudNodeRequest) -> List[CloudNode]:
         node_ids: List[str] = self.nodes_gateway.import_cloud_nodes(request)
         nodes: List[CloudNode] = [

@@ -20,7 +20,7 @@ from exls.nodes.adapters.gateway.mappers import node_domain_from_sdk_model
 from exls.nodes.core.domain import (
     BaseNode,
 )
-from exls.nodes.core.ports import INodesGateway
+from exls.nodes.core.ports.gateway import INodesGateway
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
     ImportSelfmanagedNodeRequest,

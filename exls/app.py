@@ -6,7 +6,7 @@ import typer
 from exls import config as cli_config
 from exls.auth.adapters.bundle import AuthBundle
 from exls.auth.adapters.dtos import AcquiredAccessTokenDTO
-from exls.auth.adapters.ui.display.display import AuthInteractionManager
+from exls.auth.adapters.ui.display.display import IOAuthFacade
 from exls.auth.app import login, logout
 from exls.auth.core.service import AuthService, NotLoggedInWarning
 from exls.clusters.app import clusters_app
@@ -15,7 +15,7 @@ from exls.management.app import management_app
 from exls.nodes.app import nodes_app
 from exls.offers.app import offers_app
 from exls.services.app import services_app
-from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.service import ServiceError
 from exls.state import AppState
@@ -116,22 +116,20 @@ def __root(  # pyright: ignore[reportUnusedFunction]
 
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
         auth_service: AuthService = AuthBundle(ctx).get_auth_service(config=config)
-        interaction_manager: AuthInteractionManager = AuthBundle(
-            ctx
-        ).get_interaction_manager()
+        io_facade: IOAuthFacade = AuthBundle(ctx).get_io_facade()
         try:
             auth_session = auth_service.acquire_access_token()
             acquired_access_token: AcquiredAccessTokenDTO = (
                 AcquiredAccessTokenDTO.from_loaded_token(auth_session.token)
             )
         except NotLoggedInWarning:
-            interaction_manager.display_info_message(
+            io_facade.display_info_message(
                 "You are not logged in. Please log in.",
                 output_format=format or OutputFormat.TEXT,
             )
             raise typer.Exit(1)
         except ServiceError as e:
-            interaction_manager.display_info_message(
+            io_facade.display_info_message(
                 f"Failed to acquire access token. Please log in again. Error: {str(e)}",
                 output_format=format or OutputFormat.TEXT,
             )

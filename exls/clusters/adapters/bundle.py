@@ -1,18 +1,18 @@
 import typer
 
 from exls.clusters.adapters.gateway.sdk import create_clusters_gateway
-from exls.clusters.adapters.ui.display.display import ClustersInteractionManager
+from exls.clusters.adapters.ui.display.display import IOClustersFacade
 from exls.clusters.core.ports import IClustersGateway
 from exls.clusters.core.service import ClustersService
-from exls.shared.adapters.bundle import SharedBundle
+from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.gateway.file.gateways import (
     IFileWriteGateway,
     YamlFileWriteGateway,
 )
-from exls.shared.adapters.ui.display.factory import InteractionManagerFactory
+from exls.shared.adapters.ui.factory import IOFactory
 
 
-class ClustersBundle(SharedBundle):
+class ClustersBundle(BaseBundle):
     def __init__(self, ctx: typer.Context):
         super().__init__(ctx)
 
@@ -25,9 +25,9 @@ class ClustersBundle(SharedBundle):
             clusters_gateway=clusters_gateway, file_write_gateway=file_write_gateway
         )
 
-    def get_interaction_manager(self) -> ClustersInteractionManager:
-        interaction_manager_factory = InteractionManagerFactory()
-        return ClustersInteractionManager(
-            input_manager=interaction_manager_factory.get_input_manager(),
-            output_manager=interaction_manager_factory.get_output_manager(),
+    def get_io_facade(self) -> IOClustersFacade:
+        io_facade_factory: IOFactory = IOFactory()
+        return IOClustersFacade(
+            input_manager=io_facade_factory.get_input_manager(),
+            output_manager=io_facade_factory.get_output_manager(),
         )

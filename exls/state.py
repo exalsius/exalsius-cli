@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from exls import config as cli_config
-from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.output.values import OutputFormat
 
 
 class AppState(BaseModel):

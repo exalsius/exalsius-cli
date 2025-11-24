@@ -3,34 +3,34 @@ from typing import Generic, Optional, Protocol, Sequence, TypeVar, Union
 from pydantic import BaseModel
 from rich.table import Table
 
-from exls.shared.adapters.ui.display.interfaces import (
+from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
 )
-from exls.shared.adapters.ui.display.render.entities import (
+from exls.shared.adapters.ui.output.render.entities import (
     BaseRenderContext,
     TextMessageItem,
 )
-from exls.shared.adapters.ui.display.render.json import (
+from exls.shared.adapters.ui.output.render.json import (
     JsonListStringRenderer,
     JsonSingleItemStringRenderer,
 )
-from exls.shared.adapters.ui.display.render.table import (
+from exls.shared.adapters.ui.output.render.table import (
     TableListRenderer,
     TableSingleItemRenderer,
 )
-from exls.shared.adapters.ui.display.render.text import (
+from exls.shared.adapters.ui.output.render.text import (
     RichTextErrorMessageRenderer,
     RichTextInfoMessageRenderer,
     RichTextItemRenderer,
     RichTextListRenderer,
     RichTextSuccessMessageRenderer,
 )
-from exls.shared.adapters.ui.display.render.yaml import (
+from exls.shared.adapters.ui.output.render.yaml import (
     YamlListStringRenderer,
     YamlSingleItemStringRenderer,
 )
-from exls.shared.adapters.ui.display.values import (
+from exls.shared.adapters.ui.output.values import (
     OutputFormat,
 )
 

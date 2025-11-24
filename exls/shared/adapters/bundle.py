@@ -1,7 +1,11 @@
+from abc import ABC, abstractmethod
+
 import typer
+from pydantic import BaseModel
 
 from exls.config import AppConfig
-from exls.shared.adapters.ui.display.values import OutputFormat
+from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (
     get_access_token_from_ctx,
     get_config_from_ctx,
@@ -10,7 +14,7 @@ from exls.shared.adapters.ui.utils import (
 )
 
 
-class SharedBundle:
+class BaseBundle(ABC):
     def __init__(self, ctx: typer.Context):
         self._ctx: typer.Context = ctx
 
@@ -35,3 +39,6 @@ class SharedBundle:
             get_object_output_format_from_ctx(self._ctx)
             or self.config.default_object_output_format
         )
+
+    @abstractmethod
+    def get_io_facade(self) -> IIOFacade[BaseModel]: ...

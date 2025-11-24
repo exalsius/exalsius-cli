@@ -4,7 +4,7 @@ import typer
 
 from exls.auth.adapters.bundle import AuthBundle
 from exls.auth.adapters.dtos import DeviceCodeAuthenticationDTO, UserInfoDTO
-from exls.auth.adapters.ui.display.display import AuthInteractionManager
+from exls.auth.adapters.ui.display.display import IOAuthFacade
 from exls.auth.core.domain import AuthSession, DeviceCode
 from exls.auth.core.ports import AuthGatewayError, TokenStorageError
 from exls.auth.core.service import AuthService, NotLoggedInWarning
@@ -25,14 +25,14 @@ def login(
     securely in the system's keyring for subsequent CLI calls.
     """
     bundle = AuthBundle(ctx)
-    interaction_manager: AuthInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOAuthFacade = bundle.get_io_facade()
     auth_service: AuthService = bundle.get_auth_service(config=bundle.config)
 
     try:
         device_code: DeviceCode = auth_service.initiate_device_code_login()
         device_code_dto = DeviceCodeAuthenticationDTO.from_domain(device_code)
 
-        interaction_manager.display_auth_poling(dto=device_code_dto)
+        io_facade.display_auth_poling(dto=device_code_dto)
 
         auth_session: AuthSession = auth_service.poll_for_authentication(
             device_code_input=device_code
@@ -40,19 +40,17 @@ def login(
 
         user_info = UserInfoDTO.from_auth_session(auth_session)
 
-        interaction_manager.display_success_message(
+        io_facade.display_success_message(
             "Logged in successfully!", output_format=bundle.message_output_format
         )
-        interaction_manager.display_data(
-            user_info, output_format=bundle.object_output_format
-        )
+        io_facade.display_data(user_info, output_format=bundle.object_output_format)
     except ServiceWarning as w:
-        interaction_manager.display_info_message(
+        io_facade.display_info_message(
             str(w), output_format=bundle.message_output_format
         )
         raise typer.Exit(0)
     except (ServiceError, AuthGatewayError, TokenStorageError) as e:
-        interaction_manager.display_error_message(
+        io_facade.display_error_message(
             str(e), output_format=bundle.message_output_format
         )
         raise typer.Exit(1)
@@ -66,27 +64,27 @@ def logout(ctx: typer.Context):
     keyring, effectively logging them out of the Exalsius CLI.
     """
     bundle = AuthBundle(ctx)
-    interaction_manager: AuthInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOAuthFacade = bundle.get_io_facade()
     auth_service: AuthService = bundle.get_auth_service(config=bundle.config)
 
     try:
         auth_service.logout()
     except NotLoggedInWarning:
-        interaction_manager.display_info_message(
+        io_facade.display_info_message(
             "You are not logged in.", output_format=bundle.message_output_format
         )
         raise typer.Exit(0)
     except ServiceWarning as w:
-        interaction_manager.display_info_message(
+        io_facade.display_info_message(
             str(w), output_format=bundle.message_output_format
         )
         raise typer.Exit(0)
     except (ServiceError, AuthGatewayError, TokenStorageError) as e:
-        interaction_manager.display_error_message(
+        io_facade.display_error_message(
             str(e), output_format=bundle.message_output_format
         )
         raise typer.Exit(1)
 
-    interaction_manager.display_success_message(
+    io_facade.display_success_message(
         "Logged out successfully", output_format=bundle.message_output_format
     )

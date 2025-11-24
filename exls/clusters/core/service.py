@@ -12,7 +12,7 @@ from exls.clusters.core.domain import (
     RemoveNodesRequest,
 )
 from exls.clusters.core.ports import IClustersGateway
-from exls.shared.adapters.decorators import handle_service_errors
+from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.adapters.gateway.file.gateways import IFileWriteGateway
 from exls.shared.core.service import ServiceError
 
@@ -26,16 +26,16 @@ class ClustersService:
         self.clusters_gateway: IClustersGateway = clusters_gateway
         self.file_write_gateway: IFileWriteGateway[str] = file_write_gateway
 
-    @handle_service_errors("listing clusters")
+    @handle_service_layer_errors("listing clusters")
     def list_clusters(self, criteria: ClusterFilterCriteria) -> List[Cluster]:
         clusters: List[Cluster] = self.clusters_gateway.list(criteria=criteria)
         return clusters
 
-    @handle_service_errors("getting cluster")
+    @handle_service_layer_errors("getting cluster")
     def get_cluster(self, cluster_id: str) -> Cluster:
         return self.clusters_gateway.get(cluster_id=cluster_id)
 
-    @handle_service_errors("deleting cluster")
+    @handle_service_layer_errors("deleting cluster")
     def delete_cluster(self, cluster_id: str) -> None:
         self.clusters_gateway.delete(cluster_id=cluster_id)
 
@@ -53,7 +53,7 @@ class ClustersService:
                 )
         return nodes_to_add
 
-    @handle_service_errors("deploying cluster")
+    @handle_service_layer_errors("deploying cluster")
     def deploy_cluster(self, create_params: ClusterCreateRequest) -> str:
         if (
             not create_params.worker_node_ids
@@ -78,26 +78,26 @@ class ClustersService:
         # Step 3: Deploy the cluster
         return self.clusters_gateway.deploy(cluster_id)
 
-    @handle_service_errors("getting cluster nodes")
+    @handle_service_layer_errors("getting cluster nodes")
     def get_cluster_nodes(self, cluster_id: str) -> List[NodeRef]:
         return self.clusters_gateway.get_cluster_nodes(cluster_id=cluster_id)
 
-    @handle_service_errors("adding cluster nodes")
+    @handle_service_layer_errors("adding cluster nodes")
     def add_cluster_nodes(self, request: AddNodesRequest) -> List[NodeRef]:
         return self.clusters_gateway.add_nodes_to_cluster(request=request)
 
-    @handle_service_errors("removing nodes from cluster")
+    @handle_service_layer_errors("removing nodes from cluster")
     def remove_nodes_from_cluster(self, request: RemoveNodesRequest) -> List[str]:
         removed_node_ids: List[str] = self.clusters_gateway.remove_nodes_from_cluster(
             request=request
         )
         return removed_node_ids
 
-    @handle_service_errors("getting cluster resources")
+    @handle_service_layer_errors("getting cluster resources")
     def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeResources]:
         return self.clusters_gateway.get_cluster_resources(cluster_id=cluster_id)
 
-    @handle_service_errors("importing kubeconfig")
+    @handle_service_layer_errors("importing kubeconfig")
     def import_kubeconfig(
         self,
         cluster_id: str,
@@ -110,6 +110,6 @@ class ClustersService:
             file_path=Path(kubeconfig_file_path), content=kubeconfig_content
         )
 
-    @handle_service_errors("getting dashboard url")
+    @handle_service_layer_errors("getting dashboard url")
     def get_dashboard_url(self, cluster_id: str) -> str:
         return self.clusters_gateway.get_dashboard_url(cluster_id=cluster_id)

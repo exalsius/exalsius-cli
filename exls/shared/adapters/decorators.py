@@ -3,12 +3,14 @@ from typing import Any, Callable, Type
 
 import typer
 
-from exls.shared.adapters.ui.display.display import UserCancellationException
+from exls.shared.adapters.bundle import BaseBundle
+from exls.shared.adapters.ui.input.values import UserCancellationException
+from exls.shared.core.domain import ExalsiusError, ExalsiusWarning
 from exls.shared.core.ports.command import CommandError
 from exls.shared.core.service import ServiceError, ServiceWarning
 
 
-def handle_service_errors(operation_name: str) -> Callable[..., Any]:
+def handle_service_layer_errors(operation_name: str) -> Callable[..., Any]:
     """
     A decorator to handle common service layer errors.
 
@@ -41,30 +43,9 @@ def handle_service_errors(operation_name: str) -> Callable[..., Any]:
     return decorator
 
 
-def handle_interactive_flow_errors(
-    operation_name: str, to_exception: Type[UserCancellationException]
+def handle_application_layer_errors(
+    bundle_class: Type[BaseBundle],
 ) -> Callable[..., Any]:
-    """
-    A decorator to handle common interactive flow errors.
-
-    It catches UserCancellationException and generic Exceptions and re-raises them
-    as a consistent to_exception exception.
-    """
-
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            try:
-                return func(*args, **kwargs)
-            except UserCancellationException as e:
-                raise to_exception(e) from e
-
-        return wrapper
-
-    return decorator
-
-
-def handle_cli_errors(bundle_class: Type[Any]) -> Callable[..., Any]:
     """
     A decorator to handle ServiceError in CLI commands.
 
@@ -75,29 +56,44 @@ def handle_cli_errors(bundle_class: Type[Any]) -> Callable[..., Any]:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            try:
-                return func(*args, **kwargs)
-            except ServiceError as e:
-                # Try to find ctx in args or kwargs
-                ctx: typer.Context | None = None
+            def _get_ctx(args: Any, kwargs: Any) -> typer.Context | None:
                 for arg in args:
                     if isinstance(arg, typer.Context):
-                        ctx = arg
-                        break
-                if not ctx:
-                    ctx = kwargs.get("ctx")
+                        return arg
+                for _, value in kwargs.items():
+                    if isinstance(value, typer.Context):
+                        return value
+                return None
 
+            def _display_error_message(ctx: typer.Context, e: ExalsiusError) -> None:
+                bundle: BaseBundle = bundle_class(ctx)
+                bundle.get_io_facade().display_error_message(
+                    str(e), output_format=bundle.message_output_format
+                )
+
+            def _display_info_message(ctx: typer.Context, e: ExalsiusWarning) -> None:
+                bundle: BaseBundle = bundle_class(ctx)
+                bundle.get_io_facade().display_info_message(
+                    str(e), output_format=bundle.message_output_format
+                )
+
+            try:
+                return func(*args, **kwargs)
+
+            except UserCancellationException as e:
+                ctx: typer.Context | None = _get_ctx(args, kwargs)
                 if ctx:
-                    bundle = bundle_class(ctx)
-                    if hasattr(bundle, "get_interaction_manager"):
-                        display_manager = bundle.get_interaction_manager()
-                        display_manager.display_error_message(
-                            str(e), output_format=bundle.message_output_format
-                        )
-                    else:
-                        typer.echo(f"Error: {e}", err=True)
+                    _display_info_message(ctx, e)
                 else:
-                    typer.echo(f"Error: {e}", err=True)
+                    typer.echo(f"{e}")
+                raise typer.Exit(0)
+
+            except ServiceError as e:
+                ctx = _get_ctx(args, kwargs)
+                if ctx:
+                    _display_error_message(ctx, e)
+                else:
+                    typer.echo(f"{e}", err=True)
 
                 raise typer.Exit(1)
 

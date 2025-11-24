@@ -10,7 +10,7 @@ from exls.clusters.adapters.dtos import (
     ClusterNodeResourcesDTO,
     DashboardUrlResponseDTO,
 )
-from exls.clusters.adapters.ui.display.display import ClustersInteractionManager
+from exls.clusters.adapters.ui.display.display import IOClustersFacade
 from exls.clusters.adapters.ui.mapper import (
     cluster_dto_from_domain,
     cluster_node_resources_dto_from_domain,
@@ -25,17 +25,17 @@ from exls.clusters.core.domain import (
     RemoveNodesRequest,
 )
 from exls.clusters.core.service import ClustersService
+from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.utils import help_if_no_subcommand, open_url_in_browser
 from exls.shared.core.domain import (
     generate_random_name,
     validate_kubernetes_name,
 )
-from exls.shared.core.service import ServiceError
 
 clusters_app = typer.Typer()
 
 
-def _called_with_any_user_input(
+def _called_with_any_user_input(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
 ) -> bool:  # pyright: ignore[reportUnusedFunction]
     """
@@ -65,6 +65,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 
 
 @clusters_app.command("list", help="List all clusters")
+@handle_application_layer_errors(ClustersBundle)
 def list_clusters(
     ctx: typer.Context,
     status: Optional[ClusterStatus] = typer.Option(
@@ -77,23 +78,20 @@ def list_clusters(
     List all clusters.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        clusters_domain: List[Cluster] = service.list_clusters(
-            ClusterFilterCriteria(status=status)
-        )
-        clusters_dto: List[ClusterDTO] = [
-            cluster_dto_from_domain(domain=cluster) for cluster in clusters_domain
-        ]
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
-    interaction_manager.display_data(clusters_dto, bundle.object_output_format)
+    clusters_domain: List[Cluster] = service.list_clusters(
+        ClusterFilterCriteria(status=status)
+    )
+    clusters_dto: List[ClusterDTO] = [
+        cluster_dto_from_domain(domain=cluster) for cluster in clusters_domain
+    ]
+    io_facade.display_data(clusters_dto, bundle.object_output_format)
 
 
 @clusters_app.command("get", help="Get a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def get_cluster(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(..., help="The ID of the cluster to get"),
@@ -102,20 +100,17 @@ def get_cluster(
     Get a cluster.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        cluster_domain: Cluster = service.get_cluster(cluster_id)
-        cluster_dto: ClusterDTO = cluster_dto_from_domain(domain=cluster_domain)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    cluster_domain: Cluster = service.get_cluster(cluster_id)
+    cluster_dto: ClusterDTO = cluster_dto_from_domain(domain=cluster_domain)
 
-    interaction_manager.display_data(cluster_dto, bundle.object_output_format)
+    io_facade.display_data(cluster_dto, bundle.object_output_format)
 
 
 @clusters_app.command("delete", help="Delete a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def delete_cluster(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(..., help="The ID of the cluster to delete"),
@@ -130,36 +125,29 @@ def delete_cluster(
     Delete a cluster.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        cluster_domain: Cluster = service.get_cluster(cluster_id)
-        cluster_dto: ClusterDTO = cluster_dto_from_domain(domain=cluster_domain)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    cluster_domain: Cluster = service.get_cluster(cluster_id)
+    cluster_dto: ClusterDTO = cluster_dto_from_domain(domain=cluster_domain)
 
     if not confirmation:
-        interaction_manager.display_data(cluster_dto, bundle.object_output_format)
-        user_confirmation: bool = interaction_manager.ask_for_confirmation(
+        io_facade.display_data(cluster_dto, bundle.object_output_format)
+        user_confirmation: bool = io_facade.ask_confirm(
             message="Are you sure you want to delete this cluster?"
         )
         if not user_confirmation:
             raise typer.Exit()
 
-    try:
-        service.delete_cluster(cluster_id)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    service.delete_cluster(cluster_id)
 
-    interaction_manager.display_success_message(
+    io_facade.display_success_message(
         f"Cluster {cluster_id} deleted successfully.", bundle.message_output_format
     )
 
 
 @clusters_app.command("deploy", help="Create a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def deploy_cluster(
     ctx: typer.Context,
     name: str = typer.Option(
@@ -272,6 +260,7 @@ def deploy_cluster(
 
 
 @clusters_app.command("list-nodes", help="List all nodes of a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def list_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument("", help="The ID of the cluster to list nodes of"),
@@ -350,6 +339,7 @@ def list_nodes(
 
 
 @clusters_app.command("add-nodes", help="Add nodes to a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def add_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument("", help="The ID of the cluster to add a node to"),
@@ -465,6 +455,7 @@ def add_nodes(
 
 
 @clusters_app.command("remove-node", help="Remove a node from a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def remove_node(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -483,27 +474,24 @@ def remove_node(
     # TODO: Validate node IDs; check if node is part of the cluster
     # TODO: Validate node roles; check if worker nodes are removed
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        nodes_to_remove: List[NodeRef] = [
-            NodeRef(id=node_id, role=ClusterNodeRole.WORKER) for node_id in node_ids
-        ]
-        removed_node_ids: List[str] = service.remove_nodes_from_cluster(
-            RemoveNodesRequest(cluster_id=cluster_id, nodes_to_remove=nodes_to_remove)
-        )
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    nodes_to_remove: List[NodeRef] = [
+        NodeRef(id=node_id, role=ClusterNodeRole.WORKER) for node_id in node_ids
+    ]
+    removed_node_ids: List[str] = service.remove_nodes_from_cluster(
+        RemoveNodesRequest(cluster_id=cluster_id, nodes_to_remove=nodes_to_remove)
+    )
 
-    interaction_manager.display_success_message(
-        f"Following nodes removed from cluster {cluster_id} successfully: {', '.join(removed_node_ids)}.",
-        bundle.message_output_format,
+    io_facade.display_success_message(
+        message=f"Following nodes removed from cluster {cluster_id} successfully: {', '.join(removed_node_ids)}.",
+        output_format=bundle.message_output_format,
     )
 
 
 @clusters_app.command("show-available-resources", help="Get the resources of a cluster")
+@handle_application_layer_errors(ClustersBundle)
 def get_cluster_resources(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -515,29 +503,24 @@ def get_cluster_resources(
     Get the resources of a cluster.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        available_cluster_resources_domain: List[ClusterNodeResources] = (
-            service.get_cluster_resources(cluster_id)
-        )
-        available_cluster_resources: List[ClusterNodeResourcesDTO] = [
-            cluster_node_resources_dto_from_domain(domain=res)
-            for res in available_cluster_resources_domain
-        ]
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
-
-    interaction_manager.display_data(
-        available_cluster_resources, bundle.object_output_format
+    available_cluster_resources_domain: List[ClusterNodeResources] = (
+        service.get_cluster_resources(cluster_id)
     )
+    available_cluster_resources: List[ClusterNodeResourcesDTO] = [
+        cluster_node_resources_dto_from_domain(domain=res)
+        for res in available_cluster_resources_domain
+    ]
+
+    io_facade.display_data(available_cluster_resources, bundle.object_output_format)
 
 
 @clusters_app.command(
     "get-dashboard-url", help="Get the monitoring dashboard URL of a cluster"
 )
+@handle_application_layer_errors(ClustersBundle)
 def get_dashboard_url(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -553,28 +536,24 @@ def get_dashboard_url(
     Get the monitoring dashboard URL of a cluster.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        dashboard_url_str: str = service.get_dashboard_url(cluster_id)
-        dashboard_url = DashboardUrlResponseDTO(url=dashboard_url_str)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    dashboard_url_str: str = service.get_dashboard_url(cluster_id)
+    dashboard_url = DashboardUrlResponseDTO(url=dashboard_url_str)
 
     if open_browser:
         if open_url_in_browser(dashboard_url.url):
-            interaction_manager.display_success_message(
+            io_facade.display_success_message(
                 "Opening dashboard in browser...", bundle.message_output_format
             )
         else:
-            interaction_manager.display_error_message(
+            io_facade.display_error_message(
                 "Failed to open browser. Please open the URL manually.",
                 bundle.message_output_format,
             )
 
-    interaction_manager.display_success_message(
+    io_facade.display_success_message(
         f"Monitoring Dashboard URL: {dashboard_url.url}", bundle.message_output_format
     )
 
@@ -582,6 +561,7 @@ def get_dashboard_url(
 @clusters_app.command(
     "import-kubeconfig", help="Import a kubeconfig file into a cluster"
 )
+@handle_application_layer_errors(ClustersBundle)
 def import_kubeconfig(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
@@ -597,16 +577,12 @@ def import_kubeconfig(
     Import a kubeconfig file into a cluster.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
-    interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
+    io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    try:
-        service.import_kubeconfig(cluster_id, kubeconfig_path)
-    except ServiceError as e:
-        interaction_manager.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    service.import_kubeconfig(cluster_id, kubeconfig_path)
 
-    interaction_manager.display_success_message(
-        f"Kubeconfig from cluster {cluster_id} successfully imported to {kubeconfig_path}.",
-        bundle.message_output_format,
+    io_facade.display_success_message(
+        message=f"Kubeconfig from cluster {cluster_id} successfully imported to {kubeconfig_path}.",
+        output_format=bundle.message_output_format,
     )

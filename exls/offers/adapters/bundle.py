@@ -1,14 +1,14 @@
 import typer
 
 from exls.offers.adapters.gateway.sdk import create_offers_gateway
-from exls.offers.adapters.ui.display.display import OffersInteractionManager
+from exls.offers.adapters.ui.display.display import IOOffersFacade
 from exls.offers.core.ports import IOffersGateway
 from exls.offers.core.service import OffersService
-from exls.shared.adapters.bundle import SharedBundle
-from exls.shared.adapters.ui.display.factory import InteractionManagerFactory
+from exls.shared.adapters.bundle import BaseBundle
+from exls.shared.adapters.ui.factory import IOFactory
 
 
-class OffersBundle(SharedBundle):
+class OffersBundle(BaseBundle):
     def __init__(self, ctx: typer.Context):
         super().__init__(ctx)
 
@@ -18,9 +18,9 @@ class OffersBundle(SharedBundle):
         )
         return OffersService(offers_gateway)
 
-    def get_interaction_manager(self) -> OffersInteractionManager:
-        interaction_manager_factory = InteractionManagerFactory()
-        return OffersInteractionManager(
-            input_manager=interaction_manager_factory.get_input_manager(),
-            output_manager=interaction_manager_factory.get_output_manager(),
+    def get_io_facade(self) -> IOOffersFacade:
+        io_facade_factory: IOFactory = IOFactory()
+        return IOOffersFacade(
+            input_manager=io_facade_factory.get_input_manager(),
+            output_manager=io_facade_factory.get_output_manager(),
         )

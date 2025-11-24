@@ -20,7 +20,7 @@ from exls.auth.core.ports import (
     TokenStorageError,
 )
 from exls.config import AppConfig, Auth0Config
-from exls.shared.adapters.decorators import handle_service_errors
+from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.core.service import ServiceError, ServiceWarning
 
 logger = logging.getLogger(__name__)
@@ -119,11 +119,11 @@ class AuthService:
         user: User = self.auth_gateway.validate_token(request=request)
         return user
 
-    @handle_service_errors("logging in")
+    @handle_service_layer_errors("logging in")
     def initiate_device_code_login(self) -> DeviceCode:
         return self._fetch_device_code()
 
-    @handle_service_errors("polling for authentication")
+    @handle_service_layer_errors("polling for authentication")
     def poll_for_authentication(self, device_code_input: DeviceCode) -> AuthSession:
         try:
             # We need to ensure we use the config interval, but respect the device_code properties
@@ -177,7 +177,7 @@ class AuthService:
         )
         return AuthSession(user=user, token=new_loaded_token)
 
-    @handle_service_errors("acquiring access token")
+    @handle_service_layer_errors("acquiring access token")
     def acquire_access_token(self) -> AuthSession:
         try:
             loaded_token: LoadedToken = self._load_token_from_keyring()
@@ -198,7 +198,7 @@ class AuthService:
             user: User = self._validate_token(loaded_token.id_token)
             return AuthSession(user=user, token=loaded_token)
 
-    @handle_service_errors("logging out")
+    @handle_service_layer_errors("logging out")
     def logout(self) -> None:
         try:
             loaded_token: LoadedToken = self._load_token_from_keyring()
