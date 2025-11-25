@@ -4,9 +4,11 @@ from pydantic import BaseModel
 
 from exls.nodes.adapters.dtos import (
     CloudNodeDTO,
+    SelfManagedNodeDTO,
+)
+from exls.nodes.adapters.ui.dtos import (
     ImportCloudNodeRequestDTO,
     ImportSelfmanagedNodeRequestDTO,
-    SelfManagedNodeDTO,
 )
 from exls.shared.adapters.ui.output.render.service import format_datetime, format_na
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
@@ -37,7 +39,7 @@ DEFAULT_IMPORT_SELFMANAGED_NODE_REQUEST_COLUMNS_RENDERING_MAP = {
     "hostname": TableRenderContext.get_column("Hostname"),
     "endpoint": TableRenderContext.get_column("Endpoint"),
     "username": TableRenderContext.get_column("Username"),
-    "ssh_key_name": TableRenderContext.get_column("SSH Key"),
+    "ssh_key.name": TableRenderContext.get_column("SSH Key"),
 }
 
 DEFAULT_IMPORT_CLOUD_NODE_REQUEST_COLUMNS_RENDERING_MAP = {

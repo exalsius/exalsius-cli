@@ -43,10 +43,11 @@ class ManagementService:
     def list_ssh_keys(self) -> List[SshKey]:
         return self.management_gateway.list_ssh_keys()
 
-    @handle_service_layer_errors("adding ssh key")
-    def add_ssh_key(self, name: str, key_path: Path) -> SshKey:
+    @handle_service_layer_errors("importing ssh key")
+    def import_ssh_key(self, name: str, key_path: Path) -> SshKey:
+        print(name, key_path)
         key_content_base64: str = self.fileio_gateway.read_file(file_path=key_path)
-        ssh_key_id: str = self.management_gateway.add_ssh_key(
+        ssh_key_id: str = self.management_gateway.import_ssh_key(
             name=name, base64_key_content=key_content_base64
         )
         ssh_keys: List[SshKey] = self.management_gateway.list_ssh_keys()
@@ -55,7 +56,7 @@ class ManagementService:
         )
         if ssh_key is None:
             raise ServiceError(
-                message=f"Unexpected error: SSH key {name} was not added"
+                message=f"Unexpected error: SSH key {name} was not imported"
             )
         return ssh_key
 

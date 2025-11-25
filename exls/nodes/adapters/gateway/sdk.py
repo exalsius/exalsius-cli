@@ -20,10 +20,13 @@ from exls.nodes.adapters.gateway.mappers import node_domain_from_sdk_model
 from exls.nodes.core.domain import (
     BaseNode,
 )
-from exls.nodes.core.ports.gateway import INodesGateway
+from exls.nodes.core.ports.gateway import (
+    ImportCloudNodeParameters,
+    ImportSelfmanagedNodeParameters,
+    INodesGateway,
+)
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
-    ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
 )
 from exls.shared.adapters.gateway.sdk.command import UnexpectedSdkCommandResponseError
@@ -69,7 +72,7 @@ class NodesGatewaySdk(INodesGateway):
         response: NodeDeleteResponse = command.execute()
         return response.node_id
 
-    def import_selfmanaged_node(self, request: ImportSelfmanagedNodeRequest) -> str:
+    def import_selfmanaged_node(self, request: ImportSelfmanagedNodeParameters) -> str:
         sdk_request: SdkNodeImportSshRequest = SdkNodeImportSshRequest(
             hostname=request.hostname,
             endpoint=request.endpoint,
@@ -83,10 +86,14 @@ class NodesGatewaySdk(INodesGateway):
         node_id: str = cmd_node_import_ssh.execute()
         return node_id
 
-    def import_cloud_nodes(self, request: ImportCloudNodeRequest) -> List[str]:
+    def import_cloud_nodes(self, request: ImportCloudNodeParameters) -> List[str]:
         cmd_cloud_node_import: ImportCloudNodeSdkCommand = ImportCloudNodeSdkCommand(
             self._nodes_api,
-            request=request,
+            request=ImportCloudNodeRequest(
+                hostname=request.hostname,
+                offer_id=request.offer_id,
+                amount=request.amount,
+            ),
         )
         response: NodeImportResponse = cmd_cloud_node_import.execute()
         node_ids: List[str] = [node_id for node_id in response.node_ids]

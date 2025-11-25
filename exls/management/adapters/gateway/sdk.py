@@ -66,7 +66,7 @@ class ManagementGatewaySdk(IManagementGateway):
         command.execute()
         return ssh_key_id
 
-    def add_ssh_key(self, name: str, base64_key_content: str) -> str:
+    def import_ssh_key(self, name: str, base64_key_content: str) -> str:
         existing_ssh_keys: List[SshKey] = self.list_ssh_keys()
         if any(ssh_key.name == name for ssh_key in existing_ssh_keys):
             raise ValueError(f"SSH key with name {name} already exists")

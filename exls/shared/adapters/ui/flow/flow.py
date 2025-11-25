@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, TypeVar
+from typing import Generic, Sequence, TypeVar
 
 from pydantic import BaseModel
 
@@ -8,32 +8,19 @@ from exls.shared.adapters.ui.facade.interface import IIOFacade
 T = TypeVar("T")
 
 
-class FlowContext(
-    Dict[
-        str,
-        Any,
-    ]
-):
-    """Context to hold flow state."""
-
-    pass
-
-
-class FlowStep(ABC):
+class FlowStep(Generic[T], ABC):
     """Abstract base class for flow steps."""
 
     @abstractmethod
-    def execute(
-        self, context: FlowContext, io_facade: IIOFacade[BaseModel]
-    ) -> None: ...
+    def execute(self, model: T, io_facade: IIOFacade[BaseModel]) -> None: ...
 
 
-class SequentialFlow(FlowStep):
+class SequentialFlow(FlowStep[T]):
     """A step that executes a list of child steps in order."""
 
-    def __init__(self, steps: List[FlowStep]):
+    def __init__(self, steps: Sequence[FlowStep[T]]):
         self.steps = steps
 
-    def execute(self, context: FlowContext, io_facade: IIOFacade[BaseModel]) -> None:
+    def execute(self, model: T, io_facade: IIOFacade[BaseModel]) -> None:
         for step in self.steps:
-            step.execute(context, io_facade)
+            step.execute(model, io_facade)

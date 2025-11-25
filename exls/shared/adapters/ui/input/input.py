@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Optional, Sequence, TypeVar
+from pathlib import Path
+from typing import Any, Callable, List, Optional, Sequence, Tuple, TypeVar
 
 import questionary
 from pydantic import StrictStr
@@ -13,6 +14,19 @@ T = TypeVar("T")
 
 
 class QuestionaryInputManager(IInputManager):
+    def ask_path(
+        self,
+        message: str,
+        default: Optional[Path] = None,
+    ) -> Path:
+        """Ask the user to select a path."""
+        result: Optional[str] = questionary.path(
+            message, default=str(default or "./")
+        ).ask()
+        if result is None:
+            raise UserCancellationException("User cancelled the path selection")
+        return Path(result)
+
     def ask_text(
         self,
         message: str,
@@ -31,20 +45,32 @@ class QuestionaryInputManager(IInputManager):
         return result
 
     def _to_questionary_choice(
-        self, choice: DisplayChoice[T], default: Optional[DisplayChoice[T]] = None
+        self, choice: DisplayChoice[T] | str
     ) -> questionary.Choice:
-        checked: bool = (
-            choice == default
-            or choice.value == default.value
-            or choice.title == default.title
-            if default
-            else False
-        )
         if isinstance(choice, str):
-            return questionary.Choice(title=choice, value=choice, checked=checked)
-        return questionary.Choice(
-            title=choice.title, value=choice.value, checked=checked
-        )
+            return questionary.Choice(title=choice, value=choice)
+        return questionary.Choice(title=choice.title, value=choice)
+
+    def _to_questionary_choices(
+        self,
+        choices: Sequence[DisplayChoice[T] | str],
+        default: Optional[DisplayChoice[T] | str] = None,
+    ) -> Tuple[List[questionary.Choice], Optional[questionary.Choice]]:
+        q_choices: List[questionary.Choice] = []
+        q_default: Optional[questionary.Choice] = None
+
+        for choice in choices:
+            q_choice = self._to_questionary_choice(choice)
+            q_choices.append(q_choice)
+
+            if default is not None:
+                c_val = choice if isinstance(choice, str) else choice.value
+                d_val = default if isinstance(default, str) else default.value
+
+                if c_val == d_val:
+                    q_default = q_choice
+
+        return q_choices, q_default
 
     def ask_select_required(
         self,
@@ -53,17 +79,12 @@ class QuestionaryInputManager(IInputManager):
         default: DisplayChoice[T],
     ) -> DisplayChoice[T]:
         """Ask the user to select one option from a list."""
-        q_default: questionary.Choice = self._to_questionary_choice(default)
-        q_choices: List[questionary.Choice] = [
-            self._to_questionary_choice(c, default) for c in choices
-        ]
-
+        q_choices, q_default = self._to_questionary_choices(choices, default)
         result: Optional[DisplayChoice[T]] = questionary.select(
             message, choices=q_choices, default=q_default
         ).ask()
         if result is None:
             raise UserCancellationException("User cancelled")
-
         return result
 
     def ask_select_optional(
@@ -72,12 +93,7 @@ class QuestionaryInputManager(IInputManager):
         choices: Sequence[DisplayChoice[T]],
         default: Optional[DisplayChoice[T]] = None,
     ) -> Optional[DisplayChoice[T]]:
-        q_default: Optional[questionary.Choice] = (
-            self._to_questionary_choice(default) if default else None
-        )
-        q_choices: List[questionary.Choice] = [
-            self._to_questionary_choice(c, default) for c in choices
-        ]
+        q_choices, q_default = self._to_questionary_choices(choices, default)
 
         # We need to ask_unsafe to detect KeyboardInterrupt and allow None-selection
         try:
@@ -97,7 +113,7 @@ class QuestionaryInputManager(IInputManager):
 
     def ask_checkbox(
         self, message: str, choices: Sequence[DisplayChoice[T]], min_choices: int = 1
-    ) -> List[DisplayChoice[T]]:
+    ) -> Sequence[DisplayChoice[T]]:
         """Ask the user to select multiple options from a list."""
 
         def _validate_checkbox(choices: Sequence[Any]) -> bool | str:
@@ -107,11 +123,9 @@ class QuestionaryInputManager(IInputManager):
                 else f"Please select at least {min_choices} options."
             )
 
-        q_choices: List[questionary.Choice] = [
-            self._to_questionary_choice(c) for c in choices
-        ]
+        q_choices, _ = self._to_questionary_choices(choices)
 
-        result: Optional[List[DisplayChoice[T]]] = questionary.checkbox(
+        result: Optional[Sequence[DisplayChoice[T]]] = questionary.checkbox(
             message, choices=q_choices, validate=_validate_checkbox
         ).ask()
         if result is None:

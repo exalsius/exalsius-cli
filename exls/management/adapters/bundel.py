@@ -2,6 +2,7 @@ import typer
 
 from exls.management.adapters.gateway.sdk import create_management_gateway
 from exls.management.adapters.ui.display.display import IOManagementFacade
+from exls.management.adapters.ui.flows.import_ssh_key import ImportSshKeyFlow
 from exls.management.core.ports import IManagementGateway
 from exls.management.core.service import ManagementService
 from exls.shared.adapters.bundle import BaseBundle
@@ -31,3 +32,6 @@ class ManagementBundle(BaseBundle):
             input_manager=io_facade_factory.get_input_manager(),
             output_manager=io_facade_factory.get_output_manager(),
         )
+
+    def get_import_ssh_key_flow(self) -> ImportSshKeyFlow:
+        return ImportSshKeyFlow()

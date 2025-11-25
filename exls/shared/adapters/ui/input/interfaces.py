@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import (
     Callable,
-    List,
     Optional,
     Sequence,
     TypeVar,
@@ -25,6 +25,13 @@ class IInputManager(ABC):
     ) -> str: ...
 
     @abstractmethod
+    def ask_path(
+        self,
+        message: str,
+        default: Optional[Path] = None,
+    ) -> Path: ...
+
+    @abstractmethod
     def ask_select_required(
         self,
         message: str,
@@ -43,4 +50,4 @@ class IInputManager(ABC):
     @abstractmethod
     def ask_checkbox(
         self, message: str, choices: Sequence[DisplayChoice[T]], min_choices: int = 1
-    ) -> List[DisplayChoice[T]]: ...
+    ) -> Sequence[DisplayChoice[T]]: ...

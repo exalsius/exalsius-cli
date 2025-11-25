@@ -34,14 +34,14 @@ class SshKeyDTO(BaseModel):
     name: StrictStr = Field(..., description="The name of the SSH key")
 
 
-class AddSshKeyRequestDTO(BaseModel):
-    name: StrictStr = Field(..., description="The name of the SSH key")
-    key_path: Path = Field(..., description="The path to the SSH key file")
-
-
 class WorkspaceTemplateDTO(BaseModel):
     name: str = Field(description="The name of the workspace template")
     description: str = Field(description="The description of the workspace template")
     variables: Dict[str, Any] = Field(
         description="The variables of the workspace template with default values"
     )
+
+
+class ImportSshKeyRequestDTO(BaseModel):
+    name: StrictStr = Field(default="", description="The name of the SSH key")
+    key_path: Path = Field(default=Path(""), description="The path to the SSH key file")

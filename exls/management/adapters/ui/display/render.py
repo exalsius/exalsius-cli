@@ -3,9 +3,9 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
 from exls.management.adapters.dtos import (
-    AddSshKeyRequestDTO,
     ClusterTemplateDTO,
     CredentialsDTO,
+    ImportSshKeyRequestDTO,
     ServiceTemplateDTO,
     SshKeyDTO,
     WorkspaceTemplateDTO,
@@ -50,7 +50,7 @@ DTO_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
     CredentialsDTO: DEFAULT_CREDENTIALS_COLUMNS_RENDERING_MAP,
     ServiceTemplateDTO: DEFAULT_SERVICE_TEMPLATES_COLUMNS_RENDERING_MAP,
     SshKeyDTO: DEFAULT_SSH_KEYS_COLUMNS_RENDERING_MAP,
-    AddSshKeyRequestDTO: DEFAULT_ADD_SSH_KEY_REQUEST_COLUMNS_RENDERING_MAP,
+    ImportSshKeyRequestDTO: DEFAULT_ADD_SSH_KEY_REQUEST_COLUMNS_RENDERING_MAP,
     WorkspaceTemplateDTO: DEFAULT_WORKSPACE_TEMPLATES_COLUMNS_RENDERING_MAP,
 }
 

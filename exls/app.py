@@ -135,7 +135,6 @@ def __root(  # pyright: ignore[reportUnusedFunction]
             )
             raise typer.Exit(1)
 
-        # Each command is responsible for checking the session for none and acquiring a new access token if needed
         ctx.obj = AppState(
             config=config,
             access_token=acquired_access_token.access_token,

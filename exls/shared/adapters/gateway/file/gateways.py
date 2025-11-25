@@ -1,7 +1,8 @@
 import base64
 from abc import ABC, abstractmethod
+from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, Generic, TypeVar
+from typing import Any, Callable, Dict, Generic, TypeVar, Union, cast
 
 import yaml
 
@@ -15,6 +16,20 @@ from exls.shared.adapters.gateway.file.commands import (
 from exls.shared.core.ports.command import CommandError
 
 T_FileContent = TypeVar("T_FileContent")
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def _resolve_path(func: F) -> F:
+    @wraps(func)
+    def wrapper(
+        self: Any, file_path: Union[Path, str], *args: Any, **kwargs: Any
+    ) -> Any:
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
+        resolved_path = file_path.expanduser()
+        return func(self, resolved_path, *args, **kwargs)
+
+    return cast(F, wrapper)
 
 
 class IFileReadGateway(Generic[T_FileContent], ABC):
@@ -28,6 +43,7 @@ class IFileWriteGateway(Generic[T_FileContent], ABC):
 
 
 class StringBase64FileReadGateway(IFileReadGateway[str]):
+    @_resolve_path
     def read_file(self, file_path: Path) -> str:
         try:
             command: ReadBinaryFileCommand = ReadBinaryFileCommand(file_path=file_path)
@@ -41,6 +57,7 @@ class StringBase64FileReadGateway(IFileReadGateway[str]):
 
 
 class YamlFileWriteGateway(IFileWriteGateway[str]):
+    @_resolve_path
     def write_file(self, file_path: Path, content: str) -> None:
         try:
             content_dict: Dict[str, Any] = yaml.safe_load(content)
@@ -61,10 +78,12 @@ class YamlFileWriteGateway(IFileWriteGateway[str]):
 class YamlFileIOGateway(
     IFileReadGateway[Dict[str, Any]], IFileWriteGateway[Dict[str, Any]]
 ):
+    @_resolve_path
     def read_file(self, file_path: Path) -> Dict[str, Any]:
         command: ReadYamlFileCommand = ReadYamlFileCommand(file_path=file_path)
         return command.execute()
 
+    @_resolve_path
     def write_file(self, file_path: Path, content: Dict[str, Any]) -> None:
         command: WriteYamlFileCommand = WriteYamlFileCommand(
             file_path=file_path, content=content
@@ -73,10 +92,12 @@ class YamlFileIOGateway(
 
 
 class StringFileIOGateway(IFileReadGateway[str], IFileWriteGateway[str]):
+    @_resolve_path
     def read_file(self, file_path: Path) -> str:
         command: ReadStringFileCommand = ReadStringFileCommand(file_path=file_path)
         return command.execute()
 
+    @_resolve_path
     def write_file(self, file_path: Path, content: str) -> None:
         command: WriteStringFileCommand = WriteStringFileCommand(
             file_path=file_path, content=content

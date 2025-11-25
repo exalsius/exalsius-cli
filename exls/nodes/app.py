@@ -1,34 +1,29 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import typer
 
-from exls.management.adapters.bundel import ManagementBundle
-from exls.management.adapters.dtos import SshKeyDTO
-from exls.management.adapters.ui.mapper import ssh_key_dto_from_domain
-from exls.management.core.domain import SshKey
-from exls.management.core.service import ManagementService
 from exls.nodes.adapters.bundle import NodesBundle
 from exls.nodes.adapters.dtos import (
-    ImportSelfmanagedNodeRequestDTO,
     NodeDTO,
 )
 from exls.nodes.adapters.ui.display.display import IONodesFacade
-from exls.nodes.adapters.ui.flows.node_import import SelfmanagedNodeImportFlow
+from exls.nodes.adapters.ui.dtos import ImportSelfmanagedNodeRequestListDTO
+from exls.nodes.adapters.ui.flows.node_import import (
+    ImportSelfmanagedNodeRequestListFlow,
+)
 from exls.nodes.adapters.ui.mappers import node_dto_from_domain
 from exls.nodes.adapters.values import NodeTypesDTO
 from exls.nodes.core.domain import BaseNode, SelfManagedNode
-from exls.nodes.core.ports.provider import NodeSshKey
 from exls.nodes.core.requests import (
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
+    SshKeySpecification,
 )
 from exls.nodes.core.service import NodesService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.input.values import UserCancellationException
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.domain import generate_random_name
-from exls.shared.core.service import ServiceError
 
 nodes_app = typer.Typer()
 
@@ -124,17 +119,14 @@ def import_selfmanaged_node(
     service: NodesService = bundle.get_nodes_service()
     io_facade: IONodesFacade = bundle.get_io_facade()
 
-    final_ssh_key_id: Optional[str] = ssh_key_id
-
-    if not final_ssh_key_id and ssh_key_path and ssh_key_name:
-        domain_ssh_key: NodeSshKey = service.add_ssh_key(
-            name=ssh_key_name, key_path=ssh_key_path
-        )
-        final_ssh_key_id = domain_ssh_key.id
-
-    if not final_ssh_key_id:
+    final_ssh_key: Optional[Union[str, SshKeySpecification]] = None
+    if ssh_key_id:
+        final_ssh_key = ssh_key_id
+    elif ssh_key_path and ssh_key_name:
+        final_ssh_key = SshKeySpecification(name=ssh_key_name, key_path=ssh_key_path)
+    else:
         io_facade.display_error_message(
-            "No SSH key ID provided and no SSH key path or name provided",
+            "No SSH key provided. Please provide an SSH key ID or a name and path to a new SSH key.",
             output_format=bundle.message_output_format,
         )
         raise typer.Exit(1)
@@ -145,7 +137,7 @@ def import_selfmanaged_node(
                 hostname=hostname,
                 endpoint=endpoint,
                 username=username,
-                ssh_key_id=final_ssh_key_id,
+                ssh_key=final_ssh_key,
             )
         ]
     )
@@ -166,60 +158,21 @@ def import_nodes(ctx: typer.Context):
     node_service: NodesService = bundle.get_nodes_service()
     io_facade: IONodesFacade = bundle.get_io_facade()
 
-    management_bundle: ManagementBundle = ManagementBundle(ctx)
-    management_service: ManagementService = management_bundle.get_management_service()
-
-    try:
-        domain_ssh_keys: List[SshKey] = management_service.list_ssh_keys()
-        ssh_keys: List[SshKeyDTO] = [
-            ssh_key_dto_from_domain(key) for key in domain_ssh_keys
-        ]
-    except ServiceError as e:
-        io_facade.display_error_message(
-            message=f"Failed to load SSH keys: {str(e)}",
-            output_format=bundle.message_output_format,
-        )
-        raise typer.Exit(1)
-
-    # Validate at least one import method is available
-    # TODO: Ask to start ssh key import flow
-    if not ssh_keys:
-        io_facade.display_error_message(
-            message="No SSH keys or offers available. Please add an SSH key using 'exls management ssh-keys add' or wait for offers to become available.",
-            output_format=bundle.message_output_format,
-        )
-        raise typer.Exit(1)
-
-    # TODO: We support only SSH import for now, but we should support offer import in the future.
-
-    try:
-        flow: SelfmanagedNodeImportFlow = SelfmanagedNodeImportFlow(
-            io_facade=io_facade,
-            available_ssh_keys=ssh_keys,
-        )
-        import_requests_dtos: List[ImportSelfmanagedNodeRequestDTO] = flow.run()
-    except UserCancellationException as e:
-        io_facade.display_info_message(
-            message=str(e), output_format=bundle.message_output_format
-        )
-        raise typer.Exit(1)
-
-    domain_requests: List[ImportSelfmanagedNodeRequest] = [
-        ImportSelfmanagedNodeRequest(
-            hostname=req.hostname,
-            endpoint=req.endpoint,
-            username=req.username,
-            ssh_key_id=req.ssh_key_id,
-        )
-        for req in import_requests_dtos
-    ]
-    domain_nodes: List[BaseNode] = node_service.import_selfmanaged_nodes(
-        domain_requests
+    flow: ImportSelfmanagedNodeRequestListFlow = (
+        bundle.get_import_selfmanaged_nodes_flow()
     )
-    nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in domain_nodes]
+    import_selfmanaged_node_request_list: ImportSelfmanagedNodeRequestListDTO = (
+        ImportSelfmanagedNodeRequestListDTO()
+    )
+    flow.execute(import_selfmanaged_node_request_list, io_facade)
+
+    nodes: List[SelfManagedNode] = node_service.import_selfmanaged_nodes(
+        import_selfmanaged_node_request_list.nodes
+    )
+    dtos_nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in nodes]
 
     io_facade.display_success_message(
         f"Successfully imported {len(nodes)} nodes",
         output_format=bundle.message_output_format,
     )
-    io_facade.display_data(nodes, output_format=bundle.object_output_format)
+    io_facade.display_data(data=dtos_nodes, output_format=bundle.object_output_format)

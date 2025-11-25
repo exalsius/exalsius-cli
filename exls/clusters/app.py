@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import typer
 from pydantic import StrictStr
@@ -33,25 +33,6 @@ from exls.shared.core.domain import (
 )
 
 clusters_app = typer.Typer()
-
-
-def _called_with_any_user_input(  # pyright: ignore[reportUnusedFunction]
-    ctx: typer.Context,
-) -> bool:  # pyright: ignore[reportUnusedFunction]
-    """
-    Return True if the command was invoked with ANY non-default option/argument.
-    """
-    for param in ctx.command.params:
-        name: Optional[StrictStr] = param.name
-        if name is None:
-            continue
-        actual_value: Optional[Any] = ctx.params.get(name, None)
-        if actual_value is None:
-            continue
-
-        return True
-
-    return False
 
 
 @clusters_app.callback(invoke_without_command=True)

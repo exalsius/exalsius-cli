@@ -1,7 +1,7 @@
+from pathlib import Path
 from typing import (
     Callable,
     Dict,
-    List,
     Optional,
     Sequence,
     Type,
@@ -98,6 +98,13 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
     def ask_confirm(self, message: str, default: bool = False) -> bool:
         return self.input_manager.ask_confirm(message=message, default=False)
 
+    def ask_path(
+        self,
+        message: str,
+        default: Optional[Path] = None,
+    ) -> Path:
+        return self.input_manager.ask_path(message=message, default=default)
+
     def ask_text(
         self,
         message: str,
@@ -130,7 +137,7 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
 
     def ask_checkbox(
         self, message: str, choices: Sequence[DisplayChoice[T]], min_choices: int = 1
-    ) -> List[DisplayChoice[T]]:
+    ) -> Sequence[DisplayChoice[T]]:
         return self.input_manager.ask_checkbox(
             message=message, choices=choices, min_choices=min_choices
         )

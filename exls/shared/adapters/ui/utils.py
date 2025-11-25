@@ -1,5 +1,5 @@
 import webbrowser
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 import typer
 
@@ -75,3 +75,22 @@ def open_url_in_browser(url: str) -> bool:
         return webbrowser.open(url)
     except Exception:
         return False
+
+
+def called_with_any_user_input(
+    ctx: typer.Context,
+) -> bool:
+    """
+    Return True if the command was invoked with ANY non-default option/argument.
+    """
+    for param in ctx.command.params:
+        name: Optional[str] = param.name
+        if name is None:
+            continue
+        actual_value: Optional[Any] = ctx.params.get(name, None)
+        if actual_value is None:
+            continue
+
+        return True
+
+    return False

@@ -1,5 +1,6 @@
 from enum import StrEnum
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
 
@@ -26,13 +27,22 @@ class NodesFilterCriteria(BaseModel):
     )
 
 
+class SshKeySpecification(BaseModel):
+    """Domain object representing parameters for an SSH key."""
+
+    name: StrictStr = Field(..., description="The name of the SSH key")
+    key_path: Path = Field(..., description="The path to the SSH key file")
+
+
 class ImportSelfmanagedNodeRequest(BaseModel):
     """Domain object representing parameters for importing a self-managed node."""
 
     hostname: StrictStr = Field(..., description="The hostname of the node")
     endpoint: StrictStr = Field(..., description="The endpoint of the node")
     username: StrictStr = Field(..., description="The username of the node")
-    ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key to use")
+    ssh_key: Union[StrictStr, SshKeySpecification] = Field(
+        ..., description="The SSH key to use"
+    )
 
 
 class ImportCloudNodeRequest(BaseModel):

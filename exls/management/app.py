@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import typer
 
@@ -7,11 +7,13 @@ from exls.management.adapters.bundel import ManagementBundle
 from exls.management.adapters.dtos import (
     ClusterTemplateDTO,
     CredentialsDTO,
+    ImportSshKeyRequestDTO,
     ServiceTemplateDTO,
     SshKeyDTO,
     WorkspaceTemplateDTO,
 )
 from exls.management.adapters.ui.display.display import IOManagementFacade
+from exls.management.adapters.ui.flows.import_ssh_key import ImportSshKeyFlow
 from exls.management.adapters.ui.mapper import (
     cluster_template_dto_from_domain,
     credentials_dto_from_domain,
@@ -28,7 +30,10 @@ from exls.management.core.domain import (
 )
 from exls.management.core.service import ManagementService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    called_with_any_user_input,
+    help_if_no_subcommand,
+)
 
 management_app = typer.Typer()
 
@@ -154,21 +159,40 @@ def list_ssh_keys(
     io_facade.display_data(dto_ssh_keys, output_format=bundle.object_output_format)
 
 
-@ssh_keys_app.command("add", help="Add a new SSH key")
+@ssh_keys_app.command("import", help="Import a new SSH key")
 @handle_application_layer_errors(ManagementBundle)
-def add_ssh_key(
+def import_ssh_key(
     ctx: typer.Context,
-    name: str = typer.Option(..., "--name", "-n", help="Name for the SSH key"),
-    key_path: Path = typer.Option(
-        ..., "--key-path", "-k", help="Path to the SSH private key file"
+    name: Optional[str] = typer.Option(
+        None, "--name", "-n", help="Name for the SSH key"
+    ),
+    key_path: Optional[Path] = typer.Option(
+        None, "--key-path", "-k", help="Path to the SSH private key file"
     ),
 ):
-    """Add a new SSH key to the management cluster."""
+    """Import a new SSH key to the management cluster."""
     bundle: ManagementBundle = ManagementBundle(ctx)
     io_facade: IOManagementFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
-    domain_ssh_key: SshKey = service.add_ssh_key(name=name, key_path=key_path)
+    add_ssh_key_request: ImportSshKeyRequestDTO = ImportSshKeyRequestDTO()
+    if not called_with_any_user_input(ctx):
+        add_ssh_key_flow: ImportSshKeyFlow = bundle.get_import_ssh_key_flow()
+        add_ssh_key_flow.execute(add_ssh_key_request, io_facade)
+    else:
+        if not name or not key_path:
+            io_facade.display_error_message(
+                message="Name and key path are required",
+                output_format=bundle.message_output_format,
+            )
+            raise typer.Exit(1)
+
+        add_ssh_key_request.name = name
+        add_ssh_key_request.key_path = key_path
+
+    domain_ssh_key: SshKey = service.import_ssh_key(
+        name=add_ssh_key_request.name, key_path=add_ssh_key_request.key_path
+    )
     dto_ssh_key: SshKeyDTO = ssh_key_dto_from_domain(domain=domain_ssh_key)
 
     io_facade.display_data(dto_ssh_key, output_format=bundle.object_output_format)
