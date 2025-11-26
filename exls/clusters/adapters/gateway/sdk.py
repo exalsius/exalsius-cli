@@ -44,15 +44,12 @@ from exls.clusters.adapters.gateway.mappers import (
     resources_from_sdk_model,
 )
 from exls.clusters.core.domain import (
-    AddNodesRequest,
     Cluster,
-    ClusterCreateRequest,
-    ClusterFilterCriteria,
-    ClusterNodeResources,
-    NodeRef,
-    RemoveNodesRequest,
+    ClusterNodeRefResources,
+    ClusterStatus,
 )
-from exls.clusters.core.ports import IClustersGateway
+from exls.clusters.core.ports.gateway import ClusterCreateParameters, IClustersGateway
+from exls.clusters.core.requests import AddNodesRequest, NodeRef, RemoveNodesRequest
 from exls.shared.adapters.gateway.sdk.service import create_api_client
 
 
@@ -60,9 +57,10 @@ class ClustersGatewaySdk(IClustersGateway):
     def __init__(self, clusters_api: ClustersApi):
         self._clusters_api = clusters_api
 
-    def list(self, criteria: ClusterFilterCriteria) -> List[Cluster]:
+    def list(self, status: Optional[ClusterStatus]) -> List[Cluster]:
         command: ListClustersSdkCommand = ListClustersSdkCommand(
-            self._clusters_api, status=criteria.status
+            self._clusters_api,
+            status=status.value if status and status != ClusterStatus.UNKNOWN else None,
         )
         response: ClustersListResponse = command.execute()
         clusters: List[Cluster] = [
@@ -85,15 +83,15 @@ class ClustersGatewaySdk(IClustersGateway):
         response: ClusterDeleteResponse = command.execute()
         return response.cluster_id
 
-    def create(self, request: ClusterCreateRequest) -> str:
+    def create(self, parameters: ClusterCreateParameters) -> str:
         sdk_request: SdkClusterCreateRequest = SdkClusterCreateRequest(
-            name=request.name,
-            cluster_type=request.cluster_type,
-            cluster_labels=request.cluster_labels,
-            colony_id=request.colony_id,
-            to_be_deleted_at=request.to_be_deleted_at,
-            control_plane_node_ids=request.control_plane_node_ids,
-            worker_node_ids=request.worker_node_ids,
+            name=parameters.name,
+            cluster_type=parameters.type,
+            cluster_labels=parameters.labels,
+            colony_id=parameters.colony_id,
+            to_be_deleted_at=parameters.to_be_deleted_at,
+            control_plane_node_ids=parameters.control_plane_node_ids,
+            worker_node_ids=parameters.worker_node_ids,
         )
         command: CreateClusterSdkCommand = CreateClusterSdkCommand(
             self._clusters_api,
@@ -136,6 +134,7 @@ class ClustersGatewaySdk(IClustersGateway):
             response.worker_node_ids, response.control_plane_node_ids
         )
 
+    # TODO: Move this to the core service layer to run in parallel
     def remove_nodes_from_cluster(self, request: RemoveNodesRequest) -> List[str]:
         commands: List[RemoveNodeSdkCommand] = [
             RemoveNodeSdkCommand(
@@ -150,16 +149,16 @@ class ClustersGatewaySdk(IClustersGateway):
         ]
         return [response.node_id for response in responses]
 
-    def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeResources]:
+    def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeRefResources]:
         command: GetClusterResourcesSdkCommand = GetClusterResourcesSdkCommand(
             self._clusters_api, cluster_id=cluster_id
         )
         response: ClusterResourcesListResponse = command.execute()
 
-        cluster_node_resources: List[ClusterNodeResources] = []
+        cluster_node_resources: List[ClusterNodeRefResources] = []
         for resource in response.resources:
-            resource_model: Optional[ClusterNodeResources] = resources_from_sdk_model(
-                sdk_model=resource
+            resource_model: Optional[ClusterNodeRefResources] = (
+                resources_from_sdk_model(sdk_model=resource)
             )
             if resource_model:
                 cluster_node_resources.append(resource_model)

@@ -1,16 +1,10 @@
-from enum import StrEnum
 from pathlib import Path
 from typing import Optional, Union
 
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
 
-
-class NodeStatusFilter(StrEnum):
-    """Enum representing the status of a node."""
-
-    AVAILABLE = "available"
-    ADDED = "added"
-    FAILED = "failed"
+from exls.nodes.core.domain import NodeStatus
+from exls.nodes.core.ports.gateway import ImportSelfmanagedNodeParameters
 
 
 class NodesFilterCriteria(BaseModel):
@@ -22,7 +16,7 @@ class NodesFilterCriteria(BaseModel):
     provider: Optional[StrictStr] = Field(
         default=None, description="The provider of the node"
     )
-    status: Optional[NodeStatusFilter] = Field(
+    status: Optional[NodeStatus] = Field(
         default=None, description="The status of the node"
     )
 
@@ -51,3 +45,13 @@ class ImportCloudNodeRequest(BaseModel):
     hostname: StrictStr = Field(..., description="The hostname of the node")
     offer_id: StrictStr = Field(..., description="The ID of the offer to use")
     amount: PositiveInt = Field(..., description="The amount of nodes to import")
+
+
+class SelfManagedNodeImportFailure(BaseModel):
+    """Domain object representing the failure of importing a node."""
+
+    node: ImportSelfmanagedNodeParameters = Field(
+        ..., description="The node that was imported"
+    )
+    error: Exception = Field(..., description="The error that occurred")
+    message: StrictStr = Field(..., description="The message of the error")

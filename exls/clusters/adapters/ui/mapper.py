@@ -3,7 +3,7 @@ from exls.clusters.adapters.dtos import (
     ClusterNodeResourcesDTO,
     ResourcesDTO,
 )
-from exls.clusters.core.domain import Cluster, ClusterNodeResources
+from exls.clusters.core.domain import Cluster, ClusterNodeRefResources
 
 
 def cluster_dto_from_domain(domain: Cluster) -> ClusterDTO:
@@ -19,7 +19,7 @@ def cluster_dto_from_domain(domain: Cluster) -> ClusterDTO:
 
 
 def cluster_node_resources_dto_from_domain(
-    domain: ClusterNodeResources,
+    domain: ClusterNodeRefResources,
 ) -> ClusterNodeResourcesDTO:
     free_resources: ResourcesDTO = ResourcesDTO(
         gpu_type=domain.free_resources.gpu_type,

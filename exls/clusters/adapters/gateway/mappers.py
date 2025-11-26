@@ -8,13 +8,13 @@ from exalsius_api_client.models.cluster_resources_list_response_resources_inner 
 
 from exls.clusters.core.domain import (
     Cluster,
-    ClusterNodeResources,
+    ClusterNodeRefResources,
     ClusterNodeRole,
     ClusterStatus,
     ClusterType,
-    NodeRef,
     Resources,
 )
+from exls.clusters.core.requests import NodeRef
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def cluster_node_ref_from_node_ids(
 
 def resources_from_sdk_model(
     sdk_model: ClusterResourcesListResponseResourcesInner,
-) -> Optional[ClusterNodeResources]:
+) -> Optional[ClusterNodeRefResources]:
     if sdk_model.node_id is None:
         logger.warning("Node ID is None for cluster node resources")
         return None
@@ -74,7 +74,7 @@ def resources_from_sdk_model(
         memory_gb=sdk_model.occupied.memory_gb or 0,
         storage_gb=sdk_model.occupied.storage_gb or 0,
     )
-    return ClusterNodeResources(
+    return ClusterNodeRefResources(
         node_id=sdk_model.node_id,
         free_resources=available_resources,
         occupied_resources=occupied_resources,

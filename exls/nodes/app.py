@@ -6,15 +6,22 @@ import typer
 from exls.nodes.adapters.bundle import NodesBundle
 from exls.nodes.adapters.dtos import (
     NodeDTO,
+    NodeImportFailureDTO,
 )
 from exls.nodes.adapters.ui.display.display import IONodesFacade
 from exls.nodes.adapters.ui.dtos import ImportSelfmanagedNodeRequestListDTO
 from exls.nodes.adapters.ui.flows.node_import import (
     ImportSelfmanagedNodeRequestListFlow,
 )
-from exls.nodes.adapters.ui.mappers import node_dto_from_domain
+from exls.nodes.adapters.ui.mappers import (
+    node_dto_from_domain,
+    node_import_failure_dto_from_domain,
+)
 from exls.nodes.adapters.values import NodeTypesDTO
-from exls.nodes.core.domain import BaseNode, SelfManagedNode
+from exls.nodes.core.domain import (
+    BaseNode,
+    SelfManagedNodesImportResult,
+)
 from exls.nodes.core.requests import (
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
@@ -132,7 +139,7 @@ def import_selfmanaged_node(
         )
         raise typer.Exit(1)
 
-    domain_nodes: List[SelfManagedNode] = service.import_selfmanaged_nodes(
+    result: SelfManagedNodesImportResult = service.import_selfmanaged_nodes(
         [
             ImportSelfmanagedNodeRequest(
                 hostname=hostname,
@@ -142,13 +149,8 @@ def import_selfmanaged_node(
             )
         ]
     )
-    dtos_nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in domain_nodes]
 
-    io_facade.display_success_message(
-        message=f"Nodes {', '.join([node.hostname for node in domain_nodes])} imported successfully",
-        output_format=bundle.message_output_format,
-    )
-    io_facade.display_data(data=dtos_nodes, output_format=bundle.object_output_format)
+    _display_import_result(1, result, bundle, io_facade)
 
 
 @nodes_app.command("import", help="Import nodes using interactive mode")
@@ -167,13 +169,58 @@ def import_nodes(ctx: typer.Context):
     )
     flow.execute(import_selfmanaged_node_request_list, FlowContext(), io_facade)
 
-    nodes: List[SelfManagedNode] = node_service.import_selfmanaged_nodes(
+    result: SelfManagedNodesImportResult = node_service.import_selfmanaged_nodes(
         import_selfmanaged_node_request_list.nodes
     )
-    dtos_nodes: List[NodeDTO] = [node_dto_from_domain(node) for node in nodes]
 
-    io_facade.display_success_message(
-        f"Successfully imported {len(nodes)} nodes",
-        output_format=bundle.message_output_format,
+    _display_import_result(
+        len(import_selfmanaged_node_request_list.nodes), result, bundle, io_facade
     )
-    io_facade.display_data(data=dtos_nodes, output_format=bundle.object_output_format)
+
+
+def _display_import_result(
+    num_imports: int,
+    result: SelfManagedNodesImportResult,
+    bundle: NodesBundle,
+    io_facade: IONodesFacade,
+) -> None:
+    """Display the result of importing nodes."""
+
+    if result.is_success:
+        dtos_nodes: List[NodeDTO] = [
+            node_dto_from_domain(node) for node in result.nodes
+        ]
+        io_facade.display_success_message(
+            f"Successfully imported {len(result.nodes)} nodes:",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=dtos_nodes, output_format=bundle.object_output_format
+        )
+
+    else:
+        dtos_failures: List[NodeImportFailureDTO] = [
+            node_import_failure_dto_from_domain(failure) for failure in result.failures
+        ]
+        io_facade.display_error_message(
+            f"Failed to import {len(result.failures)} / {num_imports} nodes",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_info_message(
+            "Failed imports: ",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=dtos_failures,
+            output_format=bundle.object_output_format,
+        )
+        if result.nodes:
+            dtos_nodes = [node_dto_from_domain(node) for node in result.nodes]
+            io_facade.display_info_message(
+                "Successfully imported nodes: ",
+                output_format=bundle.message_output_format,
+            )
+            io_facade.display_data(
+                data=dtos_nodes,
+                output_format=bundle.object_output_format,
+            )

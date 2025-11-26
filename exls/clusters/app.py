@@ -17,12 +17,8 @@ from exls.clusters.adapters.ui.mapper import (
 )
 from exls.clusters.core.domain import (
     Cluster,
-    ClusterFilterCriteria,
-    ClusterNodeResources,
-    ClusterNodeRole,
+    ClusterNodeRefResources,
     ClusterStatus,
-    NodeRef,
-    RemoveNodesRequest,
 )
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
@@ -62,9 +58,7 @@ def list_clusters(
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters_domain: List[Cluster] = service.list_clusters(
-        ClusterFilterCriteria(status=status)
-    )
+    clusters_domain: List[Cluster] = service.list_clusters(status=status)
     clusters_dto: List[ClusterDTO] = [
         cluster_dto_from_domain(domain=cluster) for cluster in clusters_domain
     ]
@@ -452,17 +446,13 @@ def remove_node(
     """
     Remove a node from a cluster.
     """
-    # TODO: Validate node IDs; check if node is part of the cluster
-    # TODO: Validate node roles; check if worker nodes are removed
     bundle: ClustersBundle = ClustersBundle(ctx)
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    nodes_to_remove: List[NodeRef] = [
-        NodeRef(id=node_id, role=ClusterNodeRole.WORKER) for node_id in node_ids
-    ]
     removed_node_ids: List[str] = service.remove_nodes_from_cluster(
-        RemoveNodesRequest(cluster_id=cluster_id, nodes_to_remove=nodes_to_remove)
+        cluster_id=cluster_id,
+        node_ids=node_ids,
     )
 
     io_facade.display_success_message(
@@ -487,7 +477,7 @@ def get_cluster_resources(
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    available_cluster_resources_domain: List[ClusterNodeResources] = (
+    available_cluster_resources_domain: List[ClusterNodeRefResources] = (
         service.get_cluster_resources(cluster_id)
     )
     available_cluster_resources: List[ClusterNodeResourcesDTO] = [

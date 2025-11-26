@@ -1,7 +1,13 @@
 from functools import singledispatch
 
-from exls.nodes.adapters.dtos import CloudNodeDTO, NodeDTO, SelfManagedNodeDTO
+from exls.nodes.adapters.dtos import (
+    CloudNodeDTO,
+    NodeDTO,
+    NodeImportFailureDTO,
+    SelfManagedNodeDTO,
+)
 from exls.nodes.core.domain import BaseNode, CloudNode, SelfManagedNode
+from exls.nodes.core.ports.gateway import SelfManagedNodeImportFailure
 
 
 @singledispatch
@@ -35,4 +41,14 @@ def _(node: SelfManagedNode) -> SelfManagedNodeDTO:
         import_time=node.import_time,
         node_status=node.node_status,
         endpoint=node.endpoint,
+    )
+
+
+def node_import_failure_dto_from_domain(
+    failure: SelfManagedNodeImportFailure,
+) -> NodeImportFailureDTO:
+    """Helper function to convert a domain node import failure to a DTO node import failure."""
+    return NodeImportFailureDTO(
+        hostname=failure.node.hostname,
+        error_message=f"{failure.message}: {failure.error}",
     )

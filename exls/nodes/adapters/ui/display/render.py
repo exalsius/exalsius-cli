@@ -61,6 +61,11 @@ DEFAULT_OFFER_COLUMNS_RENDERING_MAP = {
     "region": TableRenderContext.get_column("Region"),
 }
 
+DEFAULT_NODE_IMPORT_FAILURE_COLUMNS_RENDERING_MAP = {
+    "hostname": TableRenderContext.get_column("Node"),
+    "error_message": TableRenderContext.get_column("Error Message"),
+}
+
 DTO_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
     CloudNodeDTO: DEFAULT_CLOUD_NODE_COLUMNS_RENDERING_MAP,
     SelfManagedNodeDTO: DEFAULT_SELFMANAGED_NODE_COLUMNS_RENDERING_MAP,

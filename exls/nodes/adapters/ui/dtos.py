@@ -29,7 +29,6 @@ class ImportSelfmanagedNodeRequestListDTO(BaseModel):
     nodes: Sequence[ImportSelfmanagedNodeRequestDTO] = Field(
         default=[], description="The list of nodes to import"
     )
-    confirm: bool = Field(default=False, description="Whether to confirm the import")
 
 
 class ImportCloudNodeRequestDTO(BaseModel):

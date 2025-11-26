@@ -2,14 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Dict, List, Optional
+from typing import List, Optional, cast
 
 from pydantic import BaseModel, Field, StrictInt, StrictStr
-
-
-class ClusterNodeRole(StrEnum):
-    WORKER = "WORKER"
-    CONTROL_PLANE = "CONTROL_PLANE"
 
 
 class ClusterType(StrEnum):
@@ -25,10 +20,6 @@ class ClusterType(StrEnum):
             return cls(value)
         except ValueError:
             return cls.UNKNOWN
-
-
-class ClusterCreateType(StrEnum):
-    REMOTE = "REMOTE"
 
 
 class ClusterStatus(StrEnum):
@@ -47,15 +38,8 @@ class ClusterStatus(StrEnum):
 
 
 class ClusterLabels(StrEnum):
-    GPU_TYPE = "cluster.exalsius.ai/gpu-type"
     WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
     TELEMETRY_TYPE = "cluster.exalsius.ai/telemetry-enabled"
-
-
-class ClusterLabelValuesGPUType(StrEnum):
-    NVIDIA = "nvidia"
-    AMD = "amd"
-    NO_GPU = "no-gpu"
 
 
 class ClusterLabelValuesWorkloadType(StrEnum):
@@ -73,51 +57,6 @@ class Cluster(BaseModel):
     )
 
 
-class ClusterFilterCriteria(BaseModel):
-    status: Optional[ClusterStatus] = Field(
-        ..., description="The status of the cluster"
-    )
-
-
-class ClusterCreateRequest(BaseModel):
-    name: StrictStr = Field(..., description="The name of the cluster")
-    cluster_type: ClusterCreateType = Field(..., description="The type of the cluster")
-    cluster_labels: Dict[StrictStr, StrictStr] = Field(
-        ..., description="The labels of the cluster"
-    )
-    colony_id: Optional[StrictStr] = Field(
-        default=None, description="The ID of the colony to add the cluster to"
-    )
-    to_be_deleted_at: Optional[datetime] = Field(
-        default=None, description="The date and time the cluster will be deleted"
-    )
-    control_plane_node_ids: Optional[List[StrictStr]] = Field(
-        default=None, description="The IDs of the control plane nodes"
-    )
-    worker_node_ids: Optional[List[StrictStr]] = Field(
-        default=None, description="The IDs of the worker nodes"
-    )
-
-
-class NodeRef(BaseModel):
-    id: StrictStr = Field(..., description="The ID of the node")
-    role: ClusterNodeRole = Field(..., description="The role of the node")
-
-
-class AddNodesRequest(BaseModel):
-    cluster_id: StrictStr = Field(..., description="The ID of the cluster")
-    nodes_to_add: List[NodeRef] = Field(
-        ..., description="The nodes to add to the cluster"
-    )
-
-
-class RemoveNodesRequest(BaseModel):
-    cluster_id: StrictStr = Field(..., description="The ID of the cluster")
-    nodes_to_remove: List[NodeRef] = Field(
-        ..., description="The nodes to remove from the cluster"
-    )
-
-
 class Resources(BaseModel):
     gpu_type: StrictStr = Field(..., description="The type of the GPU")
     gpu_vendor: StrictStr = Field(..., description="The vendor of the GPU")
@@ -127,10 +66,90 @@ class Resources(BaseModel):
     storage_gb: StrictInt = Field(..., description="The amount of storage in GB")
 
 
-class ClusterNodeResources(BaseModel):
+class ClusterNodeRefResources(BaseModel):
     node_id: StrictStr = Field(..., description="The ID of the node")
 
     free_resources: Resources = Field(..., description="The free resources of the node")
     occupied_resources: Resources = Field(
         ..., description="The occupied resources of the node"
     )
+
+
+class ClusterNodeResources(BaseModel):
+    node_id: StrictStr = Field(..., description="The ID of the node")
+    hostname: StrictStr = Field(..., description="The hostname of the node")
+    endpoint: StrictStr = Field(..., description="The endpoint of the node")
+    username: StrictStr = Field(..., description="The username of the node")
+    ssh_key: StrictStr = Field(..., description="The SSH key of the node")
+    status: NodeStatus = Field(..., description="The status of the node")
+
+    free_resources: Resources = Field(..., description="The free resources of the node")
+    occupied_resources: Resources = Field(
+        ..., description="The occupied resources of the node"
+    )
+
+
+class NodeStatus(StrEnum):
+    AVAILABLE = "AVAILABLE"
+    DISCOVERING = "DISCOVERING"
+    UNKNOWN = "UNKNOWN"
+
+    @classmethod
+    def from_str(cls, value: str) -> NodeStatus:
+        try:
+            return cls(value.upper())
+        except ValueError:
+            return cls.UNKNOWN
+
+
+class ClusterNodeRole(StrEnum):
+    WORKER = "WORKER"
+    CONTROL_PLANE = "CONTROL_PLANE"
+
+
+class ClustersNode(BaseModel):
+    id: StrictStr = Field(..., description="The ID of the node")
+    hostname: StrictStr = Field(..., description="The hostname of the node")
+    endpoint: StrictStr = Field(..., description="The endpoint of the node")
+    username: StrictStr = Field(..., description="The username of the node")
+    ssh_key: StrictStr = Field(..., description="The SSH key of the node")
+    status: NodeStatus = Field(..., description="The status of the node")
+    role: ClusterNodeRole = Field(..., description="The role of the node")
+
+
+class NodeValidationIssue(BaseModel):
+    node_id: Optional[StrictStr] = Field(
+        default=None, description="The ID of the node, if known"
+    )
+    node_spec_repr: Optional[StrictStr] = Field(
+        default=None, description="String representation of node spec if ID not known"
+    )
+    reason: StrictStr = Field(..., description="The reason for validation failure")
+
+
+class DeployClusterResult(BaseModel):
+    cluster: Optional[Cluster] = Field(default=None, description="The created cluster")
+    issues: List[NodeValidationIssue] = Field(
+        default_factory=lambda: cast(List[NodeValidationIssue], []),
+        description="List of validation issues encountered",
+    )
+
+    @property
+    def is_success(self) -> bool:
+        return self.cluster is not None and len(self.issues) == 0
+
+
+class NodesLoadingIssue(BaseModel):
+    node_id: StrictStr = Field(..., description="The ID of the node")
+    reason: StrictStr = Field(..., description="The reason for loading failure")
+
+
+class NodesLoadingResult(BaseModel):
+    nodes: List[ClustersNode] = Field(..., description="The loaded nodes")
+    issues: Optional[List[NodesLoadingIssue]] = Field(
+        default=None, description="List of loading issues encountered"
+    )
+
+    @property
+    def is_success(self) -> bool:
+        return self.issues is None or len(self.issues) == 0

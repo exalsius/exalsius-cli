@@ -20,6 +20,11 @@ class NodeDTO(BaseModel):
     node_status: StrictStr = Field(..., description="The status of the node")
 
 
+class NodeImportFailureDTO(BaseModel):
+    hostname: StrictStr = Field(..., description="The hostname of the node")
+    error_message: StrictStr = Field(..., description="The error message that occurred")
+
+
 class CloudNodeDTO(NodeDTO):
     provider: StrictStr = Field(..., description="The provider of the node")
     instance_type: StrictStr = Field(..., description="The instance type of the node")

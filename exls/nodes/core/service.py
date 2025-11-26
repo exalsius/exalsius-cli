@@ -1,19 +1,29 @@
 from pathlib import Path
 from typing import Dict, List, cast
 
-from exls.nodes.core.domain import BaseNode, CloudNode, SelfManagedNode
+from exls.nodes.core.domain import (
+    BaseNode,
+    CloudNode,
+    NodeStatus,
+    SelfManagedNode,
+    SelfManagedNodesImportResult,
+)
 from exls.nodes.core.ports.gateway import (
     ImportCloudNodeParameters,
     ImportSelfmanagedNodeParameters,
     INodesGateway,
+    SelfManagedNodeImportFailure,
 )
 from exls.nodes.core.ports.provider import ISshKeyProvider, NodeSshKey
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
+    SshKeySpecification,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.parallel import ParallelExecutionResult, execute_in_parallel
+from exls.shared.core.polling import poll_until
 from exls.shared.core.service import ServiceError
 
 
@@ -35,44 +45,175 @@ class NodesService:
     def delete_node(self, node_id: str) -> str:
         return self.nodes_gateway.delete(node_id)
 
+    @handle_service_layer_errors("waiting for node status")
+    def wait_for_node_status(
+        self, node_id: str, target_status: NodeStatus, timeout_seconds: int = 120
+    ) -> BaseNode:
+        """
+        Waits for a node to reach a specific status.
+        """
+
+        def _fetch_node() -> BaseNode:
+            return self.get_node(node_id)
+
+        def _is_status_reached(node: BaseNode) -> bool:
+            # You might want to handle failure states here too
+            if node.node_status == NodeStatus.FAILED:
+                raise ServiceError(
+                    message=f"Node import of {node.hostname} failed with status: {node.node_status}"
+                )
+            return node.node_status == target_status
+
+        return poll_until(
+            fetcher=_fetch_node,
+            predicate=_is_status_reached,
+            timeout_seconds=timeout_seconds,
+            interval_seconds=5,
+            error_message=f"Node {node_id} did not reach status {target_status} within {timeout_seconds}s",
+        )
+
     @handle_service_layer_errors("importing self-managed nodes")
     def import_selfmanaged_nodes(
-        self, node_import_requests: List[ImportSelfmanagedNodeRequest]
-    ) -> List[SelfManagedNode]:
-        # Validate that the import requests are valid
+        self,
+        node_import_requests: List[ImportSelfmanagedNodeRequest],
+        wait_for_available: bool = False,
+    ) -> SelfManagedNodesImportResult:
+        # Check that the import requests are valid
         if len(node_import_requests) == 0:
             raise ServiceError(
                 message="Self-managed import request must contain at least one node to import"
             )
 
+        # 1. Prepare parameters (Handle SSH keys, deduplication, and validation)
+        import_parameters, pre_flight_failures = self._prepare_import_parameters(
+            node_import_requests
+        )
+
+        # 2. Execute Node Imports in Parallel
+        results: ParallelExecutionResult[
+            ImportSelfmanagedNodeParameters, SelfManagedNode
+        ] = execute_in_parallel(
+            items=import_parameters,
+            func=lambda p: self._import_single_node(p, wait_for_available),
+            max_workers=10,
+        )
+
+        # 3. Combine Results
+        all_failures = pre_flight_failures + [
+            SelfManagedNodeImportFailure(
+                node=failure.item,
+                error=failure.error,
+                message=failure.message,
+            )
+            for failure in results.failures
+        ]
+
+        return SelfManagedNodesImportResult(
+            nodes=results.successes,
+            failures=all_failures,
+        )
+
+    def _prepare_import_parameters(
+        self, requests: List[ImportSelfmanagedNodeRequest]
+    ) -> tuple[
+        List[ImportSelfmanagedNodeParameters], List[SelfManagedNodeImportFailure]
+    ]:
+        """Resolves SSH keys and builds valid import parameters."""
+
         # Load all available SSH keys
         ssh_keys: List[NodeSshKey] = self.ssh_key_provider.list_keys()
-        if len(ssh_keys) == 0:
-            raise ServiceError(
-                message="No SSH keys found. Please add an SSH key first using 'exls management ssh-keys add'"
-            )
 
-        # Validate that the SSH key IDs are valid
-        ssh_key_map: Dict[str, NodeSshKey] = {
-            ssh_key.id: ssh_key for ssh_key in ssh_keys
+        # Map: Key Name -> NodeSshKey (for quick lookup of existing keys by name)
+        # Assuming key names are unique
+        ssh_key_map: Dict[str, NodeSshKey] = {k.id: k for k in ssh_keys}
+        ssh_key_name_map: Dict[str, NodeSshKey] = {k.name: k for k in ssh_keys}
+
+        # Deduplicate new keys to import
+        keys_to_import_map: Dict[str, SshKeySpecification] = {}
+        for req in requests:
+            if not isinstance(req.ssh_key, str):
+                # Only add if we don't already have a key with this name in the system
+                if req.ssh_key.name not in ssh_key_name_map:
+                    keys_to_import_map[req.ssh_key.name] = req.ssh_key
+
+        def _import_single_ssh_key(spec: SshKeySpecification) -> NodeSshKey:
+            return self._import_ssh_key(spec.name, spec.key_path)
+
+        # Import new keys in parallel
+        ssh_key_import_results: ParallelExecutionResult[
+            SshKeySpecification, NodeSshKey
+        ] = execute_in_parallel(
+            items=list(keys_to_import_map.values()),
+            func=_import_single_ssh_key,
+            max_workers=10,
+        )
+
+        # Process SSH key import results
+        for success_key in ssh_key_import_results.successes:
+            ssh_key_map[success_key.id] = success_key
+            ssh_key_name_map[success_key.name] = success_key
+
+        ssh_key_failures: Dict[str, str] = {
+            failure.item.name: failure.message
+            for failure in ssh_key_import_results.failures
         }
 
+        # Build node import parameters
         import_parameters: List[ImportSelfmanagedNodeParameters] = []
-        for node_import_request in node_import_requests:
+        pre_flight_failures: List[SelfManagedNodeImportFailure] = []
+
+        for node_import_request in requests:
             ssh_key_id: str
             if isinstance(node_import_request.ssh_key, str):
+                # ID provided directly
                 if node_import_request.ssh_key not in ssh_key_map:
-                    raise ServiceError(
-                        message=f"SSH key with ID {node_import_request.ssh_key} not found"
+                    pre_flight_failures.append(
+                        SelfManagedNodeImportFailure(
+                            node=ImportSelfmanagedNodeParameters.from_request(
+                                node_import_request
+                            ),
+                            error=ServiceError(
+                                f"SSH key with ID {node_import_request.ssh_key} not found"
+                            ),
+                            message=f"SSH key with ID {node_import_request.ssh_key} not found",
+                        )
                     )
+                    continue
                 ssh_key_id = node_import_request.ssh_key
             else:
-                new_key: NodeSshKey = self._add_ssh_key(
-                    name=node_import_request.ssh_key.name,
-                    key_path=node_import_request.ssh_key.key_path,
-                )
-                ssh_key_map[new_key.id] = new_key
-                ssh_key_id = new_key.id
+                # Key specification provided
+                if node_import_request.ssh_key.name in ssh_key_failures:
+                    # Propagate key import failure
+                    error_msg = ssh_key_failures[node_import_request.ssh_key.name]
+                    pre_flight_failures.append(
+                        SelfManagedNodeImportFailure(
+                            node=ImportSelfmanagedNodeParameters.from_request(
+                                node_import_request
+                            ),
+                            error=ServiceError(
+                                f"Failed to import SSH key {node_import_request.ssh_key.name}: {error_msg}"
+                            ),
+                            message=f"Failed to import SSH key {node_import_request.ssh_key.name}: {error_msg}",
+                        )
+                    )
+                    continue
+                elif node_import_request.ssh_key.name in ssh_key_name_map:
+                    ssh_key_id = ssh_key_name_map[node_import_request.ssh_key.name].id
+                else:
+                    # Should not happen if previoud ssh key import was successful
+                    # or if the key import failed
+                    pre_flight_failures.append(
+                        SelfManagedNodeImportFailure(
+                            node=ImportSelfmanagedNodeParameters.from_request(
+                                node_import_request
+                            ),
+                            error=ServiceError(
+                                f"Failed to resolve SSH key {node_import_request.ssh_key.name}"
+                            ),
+                            message=f"Failed to resolve SSH key {node_import_request.ssh_key.name}",
+                        )
+                    )
+                    continue
 
             import_parameters.append(
                 ImportSelfmanagedNodeParameters(
@@ -83,21 +224,30 @@ class NodesService:
                 )
             )
 
-        # Import the nodes
-        node_ids: List[str] = [
-            self.nodes_gateway.import_selfmanaged_node(params)
-            for params in import_parameters
-        ]
+        return import_parameters, pre_flight_failures
 
-        # Load the imported nodes
-        nodes: List[SelfManagedNode] = [
-            cast(SelfManagedNode, self.nodes_gateway.get(node_id))
-            for node_id in node_ids
-        ]
+    def _import_single_node(
+        self, params: ImportSelfmanagedNodeParameters, wait: bool
+    ) -> SelfManagedNode:
+        """Imports a single node and optionally waits for it."""
+        node_id: str = self.nodes_gateway.import_selfmanaged_node(params)
+        # wait_for_node_status returns the updated node
+        result_node: BaseNode
+        if wait:
+            result_node = self.wait_for_node_status(node_id, NodeStatus.ADDED)
+        else:
+            result_node = self.get_node(node_id)
 
-        return nodes
+        # Runtime check to satisfy strict typing
+        if not isinstance(result_node, SelfManagedNode):
+            # This might imply an infrastructure data corruption or bad mapping
+            raise ServiceError(
+                f"Imported node {node_id} returned unexpected type: {type(result_node)}"
+            )
 
-    def _add_ssh_key(self, name: str, key_path: Path) -> NodeSshKey:
+        return result_node
+
+    def _import_ssh_key(self, name: str, key_path: Path) -> NodeSshKey:
         # Forward the request to the SSH key provider
         return self.ssh_key_provider.import_key(name=name, key_path=key_path)
 

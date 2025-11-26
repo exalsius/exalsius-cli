@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
@@ -22,9 +22,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 
-from exls.clusters.core.domain import (
-    ClusterStatus,
-)
 from exls.shared.adapters.gateway.sdk.command import (
     ExalsiusSdkCommand,
     UnexpectedSdkCommandResponseError,
@@ -40,9 +37,15 @@ class BaseClustersSdkCommand[T_Cmd_Return](
 
 
 class ListClustersSdkCommand(BaseClustersSdkCommand[ClustersListResponse]):
-    def __init__(self, api_client: ClustersApi, status: Optional[ClusterStatus]):
+    def __init__(
+        self,
+        api_client: ClustersApi,
+        status: Optional[Literal["PENDING", "DEPLOYING", "READY", "FAILED"]],
+    ):
         super().__init__(api_client)
-        self._status: Optional[ClusterStatus] = status
+        self._status: Optional[Literal["PENDING", "DEPLOYING", "READY", "FAILED"]] = (
+            status
+        )
 
     def _execute_api_call(self) -> ClustersListResponse:
         response: ClustersListResponse = self.api_client.list_clusters(
