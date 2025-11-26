@@ -22,6 +22,7 @@ from exls.nodes.core.requests import (
 )
 from exls.nodes.core.service import NodesService
 from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.domain import generate_random_name
 
@@ -164,7 +165,7 @@ def import_nodes(ctx: typer.Context):
     import_selfmanaged_node_request_list: ImportSelfmanagedNodeRequestListDTO = (
         ImportSelfmanagedNodeRequestListDTO()
     )
-    flow.execute(import_selfmanaged_node_request_list, io_facade)
+    flow.execute(import_selfmanaged_node_request_list, FlowContext(), io_facade)
 
     nodes: List[SelfManagedNode] = node_service.import_selfmanaged_nodes(
         import_selfmanaged_node_request_list.nodes

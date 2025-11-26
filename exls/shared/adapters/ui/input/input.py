@@ -22,7 +22,7 @@ class QuestionaryInputManager(IInputManager):
         """Ask the user to select a path."""
         result: Optional[str] = questionary.path(
             message, default=str(default or "./")
-        ).ask()
+        ).ask(kbi_msg="")
         if result is None:
             raise UserCancellationException("User cancelled the path selection")
         return Path(result)
@@ -39,7 +39,7 @@ class QuestionaryInputManager(IInputManager):
             message,
             default=default or "",
             validate=validator,
-        ).ask()
+        ).ask(kbi_msg="")
         if result is None:
             raise UserCancellationException("User cancelled")
         return result
@@ -82,7 +82,7 @@ class QuestionaryInputManager(IInputManager):
         q_choices, q_default = self._to_questionary_choices(choices, default)
         result: Optional[DisplayChoice[T]] = questionary.select(
             message, choices=q_choices, default=q_default
-        ).ask()
+        ).ask(kbi_msg="")
         if result is None:
             raise UserCancellationException("User cancelled")
         return result
@@ -106,7 +106,7 @@ class QuestionaryInputManager(IInputManager):
 
     def ask_confirm(self, message: str, default: bool = False) -> bool:
         """Ask a yes/no confirmation question."""
-        result = questionary.confirm(message, default=default).ask()
+        result = questionary.confirm(message, default=default).ask(kbi_msg="")
         if result is None:
             raise UserCancellationException("User cancelled")
         return result
@@ -127,7 +127,7 @@ class QuestionaryInputManager(IInputManager):
 
         result: Optional[Sequence[DisplayChoice[T]]] = questionary.checkbox(
             message, choices=q_choices, validate=_validate_checkbox
-        ).ask()
+        ).ask(kbi_msg="")
         if result is None:
             raise UserCancellationException("User cancelled")
         return result or []

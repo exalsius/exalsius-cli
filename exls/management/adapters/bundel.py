@@ -33,5 +33,5 @@ class ManagementBundle(BaseBundle):
             output_manager=io_facade_factory.get_output_manager(),
         )
 
-    def get_import_ssh_key_flow(self) -> ImportSshKeyFlow:
-        return ImportSshKeyFlow()
+    def get_import_ssh_key_flow(self, ask_confirm: bool = True) -> ImportSshKeyFlow:
+        return ImportSshKeyFlow(ask_confirm=ask_confirm)

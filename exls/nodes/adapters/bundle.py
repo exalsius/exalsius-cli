@@ -42,7 +42,9 @@ class NodesBundle(BaseBundle):
 
     def get_import_selfmanaged_nodes_flow(self) -> ImportSelfmanagedNodeRequestListFlow:
         import_ssh_key_flow: IImportSshKeyFlow = ImportSshKeyManagementAdapterFlow(
-            import_ssh_key_flow=self._management_bundle.get_import_ssh_key_flow()
+            import_ssh_key_flow=self._management_bundle.get_import_ssh_key_flow(
+                ask_confirm=False
+            )
         )
         import_selfmanaged_node_flow: ImportSelfmanagedNodeFlow = (
             ImportSelfmanagedNodeFlow(

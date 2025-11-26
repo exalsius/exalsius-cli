@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from exls.management.adapters.dtos import ImportSshKeyRequestDTO
 from exls.shared.adapters.ui.facade.interface import IIOFacade
-from exls.shared.adapters.ui.flow.flow import FlowStep, SequentialFlow
+from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialFlow
 from exls.shared.adapters.ui.flow.steps import PathInputStep, TextInputStep
 from exls.shared.adapters.ui.input.service import (
     non_empty_string_validator,
@@ -19,8 +19,14 @@ from exls.shared.core.domain import generate_random_name
 class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
     """Flow for importing a new SSH key."""
 
+    def __init__(self, ask_confirm: bool = True):
+        self._ask_confirm: bool = ask_confirm
+
     def _run(
-        self, model: ImportSshKeyRequestDTO, io_facade: IIOFacade[BaseModel]
+        self,
+        model: ImportSshKeyRequestDTO,
+        context: FlowContext,
+        io_facade: IIOFacade[BaseModel],
     ) -> None:
         flow = SequentialFlow[ImportSshKeyRequestDTO](
             [
@@ -37,7 +43,7 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
             ]
         )
 
-        flow.execute(model, io_facade)
+        flow.execute(model, context, io_facade)
 
     def _confirm_import(
         self,
@@ -56,7 +62,10 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
         return confirmed
 
     def execute(
-        self, model: ImportSshKeyRequestDTO, io_facade: IIOFacade[BaseModel]
+        self,
+        model: ImportSshKeyRequestDTO,
+        context: FlowContext,
+        io_facade: IIOFacade[BaseModel],
     ) -> None:
         """
         Collect SSH key import details and return DTO.
@@ -69,7 +78,7 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
             output_format=OutputFormat.TEXT,
         )
 
-        self._run(model, io_facade)
+        self._run(model, context, io_facade)
 
-        if not self._confirm_import(model, io_facade):
+        if self._ask_confirm and not self._confirm_import(model, io_facade):
             raise UserCancellationException("SSH key import cancelled by user.")

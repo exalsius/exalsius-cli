@@ -30,6 +30,7 @@ from exls.management.core.domain import (
 )
 from exls.management.core.service import ManagementService
 from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
     help_if_no_subcommand,
@@ -178,7 +179,7 @@ def import_ssh_key(
     add_ssh_key_request: ImportSshKeyRequestDTO = ImportSshKeyRequestDTO()
     if not called_with_any_user_input(ctx):
         add_ssh_key_flow: ImportSshKeyFlow = bundle.get_import_ssh_key_flow()
-        add_ssh_key_flow.execute(add_ssh_key_request, io_facade)
+        add_ssh_key_flow.execute(add_ssh_key_request, FlowContext(), io_facade)
     else:
         if not name or not key_path:
             io_facade.display_error_message(
