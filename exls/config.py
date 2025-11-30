@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
-from pathlib import Path
 from typing import Any, List, Optional
 
 import yaml
@@ -15,14 +13,16 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from exls.defaults import (
+    CFG_DIR,
+    CFG_FILE,
+    CONFIG_ENV_NESTED_DELIMITER,
+    CONFIG_ENV_PREFIX,
+    CONFIG_LOCK_FILE,
+)
+from exls.shared.adapters.ui.output.values import OutputFormat
+
 logger = logging.getLogger("cli.config")
-
-CFG_DIR = Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "exalsius"
-CFG_FILE = CFG_DIR / "config.yaml"
-CONFIG_LOCK_FILE = CFG_DIR / "config.lock"
-
-CONFIG_ENV_PREFIX = "EXLS_"
-CONFIG_ENV_NESTED_DELIMITER = "__"
 
 
 class Auth0Config(BaseSettings):
@@ -114,6 +114,14 @@ class AppConfig(BaseSettings):
     workspace_creation_polling: ConfigWorkspaceCreationPolling = Field(
         default=ConfigWorkspaceCreationPolling(),
         description="The workspace creation polling configuration",
+    )
+    default_message_output_format: OutputFormat = Field(
+        default=OutputFormat.TEXT,
+        description="The default output format for messages",
+    )
+    default_object_output_format: OutputFormat = Field(
+        default=OutputFormat.TABLE,
+        description="The default output format for objects",
     )
 
     model_config = SettingsConfigDict(
