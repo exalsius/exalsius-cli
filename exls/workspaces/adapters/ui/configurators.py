@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from enum import StrEnum
-from typing import Any, Dict, List, Protocol, runtime_checkable
+from typing import Any, Dict, List, Protocol, cast, runtime_checkable
 
 from typing_extensions import Optional
 
@@ -49,14 +49,26 @@ class BaseWorkspaceConfigurator(ABC):
         raise NotImplementedError
 
     def _validate(
-        self, ref_variables: Dict[str, Any], edited_variables: Dict[str, Any]
+        self,
+        ref_variables: Dict[str, Any],
+        edited_variables: Dict[str, Any],
+        parent_keys: Optional[List[str]] = None,
     ) -> None:
+        path = parent_keys or []
         # Validate that all required variables defined in the reference
         # are defined in the edited variables.
-        for key in ref_variables.keys():
+        for key, ref_value in ref_variables.items():
             if key not in edited_variables:
+                missing_var_path = ".".join(path + [key])
                 raise InvalidWorkspaceConfiguration(
-                    f"Workspace template configuration requires variable '{key}' to be set."
+                    f"Workspace template configuration requires variable '{missing_var_path}' to be set."
+                )
+
+            if isinstance(ref_value, dict) and isinstance(edited_variables[key], dict):
+                self._validate(
+                    cast(Dict[str, Any], ref_value),
+                    cast(Dict[str, Any], edited_variables[key]),
+                    parent_keys=path + [key],
                 )
 
     def _configure(
@@ -142,9 +154,12 @@ class JupyterConfigurator(BaseWorkspaceConfigurator):
         return IntegratedWorkspaceTemplates.JUPYTER
 
     def _validate(
-        self, ref_variables: Dict[str, Any], edited_variables: Dict[str, Any]
+        self,
+        ref_variables: Dict[str, Any],
+        edited_variables: Dict[str, Any],
+        parent_keys: Optional[List[str]] = None,
     ) -> None:
-        super()._validate(ref_variables, edited_variables)
+        super()._validate(ref_variables, edited_variables, parent_keys=parent_keys)
         if edited_variables.get("notebookPassword", "") == "":
             raise InvalidWorkspaceConfiguration(
                 "Jupyter workspace requires 'notebookPassword' to be set."
@@ -167,9 +182,12 @@ class MarimoConfigurator(BaseWorkspaceConfigurator):
         return IntegratedWorkspaceTemplates.MARIMO
 
     def _validate(
-        self, ref_variables: Dict[str, Any], edited_variables: Dict[str, Any]
+        self,
+        ref_variables: Dict[str, Any],
+        edited_variables: Dict[str, Any],
+        parent_keys: Optional[List[str]] = None,
     ) -> None:
-        super()._validate(ref_variables, edited_variables)
+        super()._validate(ref_variables, edited_variables, parent_keys=parent_keys)
         if edited_variables.get("tokenPassword", "") == "":
             raise InvalidWorkspaceConfiguration(
                 "Marimo workspace requires 'tokenPassword' to be set."
@@ -198,9 +216,12 @@ class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
         return IntegratedWorkspaceTemplates.VSCODE_DEV_POD
 
     def _validate(
-        self, ref_variables: Dict[str, Any], edited_variables: Dict[str, Any]
+        self,
+        ref_variables: Dict[str, Any],
+        edited_variables: Dict[str, Any],
+        parent_keys: Optional[List[str]] = None,
     ) -> None:
-        super()._validate(ref_variables, edited_variables)
+        super()._validate(ref_variables, edited_variables, parent_keys=parent_keys)
         ssh_password: str = edited_variables.get("sshPassword", "")
         ssh_public_key: str = edited_variables.get("sshPublicKey", "")
         if ssh_password == "" and ssh_public_key == "":
