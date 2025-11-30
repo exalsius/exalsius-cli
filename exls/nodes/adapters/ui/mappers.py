@@ -3,11 +3,11 @@ from functools import singledispatch
 from exls.nodes.adapters.dtos import (
     CloudNodeDTO,
     NodeDTO,
-    NodeImportFailureDTO,
     SelfManagedNodeDTO,
 )
+from exls.nodes.adapters.ui.dtos import NodeImportFailureDTO
 from exls.nodes.core.domain import BaseNode, CloudNode, SelfManagedNode
-from exls.nodes.core.ports.gateway import SelfManagedNodeImportFailure
+from exls.nodes.core.requests import SelfManagedNodeImportFailure
 
 
 @singledispatch
@@ -25,7 +25,7 @@ def _(node: CloudNode) -> CloudNodeDTO:
         id=node.id,
         hostname=node.hostname,
         import_time=node.import_time,
-        node_status=node.node_status,
+        node_status=node.status,
         provider=node.provider,
         instance_type=node.instance_type,
         price_per_hour=node.price_per_hour,
@@ -39,7 +39,7 @@ def _(node: SelfManagedNode) -> SelfManagedNodeDTO:
         id=node.id,
         hostname=node.hostname,
         import_time=node.import_time,
-        node_status=node.node_status,
+        node_status=node.status,
         endpoint=node.endpoint,
     )
 

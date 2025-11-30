@@ -1,19 +1,29 @@
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar
 
 import questionary
+import typer
 from pydantic import StrictStr
 
-from exls.shared.adapters.ui.input.interfaces import IInputManager
+from exls.shared.adapters.ui.input.deserializer import (
+    DeserializationError,
+    InvalidYamlFormatError,
+    YamlStringToDictionaryDeserializer,
+)
+from exls.shared.adapters.ui.input.interfaces import EditDictionaryError, IInputManager
 from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
     UserCancellationException,
+)
+from exls.shared.adapters.ui.shared.render.render import (
+    DictToYamlStringRenderer,
+    YamlRenderContext,
 )
 
 T = TypeVar("T")
 
 
-class QuestionaryInputManager(IInputManager):
+class ConsoleInputManager(IInputManager):
     def ask_path(
         self,
         message: str,
@@ -41,7 +51,20 @@ class QuestionaryInputManager(IInputManager):
             validate=validator,
         ).ask(kbi_msg="")
         if result is None:
-            raise UserCancellationException("User cancelled")
+            raise UserCancellationException("User cancelled the text input")
+        return result
+
+    def ask_password(
+        self,
+        message: str,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ) -> StrictStr:
+        """Ask a password question."""
+        result: Optional[StrictStr] = questionary.password(
+            message, validate=validator
+        ).ask(kbi_msg="")
+        if result is None:
+            raise UserCancellationException("User cancelled the password input")
         return result
 
     def _to_questionary_choice(
@@ -84,7 +107,7 @@ class QuestionaryInputManager(IInputManager):
             message, choices=q_choices, default=q_default
         ).ask(kbi_msg="")
         if result is None:
-            raise UserCancellationException("User cancelled")
+            raise UserCancellationException("User cancelled the select input")
         return result
 
     def ask_select_optional(
@@ -101,14 +124,14 @@ class QuestionaryInputManager(IInputManager):
                 message, choices=q_choices, default=q_default
             ).unsafe_ask()
         except KeyboardInterrupt:
-            raise UserCancellationException("User cancelled")
+            raise UserCancellationException("User cancelled the select input")
         return result
 
     def ask_confirm(self, message: str, default: bool = False) -> bool:
         """Ask a yes/no confirmation question."""
         result = questionary.confirm(message, default=default).ask(kbi_msg="")
         if result is None:
-            raise UserCancellationException("User cancelled")
+            raise UserCancellationException("User cancelled the confirm input")
         return result
 
     def ask_checkbox(
@@ -129,5 +152,40 @@ class QuestionaryInputManager(IInputManager):
             message, choices=q_choices, validate=_validate_checkbox
         ).ask(kbi_msg="")
         if result is None:
-            raise UserCancellationException("User cancelled")
+            raise UserCancellationException("User cancelled the checkbox input")
         return result or []
+
+    def edit_dictionary(
+        self,
+        dictionary: Dict[str, Any],
+        renderer: DictToYamlStringRenderer,
+        render_context: Optional[YamlRenderContext] = None,
+    ) -> Dict[str, Any]:
+        """Edit a dictionary via a YAML editor."""
+        while True:
+            try:
+                edited_yaml_string: Optional[str] = typer.edit(
+                    renderer.format_yaml(data=dictionary, render_context=render_context)
+                )
+                if edited_yaml_string is None:
+                    raise UserCancellationException(
+                        "User cancelled the dictionary edit"
+                    )
+
+                deserializer = YamlStringToDictionaryDeserializer()
+                return deserializer.deserialize(edited_yaml_string)
+            except UserCancellationException as e:
+                raise e
+            except InvalidYamlFormatError as e:
+                if not self.ask_confirm(
+                    f"Invalid YAML format: {e}. Do you want to try again?"
+                ):
+                    raise UserCancellationException(
+                        "User cancelled the dictionary edit"
+                    )
+                continue
+            except DeserializationError as e:
+                raise EditDictionaryError(f"Failed to deserialize YAML: {e}") from e
+            except Exception as e:
+                print(type(e))
+                raise EditDictionaryError(f"Failed to edit dictionary: {e}") from e

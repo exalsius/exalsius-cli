@@ -6,7 +6,7 @@ from exalsius_api_client.models.self_managed_node import (
     SelfManagedNode as SdkSelfManagedNode,
 )
 
-from exls.nodes.core.domain import BaseNode, CloudNode, SelfManagedNode
+from exls.nodes.core.domain import BaseNode, CloudNode, NodeStatus, SelfManagedNode
 
 
 # singledispatch transforms a regular function into a generic function
@@ -27,7 +27,7 @@ def _(sdk_model: SdkCloudNode) -> CloudNode:
         id=sdk_model.id,
         hostname=sdk_model.hostname or "",
         import_time=sdk_model.import_time or None,
-        node_status=sdk_model.node_status,
+        status=NodeStatus.from_str(sdk_model.node_status),
         provider=sdk_model.provider,
         instance_type=sdk_model.instance_type,
         price_per_hour=f"{float(sdk_model.price_per_hour):.2f}",
@@ -41,6 +41,8 @@ def _(sdk_model: SdkSelfManagedNode) -> SelfManagedNode:
         id=sdk_model.id,
         hostname=sdk_model.hostname or "",
         import_time=sdk_model.import_time,
-        node_status=sdk_model.node_status,
+        status=NodeStatus.from_str(sdk_model.node_status),
         endpoint=sdk_model.endpoint,
+        ssh_key_id=sdk_model.ssh_key_id,
+        username=sdk_model.username,
     )

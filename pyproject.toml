@@ -7,7 +7,7 @@ requires-python = ">=3.12,<4.0"
 dependencies = [
     "rich>=13.9.4",
     "typer>=0.15.2",
-    "exalsius-api-client @ git+https://github.com/exalsius/exalsius-api-spec.git@v1.27.0#subdirectory=client-sdk",
+    "exalsius-api-client @ git+https://github.com/exalsius/exalsius-api-spec.git@v1.34.3#subdirectory=client-sdk",
     "pydantic-settings>=2.10.1",
     "pyyaml>=6.0.2",
     "filelock>=3.17.0",
@@ -19,6 +19,7 @@ dependencies = [
     "coolname>=2.2.0",
     "questionary>=2.1.1",
     "ruamel-yaml>=0.18.16",
+    "cryptography>=46.0.3",
 ]
 
 [tool.setuptools.packages.find]

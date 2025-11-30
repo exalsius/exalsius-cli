@@ -4,7 +4,7 @@ from typing import Literal, Optional, Union
 from exls.shared.adapters.ui.output.render.json import JsonRenderContext
 from exls.shared.adapters.ui.output.render.table import TableRenderContext
 from exls.shared.adapters.ui.output.render.text import TextRenderContext
-from exls.shared.adapters.ui.output.render.yaml import YamlRenderContext
+from exls.shared.adapters.ui.shared.render.render import YamlRenderContext
 
 
 class OutputFormat(StrEnum):

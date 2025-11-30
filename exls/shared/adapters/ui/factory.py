@@ -3,7 +3,7 @@ from typing import Optional, Union
 from pydantic import BaseModel
 
 from exls.shared.adapters.ui.input.input import (
-    QuestionaryInputManager,
+    ConsoleInputManager,
 )
 from exls.shared.adapters.ui.input.interfaces import (
     IInputManager,
@@ -29,4 +29,4 @@ class IOFactory:
         )
 
     def get_input_manager(self) -> IInputManager:
-        return QuestionaryInputManager()
+        return ConsoleInputManager()

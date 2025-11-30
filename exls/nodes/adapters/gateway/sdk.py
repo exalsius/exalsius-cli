@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from exalsius_api_client.api.nodes_api import NodesApi
 from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
@@ -37,7 +37,7 @@ class NodesGatewaySdk(INodesGateway):
     def __init__(self, nodes_api: NodesApi):
         self._nodes_api = nodes_api
 
-    def list(self, filter: NodesFilterCriteria) -> List[BaseNode]:
+    def list(self, filter: Optional[NodesFilterCriteria]) -> List[BaseNode]:
         command = ListNodesSdkCommand(
             self._nodes_api,
             request=filter,
@@ -48,11 +48,9 @@ class NodesGatewaySdk(INodesGateway):
             for node in response.nodes
             if node.actual_instance is not None
         ]
-        if filter.status is not None:
+        if filter and filter.status is not None:
             nodes = [
-                node
-                for node in nodes
-                if node.node_status.lower() == filter.status.lower()
+                node for node in nodes if node.status.lower() == filter.status.lower()
             ]
 
         return nodes
@@ -72,12 +70,14 @@ class NodesGatewaySdk(INodesGateway):
         response: NodeDeleteResponse = command.execute()
         return response.node_id
 
-    def import_selfmanaged_node(self, request: ImportSelfmanagedNodeParameters) -> str:
+    def import_selfmanaged_node(
+        self, parameters: ImportSelfmanagedNodeParameters
+    ) -> str:
         sdk_request: SdkNodeImportSshRequest = SdkNodeImportSshRequest(
-            hostname=request.hostname,
-            endpoint=request.endpoint,
-            username=request.username,
-            ssh_key_id=request.ssh_key_id,
+            hostname=parameters.hostname,
+            endpoint=parameters.endpoint,
+            username=parameters.username,
+            ssh_key_id=parameters.ssh_key_id,
         )
         cmd_node_import_ssh: ImportSSHNodeSdkCommand = ImportSSHNodeSdkCommand(
             self._nodes_api,
@@ -86,13 +86,13 @@ class NodesGatewaySdk(INodesGateway):
         node_id: str = cmd_node_import_ssh.execute()
         return node_id
 
-    def import_cloud_nodes(self, request: ImportCloudNodeParameters) -> List[str]:
+    def import_cloud_nodes(self, parameters: ImportCloudNodeParameters) -> List[str]:
         cmd_cloud_node_import: ImportCloudNodeSdkCommand = ImportCloudNodeSdkCommand(
             self._nodes_api,
             request=ImportCloudNodeRequest(
-                hostname=request.hostname,
-                offer_id=request.offer_id,
-                amount=request.amount,
+                hostname=parameters.hostname,
+                offer_id=parameters.offer_id,
+                amount=parameters.amount,
             ),
         )
         response: NodeImportResponse = cmd_cloud_node_import.execute()

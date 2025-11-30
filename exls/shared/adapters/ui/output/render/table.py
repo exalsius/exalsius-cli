@@ -24,7 +24,7 @@ from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
 )
-from exls.shared.adapters.ui.output.render.entities import BaseRenderContext
+from exls.shared.adapters.ui.shared.render.entities import BaseRenderContext
 
 T = TypeVar("T", bound=BaseModel)
 

@@ -1,15 +1,26 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
+    Dict,
     Optional,
     Sequence,
     TypeVar,
 )
 
 from exls.shared.adapters.ui.input.values import DisplayChoice
+from exls.shared.adapters.ui.shared.render.render import (
+    DictToYamlStringRenderer,
+    YamlRenderContext,
+)
+from exls.shared.core.domain import ExalsiusError
 
 T = TypeVar("T")
+
+
+class EditDictionaryError(ExalsiusError):
+    pass
 
 
 class IInputManager(ABC):
@@ -21,6 +32,13 @@ class IInputManager(ABC):
         self,
         message: str,
         default: Optional[str] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ) -> str: ...
+
+    @abstractmethod
+    def ask_password(
+        self,
+        message: str,
         validator: Optional[Callable[[str], bool | str]] = None,
     ) -> str: ...
 
@@ -51,3 +69,11 @@ class IInputManager(ABC):
     def ask_checkbox(
         self, message: str, choices: Sequence[DisplayChoice[T]], min_choices: int = 1
     ) -> Sequence[DisplayChoice[T]]: ...
+
+    @abstractmethod
+    def edit_dictionary(
+        self,
+        dictionary: Dict[str, Any],
+        renderer: DictToYamlStringRenderer,
+        render_context: Optional[YamlRenderContext] = None,
+    ) -> Dict[str, Any]: ...

@@ -8,7 +8,6 @@ from exls.shared.adapters.ui.output.interfaces import (
     ISingleItemRenderer,
 )
 from exls.shared.adapters.ui.output.render.entities import (
-    BaseRenderContext,
     TextMessageItem,
 )
 from exls.shared.adapters.ui.output.render.json import (
@@ -33,6 +32,7 @@ from exls.shared.adapters.ui.output.render.yaml import (
 from exls.shared.adapters.ui.output.values import (
     OutputFormat,
 )
+from exls.shared.adapters.ui.shared.render.entities import BaseRenderContext
 
 T = TypeVar("T", contravariant=True, bound=BaseModel)
 

@@ -67,13 +67,21 @@ class ClusterDTO(BaseModel):
     )
 
 
+class ClusterWithNodesDTO(ClusterDTO):
+    worker_nodes: List[ClusterNodeDTO] = Field(
+        ..., description="The worker nodes of the cluster"
+    )
+    control_plane_nodes: List[ClusterNodeDTO] = Field(
+        ..., description="The control plane nodes of the cluster"
+    )
+
+
 class ClusterNodeDTO(BaseModel):
-    cluster_id: StrictStr = Field(..., description="The ID of the cluster")
+    id: StrictStr = Field(..., description="The ID of the node")
+    role: StrictStr = Field(..., description="The role of the nodes")
+    hostname: StrictStr = Field(..., description="The hostname of the node")
+    status: StrictStr = Field(..., description="The status of the node")
     cluster_name: StrictStr = Field(..., description="The name of the cluster")
-    node_id: StrictStr = Field(..., description="The ID of the node")
-    node_role: StrictStr = Field(..., description="The role of the nodes")
-    node_hostname: StrictStr = Field(..., description="The hostname of the node")
-    node_status: StrictStr = Field(..., description="The status of the node")
 
 
 class ResourcesDTO(BaseModel):
@@ -86,7 +94,7 @@ class ResourcesDTO(BaseModel):
 
 
 class ClusterNodeResourcesDTO(BaseModel):
-    node_id: StrictStr = Field(..., description="The ID of the node")
+    cluster_node: ClusterNodeDTO = Field(..., description="The cluster node")
     free_resources: ResourcesDTO = Field(
         ..., description="The free resources of the node"
     )
@@ -97,3 +105,13 @@ class ClusterNodeResourcesDTO(BaseModel):
 
 class DashboardUrlResponseDTO(BaseModel):
     url: StrictStr = Field(..., description="The dashboard URL")
+
+
+class NodeValidationIssueDTO(BaseModel):
+    node_id: Optional[StrictStr] = Field(
+        default=None, description="The ID of the node, if known"
+    )
+    node_spec_repr: Optional[StrictStr] = Field(
+        default=None, description="String representation of node spec if ID not known"
+    )
+    reason: StrictStr = Field(..., description="The reason for validation failure")

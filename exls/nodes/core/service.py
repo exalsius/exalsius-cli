@@ -1,24 +1,24 @@
 from pathlib import Path
-from typing import Dict, List, cast
+from typing import Dict, List, Optional, cast
 
 from exls.nodes.core.domain import (
     BaseNode,
     CloudNode,
     NodeStatus,
     SelfManagedNode,
-    SelfManagedNodesImportResult,
 )
 from exls.nodes.core.ports.gateway import (
     ImportCloudNodeParameters,
-    ImportSelfmanagedNodeParameters,
     INodesGateway,
-    SelfManagedNodeImportFailure,
 )
 from exls.nodes.core.ports.provider import ISshKeyProvider, NodeSshKey
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
+    ImportSelfmanagedNodeParameters,
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
+    SelfManagedNodeImportFailure,
+    SelfManagedNodesImportResult,
     SshKeySpecification,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
@@ -33,9 +33,10 @@ class NodesService:
         self.ssh_key_provider: ISshKeyProvider = ssh_key_provider
 
     @handle_service_layer_errors("listing nodes")
-    def list_nodes(self, request: NodesFilterCriteria) -> List[BaseNode]:
-        assert request is not None
-        return self.nodes_gateway.list(request)
+    def list_nodes(
+        self, filter: Optional[NodesFilterCriteria] = None
+    ) -> List[BaseNode]:
+        return self.nodes_gateway.list(filter=filter)
 
     @handle_service_layer_errors("getting node")
     def get_node(self, node_id: str) -> BaseNode:
@@ -45,8 +46,7 @@ class NodesService:
     def delete_node(self, node_id: str) -> str:
         return self.nodes_gateway.delete(node_id)
 
-    @handle_service_layer_errors("waiting for node status")
-    def wait_for_node_status(
+    def _wait_for_node_status(
         self, node_id: str, target_status: NodeStatus, timeout_seconds: int = 120
     ) -> BaseNode:
         """
@@ -58,11 +58,11 @@ class NodesService:
 
         def _is_status_reached(node: BaseNode) -> bool:
             # You might want to handle failure states here too
-            if node.node_status == NodeStatus.FAILED:
+            if node.status == NodeStatus.FAILED:
                 raise ServiceError(
-                    message=f"Node import of {node.hostname} failed with status: {node.node_status}"
+                    message=f"Node import of {node.hostname} failed with status: {node.status}"
                 )
-            return node.node_status == target_status
+            return node.status == target_status
 
         return poll_until(
             fetcher=_fetch_node,
@@ -230,11 +230,13 @@ class NodesService:
         self, params: ImportSelfmanagedNodeParameters, wait: bool
     ) -> SelfManagedNode:
         """Imports a single node and optionally waits for it."""
-        node_id: str = self.nodes_gateway.import_selfmanaged_node(params)
+        node_id: str = self.nodes_gateway.import_selfmanaged_node(parameters=params)
         # wait_for_node_status returns the updated node
         result_node: BaseNode
         if wait:
-            result_node = self.wait_for_node_status(node_id, NodeStatus.ADDED)
+            result_node = self._wait_for_node_status(
+                node_id=node_id, target_status=NodeStatus.DEPLOYED
+            )
         else:
             result_node = self.get_node(node_id)
 

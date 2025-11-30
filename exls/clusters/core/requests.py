@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -19,14 +19,12 @@ class NodeSpecification(BaseModel):
     ssh_key: Union[StrictStr, SshKeySpecification] = Field(
         ..., description="The SSH key to use"
     )
+    role: ClusterNodeRole = Field(..., description="The role of the node")
 
 
 class ClusterDeployRequest(BaseModel):
     name: StrictStr = Field(..., description="The name of the cluster")
     type: ClusterType = Field(..., description="The type of the cluster")
-    labels: Dict[StrictStr, StrictStr] = Field(
-        ..., description="The labels of the cluster"
-    )
     colony_id: Optional[StrictStr] = Field(
         default=None, description="The ID of the colony to add the cluster to"
     )
@@ -39,6 +37,11 @@ class ClusterDeployRequest(BaseModel):
     control_plane_nodes: Optional[List[Union[StrictStr, NodeSpecification]]] = Field(
         default=None, description="The IDs of the control plane nodes"
     )
+    enable_multinode_training: bool = Field(
+        ..., description="Enable multinode AI model training for the cluster"
+    )
+    enable_telemetry: bool = Field(..., description="Enable telemetry for the cluster")
+    enable_vpn: bool = Field(..., description="Enable VPN for the cluster")
 
 
 class NodeRef(BaseModel):

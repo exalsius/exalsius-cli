@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -47,19 +47,3 @@ class WorkspaceResourcesRequestDTO(BaseModel):
     cpu_cores: int = Field(..., description="The number of CPU cores")
     memory_gb: int = Field(..., description="The amount of memory in GB")
     pvc_storage_gb: int = Field(..., description="The amount of PVC storage in GB")
-
-
-class DeployWorkspaceRequestDTO(BaseModel):
-    cluster_id: str = Field(..., description="The ID of the cluster")
-    cluster_name: str = Field(..., description="The name of the cluster")
-    workspace_name: str = Field(..., description="The name of the workspace")
-    workspace_template_name: str = Field(
-        ..., description="The name of the workspace template"
-    )
-    resources: WorkspaceResourcesRequestDTO = Field(
-        ..., description="The resources of the workspace"
-    )
-    to_be_deleted_at: Optional[datetime] = Field(
-        None, description="The date and time when the workspace should be deleted"
-    )
-    variables: Dict[str, Any] = Field(..., description="The variables of the workspace")

@@ -3,7 +3,8 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel
 
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
-from exls.workspaces.adapters.dtos import DeployWorkspaceRequestDTO, WorkspaceDTO
+from exls.workspaces.adapters.dtos import WorkspaceDTO
+from exls.workspaces.adapters.ui.dtos import DeployWorkspaceRequestDTO
 
 # Check this when implementing config edit feature
 # DEFAULT_WORKSPACE_DEPLOYMENT_CONFIG_COMMENTS: Dict[str, str] = {
@@ -67,13 +68,11 @@ DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
 }
 
 DEFAULT_DEPLOY_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+    "cluster_name": TableRenderContext.get_column("Cluster Name"),
     "workspace_name": TableRenderContext.get_column("Workspace Name"),
-    "workspace_template_name": TableRenderContext.get_column("Template"),
-    "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
-    "resources.gpu_count": TableRenderContext.get_column("GPUs"),
-    "resources.cpu_cores": TableRenderContext.get_column("CPU Cores"),
-    "resources.memory_gb": TableRenderContext.get_column("Memory (GB)"),
-    "resources.pvc_storage_gb": TableRenderContext.get_column("Storage (GB)"),
+    "workspace_template_name": TableRenderContext.get_column("Workspace Template"),
+    "num_gpus": TableRenderContext.get_column("Number of GPUs"),
+    "variables": TableRenderContext.get_column("Variables"),
 }
 
 

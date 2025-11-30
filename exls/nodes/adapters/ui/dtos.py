@@ -35,3 +35,8 @@ class ImportCloudNodeRequestDTO(BaseModel):
     hostname: str = Field(..., description="The hostname of the node")
     offer_id: str = Field(..., description="The ID of the offer to use")
     amount: int = Field(..., description="The amount of nodes to import")
+
+
+class NodeImportFailureDTO(BaseModel):
+    hostname: StrictStr = Field(..., description="The hostname of the node")
+    error_message: StrictStr = Field(..., description="The error message that occurred")

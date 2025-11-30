@@ -19,9 +19,17 @@ from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
 )
-from exls.shared.adapters.ui.output.render.entities import BaseRenderContext
+from exls.shared.adapters.ui.shared.render.entities import BaseRenderContext
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class JsonRenderContext(BaseRenderContext):
+    """Render context for JSON output."""
+
+    indent: PositiveInt = Field(
+        ..., description="The number of spaces to use for indentation."
+    )
 
 
 class JsonRenderConfig(BaseSettings):
@@ -37,14 +45,6 @@ class JsonRenderConfig(BaseSettings):
 
     def to_json_render_context(self) -> JsonRenderContext:
         return JsonRenderContext(indent=self.default_indent)
-
-
-class JsonRenderContext(BaseRenderContext):
-    """Render context for JSON output."""
-
-    indent: PositiveInt = Field(
-        ..., description="The number of spaces to use for indentation."
-    )
 
 
 class _BaseJsonRenderer:

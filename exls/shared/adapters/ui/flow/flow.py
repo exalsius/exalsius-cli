@@ -4,8 +4,28 @@ from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, cast
 from pydantic import BaseModel, Field
 
 from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.input.values import UserCancellationException
+from exls.shared.core.domain import ExalsiusError
 
 T = TypeVar("T")
+
+
+class FlowError(ExalsiusError):
+    """Exception raised when the flow encounters an error."""
+
+    pass
+
+
+class InvalidFlowStateError(Exception):
+    """Exception raised when the flow is in an invalid state."""
+
+    pass
+
+
+class FlowCancelationByUserException(UserCancellationException):
+    """Exception raised when the flow is cancelled."""
+
+    pass
 
 
 class FlowContext(BaseModel):
@@ -38,4 +58,7 @@ class SequentialFlow(FlowStep[T]):
         self, model: T, context: FlowContext, io_facade: IIOFacade[BaseModel]
     ) -> None:
         for step in self.steps:
-            step.execute(model, context, io_facade)
+            try:
+                step.execute(model, context, io_facade)
+            except (UserCancellationException, FlowCancelationByUserException) as e:
+                raise FlowCancelationByUserException(e) from e

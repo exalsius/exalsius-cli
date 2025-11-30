@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import List, Optional, cast
 
-from pydantic import BaseModel, Field, StrictInt, StrictStr
+from pydantic import BaseModel, Field, StrictInt, StrictStr, field_validator
 
 
 class ClusterType(StrEnum):
@@ -37,15 +37,6 @@ class ClusterStatus(StrEnum):
             return cls.UNKNOWN
 
 
-class ClusterLabels(StrEnum):
-    WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
-    TELEMETRY_TYPE = "cluster.exalsius.ai/telemetry-enabled"
-
-
-class ClusterLabelValuesWorkloadType(StrEnum):
-    VOLCANO = "volcano"
-
-
 class Cluster(BaseModel):
     id: StrictStr = Field(..., description="The ID of the cluster")
     name: StrictStr = Field(..., description="The name of the cluster")
@@ -54,6 +45,12 @@ class Cluster(BaseModel):
     created_at: datetime = Field(..., description="The creation date of the cluster")
     updated_at: Optional[datetime] = Field(
         ..., description="The last update date of the cluster"
+    )
+
+
+class ClusterWithNodes(Cluster):
+    nodes: List[AssignedClusterNode] = Field(
+        ..., description="The nodes of the cluster"
     )
 
 
@@ -66,22 +63,8 @@ class Resources(BaseModel):
     storage_gb: StrictInt = Field(..., description="The amount of storage in GB")
 
 
-class ClusterNodeRefResources(BaseModel):
-    node_id: StrictStr = Field(..., description="The ID of the node")
-
-    free_resources: Resources = Field(..., description="The free resources of the node")
-    occupied_resources: Resources = Field(
-        ..., description="The occupied resources of the node"
-    )
-
-
 class ClusterNodeResources(BaseModel):
-    node_id: StrictStr = Field(..., description="The ID of the node")
-    hostname: StrictStr = Field(..., description="The hostname of the node")
-    endpoint: StrictStr = Field(..., description="The endpoint of the node")
-    username: StrictStr = Field(..., description="The username of the node")
-    ssh_key: StrictStr = Field(..., description="The SSH key of the node")
-    status: NodeStatus = Field(..., description="The status of the node")
+    cluster_node: AssignedClusterNode = Field(..., description="The cluster node")
 
     free_resources: Resources = Field(..., description="The free resources of the node")
     occupied_resources: Resources = Field(
@@ -89,13 +72,15 @@ class ClusterNodeResources(BaseModel):
     )
 
 
-class NodeStatus(StrEnum):
+class ClusterNodeStatus(StrEnum):
     AVAILABLE = "AVAILABLE"
     DISCOVERING = "DISCOVERING"
+    DEPLOYED = "DEPLOYED"
+    FAILED = "FAILED"
     UNKNOWN = "UNKNOWN"
 
     @classmethod
-    def from_str(cls, value: str) -> NodeStatus:
+    def from_str(cls, value: str) -> ClusterNodeStatus:
         try:
             return cls(value.upper())
         except ValueError:
@@ -107,14 +92,43 @@ class ClusterNodeRole(StrEnum):
     CONTROL_PLANE = "CONTROL_PLANE"
 
 
-class ClustersNode(BaseModel):
+class ClusterNode(BaseModel):
     id: StrictStr = Field(..., description="The ID of the node")
     hostname: StrictStr = Field(..., description="The hostname of the node")
-    endpoint: StrictStr = Field(..., description="The endpoint of the node")
     username: StrictStr = Field(..., description="The username of the node")
-    ssh_key: StrictStr = Field(..., description="The SSH key of the node")
-    status: NodeStatus = Field(..., description="The status of the node")
+    ssh_key_id: StrictStr = Field(..., description="The SSH key of the node")
+    status: ClusterNodeStatus = Field(..., description="The status of the node")
+    endpoint: Optional[StrictStr] = Field(
+        default=None, description="The endpoint of the node"
+    )
+
+
+class UnassignedClusterNode(ClusterNode):
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: ClusterNodeStatus) -> ClusterNodeStatus:
+        if v not in [ClusterNodeStatus.AVAILABLE, ClusterNodeStatus.DISCOVERING]:
+            raise ValueError(
+                f"Unassigned nodes must be in AVAILABLE or DISCOVERING status, got {v}"
+            )
+        return v
+
+
+class AssignedClusterNode(ClusterNode):
     role: ClusterNodeRole = Field(..., description="The role of the node")
+
+    @classmethod
+    def from_unassigned_node(
+        cls, node: UnassignedClusterNode, role: ClusterNodeRole
+    ) -> AssignedClusterNode:
+        return cls(
+            id=node.id,
+            hostname=node.hostname,
+            username=node.username,
+            ssh_key_id=node.ssh_key_id,
+            status=node.status,
+            role=role,
+        )
 
 
 class NodeValidationIssue(BaseModel):
@@ -128,7 +142,9 @@ class NodeValidationIssue(BaseModel):
 
 
 class DeployClusterResult(BaseModel):
-    cluster: Optional[Cluster] = Field(default=None, description="The created cluster")
+    cluster: Optional[ClusterWithNodes] = Field(
+        default=None, description="The created cluster with its nodes"
+    )
     issues: List[NodeValidationIssue] = Field(
         default_factory=lambda: cast(List[NodeValidationIssue], []),
         description="List of validation issues encountered",
@@ -138,6 +154,10 @@ class DeployClusterResult(BaseModel):
     def is_success(self) -> bool:
         return self.cluster is not None and len(self.issues) == 0
 
+    @property
+    def is_partially_successful(self) -> bool:
+        return self.cluster is not None and len(self.issues) > 0
+
 
 class NodesLoadingIssue(BaseModel):
     node_id: StrictStr = Field(..., description="The ID of the node")
@@ -145,7 +165,7 @@ class NodesLoadingIssue(BaseModel):
 
 
 class NodesLoadingResult(BaseModel):
-    nodes: List[ClustersNode] = Field(..., description="The loaded nodes")
+    nodes: List[AssignedClusterNode] = Field(..., description="The loaded nodes")
     issues: Optional[List[NodesLoadingIssue]] = Field(
         default=None, description="List of loading issues encountered"
     )

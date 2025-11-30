@@ -6,10 +6,12 @@ import typer
 from exls.nodes.adapters.bundle import NodesBundle
 from exls.nodes.adapters.dtos import (
     NodeDTO,
-    NodeImportFailureDTO,
 )
 from exls.nodes.adapters.ui.display.display import IONodesFacade
-from exls.nodes.adapters.ui.dtos import ImportSelfmanagedNodeRequestListDTO
+from exls.nodes.adapters.ui.dtos import (
+    ImportSelfmanagedNodeRequestListDTO,
+    NodeImportFailureDTO,
+)
 from exls.nodes.adapters.ui.flows.node_import import (
     ImportSelfmanagedNodeRequestListFlow,
 )
@@ -20,11 +22,11 @@ from exls.nodes.adapters.ui.mappers import (
 from exls.nodes.adapters.values import NodeTypesDTO
 from exls.nodes.core.domain import (
     BaseNode,
-    SelfManagedNodesImportResult,
 )
 from exls.nodes.core.requests import (
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
+    SelfManagedNodesImportResult,
     SshKeySpecification,
 )
 from exls.nodes.core.service import NodesService

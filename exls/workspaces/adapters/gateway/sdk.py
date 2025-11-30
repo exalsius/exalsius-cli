@@ -15,14 +15,16 @@ from exls.workspaces.adapters.gateway.commands import (
     ListWorkspacesSdkCommand,
 )
 from exls.workspaces.adapters.gateway.mappers import (
-    deploy_workspace_request_to_create_request,
+    deploy_workspace_parameters_to_create_request,
     workspace_from_sdk,
 )
 from exls.workspaces.core.domain import (
-    DeployWorkspaceRequest,
     Workspace,
 )
-from exls.workspaces.core.ports import IWorkspacesGateway
+from exls.workspaces.core.ports.gateway import (
+    DeployWorkspaceParameters,
+    IWorkspacesGateway,
+)
 
 
 class WorkspacesGatewaySdk(IWorkspacesGateway):
@@ -45,10 +47,10 @@ class WorkspacesGatewaySdk(IWorkspacesGateway):
         response: WorkspaceResponse = command.execute()
         return workspace_from_sdk(sdk_model=response.workspace)
 
-    def deploy(self, request: DeployWorkspaceRequest) -> str:
+    def deploy(self, parameters: DeployWorkspaceParameters) -> str:
         """Deploy a workspace."""
         create_request: WorkspaceCreateRequest = (
-            deploy_workspace_request_to_create_request(request=request)
+            deploy_workspace_parameters_to_create_request(parameters=parameters)
         )
         command: DeployWorkspaceSdkCommand = DeployWorkspaceSdkCommand(
             self._workspaces_api, request=create_request

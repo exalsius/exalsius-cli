@@ -1,3 +1,5 @@
+from typing import Optional
+
 from exalsius_api_client.api.nodes_api import NodesApi
 from exalsius_api_client.models.node_delete_response import NodeDeleteResponse
 from exalsius_api_client.models.node_import_response import NodeImportResponse
@@ -24,14 +26,15 @@ class BaseNodesSdkCommand[T_Cmd_Return](ExalsiusSdkCommand[NodesApi, T_Cmd_Retur
 class ListNodesSdkCommand(BaseNodesSdkCommand[NodesListResponse]):
     """Command to list nodes."""
 
-    def __init__(self, api_client: NodesApi, request: NodesFilterCriteria):
+    def __init__(self, api_client: NodesApi, request: Optional[NodesFilterCriteria]):
         super().__init__(api_client)
 
-        self._request: NodesFilterCriteria = request
+        self._request: Optional[NodesFilterCriteria] = request
 
     def _execute_api_call(self) -> NodesListResponse:
         response: NodesListResponse = self.api_client.list_nodes(
-            node_type=self._request.node_type, provider=self._request.provider
+            node_type=self._request.node_type if self._request else None,
+            provider=self._request.provider if self._request else None,
         )
         return response
 

@@ -8,10 +8,8 @@ from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
 )
-from exls.shared.adapters.ui.output.render.entities import (
-    BaseRenderContext,
-    TextMessageItem,
-)
+from exls.shared.adapters.ui.output.render.entities import TextMessageItem
+from exls.shared.adapters.ui.shared.render.entities import BaseRenderContext
 
 T = TypeVar("T", bound=BaseModel)
 

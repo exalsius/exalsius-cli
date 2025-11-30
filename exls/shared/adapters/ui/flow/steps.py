@@ -15,7 +15,11 @@ from pydantic import BaseModel, Field
 from typing_extensions import Any
 
 from exls.shared.adapters.ui.facade.interface import IIOFacade
-from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep
+from exls.shared.adapters.ui.flow.flow import (
+    FlowCancelationByUserException,
+    FlowContext,
+    FlowStep,
+)
 from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
     UserCancellationException,
@@ -46,7 +50,13 @@ class ConfirmStep(FlowStep[T_Model]):
     def execute(
         self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
     ) -> None:
-        result: bool = io_facade.ask_confirm(message=self.message, default=self.default)
+        try:
+            result: bool = io_facade.ask_confirm(
+                message=self.message, default=self.default
+            )
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
+
         setattr(model, self.key, result)
 
 
@@ -66,11 +76,15 @@ class TextInputStep(FlowStep[T_Model]):
     def execute(
         self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
     ) -> None:
-        result: str = io_facade.ask_text(
-            message=self.message,
-            default=self.default,
-            validator=self.validator,
-        )
+        try:
+            result: str = io_facade.ask_text(
+                message=self.message,
+                default=self.default,
+                validator=self.validator,
+            )
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
+
         setattr(model, self.key, result)
 
 
@@ -88,10 +102,14 @@ class PathInputStep(FlowStep[T_Model]):
     def execute(
         self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
     ) -> None:
-        result: Path = io_facade.ask_path(
-            message=self.message,
-            default=self.default,
-        )
+        try:
+            result: Path = io_facade.ask_path(
+                message=self.message,
+                default=self.default,
+            )
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
+
         setattr(model, self.key, result)
 
 
@@ -152,11 +170,15 @@ class SelectRequiredStep(ChoicesStep[T_Model, T_Choice]):
     ) -> None:
         choices_spec: ChoicesSpec[T_Choice] = self._resolve_choices_spec(model, context)
 
-        result: DisplayChoice[T_Choice] = io_facade.ask_select_required(
-            message=self.message,
-            choices=choices_spec.choices,
-            default=choices_spec.default or choices_spec.choices[0],
-        )
+        try:
+            result: DisplayChoice[T_Choice] = io_facade.ask_select_required(
+                message=self.message,
+                choices=choices_spec.choices,
+                default=choices_spec.default or choices_spec.choices[0],
+            )
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
+
         self._save_last_choice(context, result.value)
         setattr(model, self.key, result.value)
 
@@ -167,11 +189,15 @@ class SelectOptionalStep(ChoicesStep[T_Model, T_Choice]):
     ) -> None:
         choices_spec: ChoicesSpec[T_Choice] = self._resolve_choices_spec(model, context)
 
-        result: Optional[DisplayChoice[T_Choice]] = io_facade.ask_select_optional(
-            message=self.message,
-            choices=choices_spec.choices,
-            default=choices_spec.default or choices_spec.choices[0],
-        )
+        try:
+            result: Optional[DisplayChoice[T_Choice]] = io_facade.ask_select_optional(
+                message=self.message,
+                choices=choices_spec.choices,
+                default=choices_spec.default or choices_spec.choices[0],
+            )
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
+
         if result:
             self._save_last_choice(context, result.value)
         setattr(model, self.key, result.value if result else None)
@@ -218,12 +244,14 @@ class CheckboxStep(ChoicesStep[T_Model, T_Choice]):
         self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
     ) -> None:
         choices_spec: ChoicesSpec[T_Choice] = self._resolve_choices_spec(model, context)
-
-        result: Sequence[DisplayChoice[T_Choice]] = io_facade.ask_checkbox(
-            message=self.message,
-            choices=choices_spec.choices,
-            min_choices=self.min_choices,
-        )
+        try:
+            result: Sequence[DisplayChoice[T_Choice]] = io_facade.ask_checkbox(
+                message=self.message,
+                choices=choices_spec.choices,
+                min_choices=self.min_choices,
+            )
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
         setattr(model, self.key, [choice.value for choice in result])
 
 
@@ -256,10 +284,13 @@ class ConditionalStep(FlowStep[T_Model], Generic[T_Model]):
     def execute(
         self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
     ) -> None:
-        if self.condition(model):
-            self.true_step.execute(model, context, io_facade)
-        elif self.false_step:
-            self.false_step.execute(model, context, io_facade)
+        try:
+            if self.condition(model):
+                self.true_step.execute(model, context, io_facade)
+            elif self.false_step:
+                self.false_step.execute(model, context, io_facade)
+        except (UserCancellationException, FlowCancelationByUserException) as e:
+            raise FlowCancelationByUserException(e) from e
 
 
 T_ChildModel = TypeVar("T_ChildModel", bound=BaseModel)
@@ -288,8 +319,10 @@ class SubModelStep(FlowStep[T_Model], Generic[T_Model, T_ChildModel]):
         # Create a new context for the sub-model, linking to parent
         sub_context = context.model_copy()
         sub_context.parent = model
-
-        self.child_step.execute(child_model, sub_context, io_facade)
+        try:
+            self.child_step.execute(child_model, sub_context, io_facade)
+        except (UserCancellationException, FlowCancelationByUserException) as e:
+            raise FlowCancelationByUserException(e) from e
         setattr(model, self.field_name, child_model)
 
 
@@ -337,9 +370,9 @@ class ListBuilderStep(FlowStep[T_Model], Generic[T_Model, T_ChildModel]):
             try:
                 self.item_step.execute(item_model, item_context, io_facade)
                 items.append(item_model)
-            except UserCancellationException as e:
+            except (UserCancellationException, FlowCancelationByUserException) as e:
                 if not items:
-                    raise e
+                    raise FlowCancelationByUserException(e) from e
                 break
 
         existing_items: List[T_ChildModel] = getattr(model, self.key) or []

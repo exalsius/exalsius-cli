@@ -2,17 +2,15 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field, StrictStr
-
-from exls.nodes.core.ports.gateway import SelfManagedNodeImportFailure
 
 
 class NodeStatus(StrEnum):
     DISCOVERING = "DISCOVERING"
     AVAILABLE = "AVAILABLE"
-    ADDED = "ADDED"
+    DEPLOYED = "DEPLOYED"
     FAILED = "FAILED"
     UNKNOWN = "UNKNOWN"
 
@@ -32,7 +30,7 @@ class BaseNode(BaseModel):
     import_time: Optional[datetime] = Field(
         ..., description="The time the node was imported"
     )
-    node_status: NodeStatus = Field(..., description="The status of the node")
+    status: NodeStatus = Field(..., description="The status of the node")
 
 
 class CloudNode(BaseNode):
@@ -46,21 +44,8 @@ class CloudNode(BaseNode):
 class SelfManagedNode(BaseNode):
     """Domain object representing a self-managed node."""
 
+    ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key")
+    username: StrictStr = Field(..., description="The username of the node")
     endpoint: Optional[StrictStr] = Field(
         default=None, description="The endpoint of the node"
     )
-
-
-class SelfManagedNodesImportResult(BaseModel):
-    """Domain object representing the result of importing multiple nodes."""
-
-    nodes: List[SelfManagedNode] = Field(
-        ..., description="The nodes that were imported"
-    )
-    failures: List[SelfManagedNodeImportFailure] = Field(
-        ..., description="The failures that occurred"
-    )
-
-    @property
-    def is_success(self) -> bool:
-        return len(self.failures) == 0

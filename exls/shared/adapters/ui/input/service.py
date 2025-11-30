@@ -6,9 +6,18 @@ def non_empty_string_validator(text: str) -> bool | str:
     return True if len(text.strip()) > 0 else "Please enter a valid string."
 
 
+def min_length_validator(text: str, min_length: int) -> bool | str:
+    """Validator for minimum length."""
+    return (
+        True
+        if len(text.strip()) >= min_length
+        else f"Please enter a string with at least {min_length} characters."
+    )
+
+
 def kubernetes_name_validator(text: str) -> bool | str:
     """Validator for Kubernetes names."""
-    if len(text) > 63:
+    if len(text.strip()) > 63:
         return "Name must be 63 characters or less."
     if not re.match(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", text):
         return "Name must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character."

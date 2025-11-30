@@ -45,10 +45,13 @@ from exls.clusters.adapters.gateway.mappers import (
 )
 from exls.clusters.core.domain import (
     Cluster,
-    ClusterNodeRefResources,
     ClusterStatus,
 )
-from exls.clusters.core.ports.gateway import ClusterCreateParameters, IClustersGateway
+from exls.clusters.core.ports.gateway import (
+    ClusterCreateParameters,
+    ClusterNodeRefResources,
+    IClustersGateway,
+)
 from exls.clusters.core.requests import AddNodesRequest, NodeRef, RemoveNodesRequest
 from exls.shared.adapters.gateway.sdk.service import create_api_client
 
@@ -88,6 +91,8 @@ class ClustersGatewaySdk(IClustersGateway):
             name=parameters.name,
             cluster_type=parameters.type,
             cluster_labels=parameters.labels,
+            vpn_cluster=parameters.vpn_cluster,
+            telemetry_enabled=parameters.telemetry_enabled,
             colony_id=parameters.colony_id,
             to_be_deleted_at=parameters.to_be_deleted_at,
             control_plane_node_ids=parameters.control_plane_node_ids,
@@ -113,7 +118,8 @@ class ClustersGatewaySdk(IClustersGateway):
         )
         response: ClusterNodesResponse = command.execute()
         return cluster_node_ref_from_node_ids(
-            response.worker_node_ids, response.control_plane_node_ids
+            control_plane_node_ids=response.control_plane_node_ids,
+            worker_node_ids=response.worker_node_ids,
         )
 
     def add_nodes_to_cluster(self, request: AddNodesRequest) -> List[NodeRef]:
@@ -131,7 +137,8 @@ class ClustersGatewaySdk(IClustersGateway):
         response: ClusterNodesResponse = command.execute()
 
         return cluster_node_ref_from_node_ids(
-            response.worker_node_ids, response.control_plane_node_ids
+            control_plane_node_ids=response.control_plane_node_ids,
+            worker_node_ids=response.worker_node_ids,
         )
 
     # TODO: Move this to the core service layer to run in parallel

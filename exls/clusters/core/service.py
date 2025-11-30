@@ -1,20 +1,28 @@
+import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 from exls.clusters.core.domain import (
+    AssignedClusterNode,
     Cluster,
-    ClusterNodeRefResources,
+    ClusterNode,
     ClusterNodeResources,
-    ClustersNode,
+    ClusterNodeRole,
+    ClusterNodeStatus,
     ClusterStatus,
+    ClusterWithNodes,
     DeployClusterResult,
     NodesLoadingIssue,
     NodesLoadingResult,
-    NodeStatus,
     NodeValidationIssue,
+    UnassignedClusterNode,
 )
-from exls.clusters.core.ports.gateway import ClusterCreateParameters, IClustersGateway
-from exls.clusters.core.ports.provider import ClusterNodeProviderNode, INodesProvider
+from exls.clusters.core.ports.gateway import (
+    ClusterCreateParameters,
+    ClusterNodeRefResources,
+    IClustersGateway,
+)
+from exls.clusters.core.ports.provider import ClusterNodesImportResult, INodesProvider
 from exls.clusters.core.requests import (
     AddNodesRequest,
     ClusterDeployRequest,
@@ -24,9 +32,10 @@ from exls.clusters.core.requests import (
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.adapters.gateway.file.gateways import IFileWriteGateway
-from exls.shared.core.parallel import ParallelExecutionResult, execute_in_parallel
-from exls.shared.core.polling import poll_until
+from exls.shared.core.polling import PollingTimeoutError, poll_until
 from exls.shared.core.service import ServiceError
+
+logger = logging.getLogger(__name__)
 
 
 class ClustersService:
@@ -46,17 +55,45 @@ class ClustersService:
         return clusters
 
     @handle_service_layer_errors("getting cluster")
-    def get_cluster(self, cluster_id: str) -> Cluster:
-        return self.clusters_gateway.get(cluster_id=cluster_id)
+    def get_cluster(self, cluster_id: str) -> ClusterWithNodes:
+        cluster: Cluster = self.clusters_gateway.get(cluster_id=cluster_id)
+        cluster_node_refs: List[NodeRef] = self.clusters_gateway.get_cluster_nodes(
+            cluster_id=cluster_id
+        )
+        # TODO: Handle node loading issues
+        loaded_nodes, _ = self._load_cluster_node_by_refs(
+            cluster_node_refs=cluster_node_refs
+        )
+        return ClusterWithNodes(
+            id=cluster.id,
+            name=cluster.name,
+            status=cluster.status,
+            type=cluster.type,
+            created_at=cluster.created_at,
+            updated_at=cluster.updated_at,
+            nodes=loaded_nodes,
+        )
 
     @handle_service_layer_errors("deleting cluster")
     def delete_cluster(self, cluster_id: str) -> None:
         self.clusters_gateway.delete(cluster_id=cluster_id)
 
+    def _get_unassigned_valid_nodes(self) -> List[UnassignedClusterNode]:
+        """
+        Gets all unassigned nodes that are available or discovering.
+        """
+        cluster_nodes: List[ClusterNode] = self.nodes_provider.list_nodes()
+        return [
+            cast(UnassignedClusterNode, cn)
+            for cn in cluster_nodes
+            if cn.status == ClusterNodeStatus.AVAILABLE
+            or cn.status == ClusterNodeStatus.DISCOVERING
+        ]
+
     def _validate_node_ids(
         self,
         node_ids: List[str],
-        available_nodes_map: Dict[str, ClusterNodeProviderNode],
+        available_nodes_map: Dict[str, UnassignedClusterNode],
     ) -> Tuple[List[str], List[str], List[NodeValidationIssue]]:
         """
         Validates existence of node IDs and categorizes them.
@@ -72,47 +109,41 @@ class ClustersService:
         for node_id in node_ids:
             if node_id not in available_nodes_map:
                 issues.append(
-                    NodeValidationIssue(node_id=node_id, reason="Node not found")
+                    NodeValidationIssue(
+                        node_id=node_id,
+                        node_spec_repr=node_id,
+                        reason=f"Node {node_id} not found in available nodes",
+                    )
                 )
                 continue
 
-            node: ClusterNodeProviderNode = available_nodes_map[node_id]
+            node: UnassignedClusterNode = available_nodes_map[node_id]
 
-            if node.status == NodeStatus.AVAILABLE:
+            if node.status == ClusterNodeStatus.AVAILABLE:
                 valid_ready_ids.append(node_id)
-            elif node.status == NodeStatus.DISCOVERING:
+            elif node.status == ClusterNodeStatus.DISCOVERING:
                 nodes_to_poll.append(node_id)
-            else:
-                issues.append(
-                    NodeValidationIssue(
-                        node_id=node_id,
-                        node_spec_repr=str(node),
-                        reason=f"Invalid status: {node.status}",
-                    )
-                )
 
         return valid_ready_ids, nodes_to_poll, issues
 
     def _import_nodes_bulk(
         self,
         node_specs: List[NodeSpecification],
-    ) -> Tuple[List[str], List[NodeValidationIssue]]:
+    ) -> Tuple[List[AssignedClusterNode], List[NodeValidationIssue]]:
         if not node_specs:
             return [], []
 
         # The provider handles bulk import and should return a result with successes and failures
         # Assuming import_nodes waits if wait_for_available=True
-        import_result = self.nodes_provider.import_nodes(
-            requests=node_specs, wait_for_available=True
+        import_result: ClusterNodesImportResult = self.nodes_provider.import_nodes(
+            nodes_specs=node_specs, wait_for_available=True
         )
 
-        valid_ids: List[str] = []
-        imported_nodes_map: Dict[str, ClustersNode] = {}
+        valid_nodes: List[AssignedClusterNode] = []
         issues: List[NodeValidationIssue] = []
 
         for node in import_result.nodes:
-            valid_ids.append(node.id)
-            imported_nodes_map[node.id] = node
+            valid_nodes.append(node)
 
         for issue in import_result.issues:
             issues.append(
@@ -122,41 +153,91 @@ class ClustersService:
                 )
             )
 
-        return valid_ids, issues
+        return valid_nodes, issues
 
-    def _poll_node(self, node_id: str) -> ClusterNodeProviderNode:
-        def fetcher() -> ClusterNodeProviderNode:
-            return self.nodes_provider.get_node(node_id)
+    def _wait_for_nodes(
+        self, node_ids: List[str]
+    ) -> Tuple[List[str], List[NodeValidationIssue]]:
+        if not node_ids:
+            return [], []
 
-        def predicate(node: ClusterNodeProviderNode) -> bool:
-            if node.status == NodeStatus.AVAILABLE:
-                return True
-            elif node.status == NodeStatus.DISCOVERING:
-                return False
-            else:
-                # Raising exception here to stop polling and report failure
-                raise ValueError(f"Node became invalid: {node.status}")
+        def fetch() -> List[ClusterNode]:
+            return self.nodes_provider.list_nodes()
 
+        def predicate(nodes: List[ClusterNode]) -> bool:
+            node_map = {n.id: n for n in nodes}
+            for nid in node_ids:
+                if nid not in node_map:
+                    # We will detect and handle this case in the
+                    # final check below
+                    continue
+                node = node_map[nid]
+                if node.status == ClusterNodeStatus.DISCOVERING:
+                    return False
+            return True
+
+        # We poll the nodes until they are available or we timeout
+        # If we timeout, we fetch the nodes again to get the final state
+        # and iterate over them to build the final result
+        final_nodes: List[ClusterNode] = []
         try:
-            return poll_until(
-                fetcher=fetcher,
+            final_nodes = poll_until(
+                fetcher=fetch,
                 predicate=predicate,
                 timeout_seconds=60,
                 interval_seconds=3,
-                error_message=f"Timed out waiting for node {node_id} to become available",
+                error_message="Timed out waiting for nodes to become available",
             )
-        except Exception:
-            raise
+        except PollingTimeoutError as e:
+            logger.warning(f"Timed out waiting for nodes to become available: {e}")
+        except Exception as e:
+            raise ServiceError(
+                f"Unexpected error waiting for nodes to become available: {e}"
+            )
+        finally:
+            final_nodes = fetch()
+
+        node_map = {n.id: n for n in final_nodes}
+        ready_ids: List[str] = []
+        issues: List[NodeValidationIssue] = []
+
+        for nid in node_ids:
+            if nid not in node_map:
+                issues.append(
+                    NodeValidationIssue(
+                        node_id=nid, reason="Node not found after polling"
+                    )
+                )
+                continue
+
+            node = node_map[nid]
+            if node.status == ClusterNodeStatus.AVAILABLE:
+                ready_ids.append(nid)
+            elif node.status == ClusterNodeStatus.DISCOVERING:
+                issues.append(
+                    NodeValidationIssue(
+                        node_id=nid,
+                        reason=f"Timed out waiting for node {nid} to become available. Node is still in DISCOVERING status.",
+                    )
+                )
+            else:
+                issues.append(
+                    NodeValidationIssue(
+                        node_id=nid,
+                        reason=f"Node in invalid status after polling: {node.status}",
+                    )
+                )
+        return ready_ids, issues
 
     @handle_service_layer_errors("deploying cluster")
     def deploy_cluster(
         self, create_params: ClusterDeployRequest
     ) -> DeployClusterResult:
-        # List the available nodes
-        available_nodes: List[ClusterNodeProviderNode] = (
-            self.nodes_provider.list_nodes()
+        # List the available nodes that can be deployed to
+        available_nodes: List[UnassignedClusterNode] = (
+            self._get_unassigned_valid_nodes()
         )
-        available_nodes_map: Dict[str, ClusterNodeProviderNode] = {
+        available_nodes_map: Dict[str, UnassignedClusterNode] = {
             node.id: node for node in available_nodes
         }
 
@@ -165,7 +246,7 @@ class ClustersService:
             n for n in create_params.worker_nodes if isinstance(n, str)
         ]
         worker_specs_to_import: List[NodeSpecification] = [
-            n for n in create_params.worker_nodes if not isinstance(n, str)
+            n for n in create_params.worker_nodes if isinstance(n, NodeSpecification)
         ]
 
         # Separate IDs and Specs for Control Plane
@@ -190,47 +271,42 @@ class ClustersService:
         )
 
         # Import New Nodes (Bulk)
-        # We can combine worker and CP imports into one call but it's easier to track which
-        # role they belong to unless we track indices.
-        imported_worker_ids, worker_import_issues = self._import_nodes_bulk(
+        imported_worker_nodes, worker_import_issues = self._import_nodes_bulk(
             worker_specs_to_import
         )
-        imported_cp_ids, cp_import_issues = self._import_nodes_bulk(cp_specs_to_import)
+        imported_cp_nodes, cp_import_issues = self._import_nodes_bulk(
+            cp_specs_to_import
+        )
 
-        # Combine all validated/imported IDs
-        final_worker_ids = valid_worker_ids + imported_worker_ids
-        final_cp_ids = valid_cp_ids + imported_cp_ids
-
-        # Combine all issues
+        # Combine all issues so far
         all_issues: List[NodeValidationIssue] = (
             worker_id_issues + worker_import_issues + cp_id_issues + cp_import_issues
         )
 
         # Combine nodes that need polling from existing validation
-        # Dedup to avoid polling the same node multiple times if it appears in both lists or multiple times
-        # since a node can be a worker and a control plane node
-        existing_nodes_to_poll: List[str] = list(set(worker_poll_ids + cp_poll_ids))
+        polled_ready_worker_ids: List[str] = []
+        if worker_poll_ids:
+            ready_ids, polling_issues = self._wait_for_nodes(worker_poll_ids)
+            polled_ready_worker_ids = ready_ids
+            all_issues.extend(polling_issues)
 
-        # Poll for existing nodes that are DISCOVERING
-        if existing_nodes_to_poll:
-            execution_result: ParallelExecutionResult[str, ClusterNodeProviderNode] = (
-                execute_in_parallel(items=existing_nodes_to_poll, func=self._poll_node)
-            )
-            for failure in execution_result.failures:
-                all_issues.append(
-                    NodeValidationIssue(
-                        node_id=failure.item,
-                        node_spec_repr=str(available_nodes_map[failure.item]),
-                        reason=f"Polling for status of node {failure.item} failed: {failure.message}",
-                    )
-                )
+        polled_ready_cp_ids: List[str] = []
+        if cp_poll_ids:
+            ready_ids, polling_issues = self._wait_for_nodes(cp_poll_ids)
+            polled_ready_cp_ids = ready_ids
+            all_issues.extend(polling_issues)
 
-            for node in execution_result.successes:
-                # A node can be a worker and a control plane node, so we add it to both lists
-                if node.id in worker_poll_ids:
-                    final_worker_ids.append(node.id)
-                if node.id in cp_poll_ids:
-                    final_cp_ids.append(node.id)
+        # Final list of IDs
+        final_worker_ids = valid_worker_ids + [
+            node.id for node in imported_worker_nodes
+        ]
+        final_cp_ids = valid_cp_ids + [node.id for node in imported_cp_nodes]
+
+        # Add polled IDs to respective lists
+        for nid in polled_ready_worker_ids:
+            final_worker_ids.append(nid)
+        for nid in polled_ready_cp_ids:
+            final_cp_ids.append(nid)
 
         # Check if we have any valid nodes left to deploy
         if not final_worker_ids and not final_cp_ids:
@@ -240,7 +316,11 @@ class ClustersService:
         create_parameters: ClusterCreateParameters = ClusterCreateParameters(
             name=create_params.name,
             type=create_params.type,
-            labels=create_params.labels,
+            vpn_cluster=create_params.enable_vpn,
+            telemetry_enabled=create_params.enable_telemetry,
+            labels=ClusterCreateParameters.get_labels(
+                enable_multinode_training=create_params.enable_multinode_training
+            ),
             colony_id=create_params.colony_id,
             to_be_deleted_at=create_params.to_be_deleted_at,
             worker_node_ids=final_worker_ids,
@@ -253,10 +333,37 @@ class ClustersService:
         # Deploy the cluster
         deployed_cluster_id: str = self.clusters_gateway.deploy(cluster_id)
 
+        final_worker_nodes: List[AssignedClusterNode] = [
+            AssignedClusterNode.from_unassigned_node(
+                node=available_nodes_map[node_id], role=ClusterNodeRole.WORKER
+            )
+            for node_id in (valid_worker_ids + polled_ready_worker_ids)
+        ]
+        final_cp_nodes: List[AssignedClusterNode] = [
+            AssignedClusterNode.from_unassigned_node(
+                node=available_nodes_map[node_id], role=ClusterNodeRole.CONTROL_PLANE
+            )
+            for node_id in (valid_cp_ids + polled_ready_cp_ids)
+        ]
+
         cluster: Cluster = self.get_cluster(cluster_id=deployed_cluster_id)
+        cluster_with_nodes: ClusterWithNodes = ClusterWithNodes(
+            id=cluster.id,
+            name=cluster.name,
+            status=cluster.status,
+            type=cluster.type,
+            created_at=cluster.created_at,
+            updated_at=cluster.updated_at,
+            nodes=(
+                final_worker_nodes
+                + final_cp_nodes
+                + imported_worker_nodes
+                + imported_cp_nodes
+            ),
+        )
 
         # Return result with any issues encountered during the process
-        return DeployClusterResult(cluster=cluster, issues=all_issues)
+        return DeployClusterResult(cluster=cluster_with_nodes, issues=all_issues)
 
     def _validate_cluster_status(self, cluster: Cluster) -> None:
         if cluster.status == ClusterStatus.READY:
@@ -270,34 +377,42 @@ class ClustersService:
                 f"Cluster {cluster.id} is in an unknown status: {cluster.status}"
             )
 
-    def _import_single_node(self, node_ref: NodeRef) -> ClustersNode:
-        cluster_node: ClusterNodeProviderNode = self.nodes_provider.get_node(
-            node_id=node_ref.id
-        )
-        return ClustersNode(
-            id=cluster_node.id,
-            hostname=cluster_node.hostname,
-            endpoint=cluster_node.endpoint,
-            username=cluster_node.username,
-            ssh_key=cluster_node.ssh_key,
-            status=cluster_node.status,
-            role=node_ref.role,
-        )
-
     def _load_cluster_node_by_refs(
         self, cluster_node_refs: List[NodeRef]
-    ) -> Tuple[List[ClustersNode], List[NodesLoadingIssue]]:
-        # Execute Node Imports in Parallel
-        results: ParallelExecutionResult[NodeRef, ClustersNode] = execute_in_parallel(
-            items=cluster_node_refs,
-            func=self._import_single_node,
-            max_workers=10,
-        )
+    ) -> Tuple[List[AssignedClusterNode], List[NodesLoadingIssue]]:
+        if not cluster_node_refs:
+            return [], []
 
-        return results.successes, [
-            NodesLoadingIssue(node_id=failure.item.id, reason=str(failure.error))
-            for failure in results.failures
-        ]
+        all_nodes: List[ClusterNode] = self.nodes_provider.list_nodes()
+        all_nodes_map: Dict[str, ClusterNode] = {n.id: n for n in all_nodes}
+
+        loaded_nodes: List[AssignedClusterNode] = []
+        issues: List[NodesLoadingIssue] = []
+
+        for ref in cluster_node_refs:
+            if ref.id not in all_nodes_map:
+                issues.append(
+                    NodesLoadingIssue(
+                        node_id=ref.id,
+                        reason="Unexpected: Cluster node not found in nodes pool",
+                    )
+                )
+                continue
+
+            node = all_nodes_map[ref.id]
+            loaded_nodes.append(
+                AssignedClusterNode(
+                    id=node.id,
+                    hostname=node.hostname,
+                    endpoint=node.endpoint,
+                    username=node.username,
+                    ssh_key_id=node.ssh_key_id,
+                    status=node.status,
+                    role=ref.role,
+                )
+            )
+
+        return loaded_nodes, issues
 
     @handle_service_layer_errors("getting cluster nodes")
     def get_cluster_nodes(self, cluster_id: str) -> NodesLoadingResult:
@@ -313,7 +428,9 @@ class ClustersService:
         return NodesLoadingResult(nodes=loaded_nodes, issues=loading_issues)
 
     @handle_service_layer_errors("adding cluster nodes")
-    def add_nodes_to_cluster(self, request: AddNodesRequest) -> List[ClustersNode]:
+    def add_nodes_to_cluster(
+        self, request: AddNodesRequest
+    ) -> List[AssignedClusterNode]:
         cluster: Cluster = self.get_cluster(cluster_id=request.cluster_id)
         self._validate_cluster_status(cluster=cluster)
 
@@ -355,23 +472,22 @@ class ClustersService:
         loaded_nodes, _ = self._load_cluster_node_by_refs(
             cluster_node_refs=cluster_node_refs
         )
-        loaded_nodes_map: Dict[str, ClustersNode] = {
+        loaded_nodes_map: Dict[str, AssignedClusterNode] = {
             node.id: node for node in loaded_nodes
         }
 
         cluster_node_resources: List[ClusterNodeResources] = []
         for node_id in cluster_node_ref_resources_map:
+            if node_id not in loaded_nodes_map:
+                continue
+
             cluster_node_resource: ClusterNodeRefResources = (
                 cluster_node_ref_resources_map[node_id]
             )
+
             cluster_node_resources.append(
                 ClusterNodeResources(
-                    node_id=node_id,
-                    hostname=loaded_nodes_map[node_id].hostname,
-                    endpoint=loaded_nodes_map[node_id].endpoint,
-                    username=loaded_nodes_map[node_id].username,
-                    ssh_key=loaded_nodes_map[node_id].ssh_key,
-                    status=loaded_nodes_map[node_id].status,
+                    cluster_node=loaded_nodes_map[node_id],
                     free_resources=cluster_node_resource.free_resources,
                     occupied_resources=cluster_node_resource.occupied_resources,
                 )
@@ -398,3 +514,10 @@ class ClustersService:
         self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
 
         return self.clusters_gateway.get_dashboard_url(cluster_id=cluster_id)
+
+    @handle_service_layer_errors("getting deployable nodes")
+    def get_deployable_nodes(self) -> List[UnassignedClusterNode]:
+        deployable_nodes: List[UnassignedClusterNode] = (
+            self._get_unassigned_valid_nodes()
+        )
+        return deployable_nodes

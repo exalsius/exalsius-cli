@@ -1,20 +1,25 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+from enum import StrEnum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
 from exls.clusters.core.domain import (
     Cluster,
-    ClusterNodeRefResources,
     ClusterStatus,
     ClusterType,
+    Resources,
 )
-from exls.clusters.core.requests import (
-    AddNodesRequest,
-    NodeRef,
-    RemoveNodesRequest,
-)
+from exls.clusters.core.requests import AddNodesRequest, NodeRef, RemoveNodesRequest
+
+
+class ClusterLabels(StrEnum):
+    WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
+
+
+class ClusterLabelValuesWorkloadType(StrEnum):
+    VOLCANO = "volcano"
 
 
 class ClusterCreateParameters(BaseModel):
@@ -22,6 +27,10 @@ class ClusterCreateParameters(BaseModel):
 
     name: StrictStr = Field(..., description="The name of the cluster")
     type: ClusterType = Field(..., description="The type of the cluster")
+    vpn_cluster: bool = Field(..., description="Whether the cluster is a VPN cluster")
+    telemetry_enabled: bool = Field(
+        ..., description="Whether telemetry is enabled for the cluster"
+    )
     labels: Dict[StrictStr, StrictStr] = Field(
         ..., description="The labels of the cluster"
     )
@@ -36,6 +45,22 @@ class ClusterCreateParameters(BaseModel):
     )
     control_plane_node_ids: Optional[List[StrictStr]] = Field(
         default=None, description="The IDs of the control plane nodes"
+    )
+
+    @classmethod
+    def get_labels(cls, enable_multinode_training: bool) -> Dict[StrictStr, StrictStr]:
+        labels: Dict[StrictStr, StrictStr] = {}
+        if enable_multinode_training:
+            labels[ClusterLabels.WORKLOAD_TYPE] = ClusterLabelValuesWorkloadType.VOLCANO
+        return labels
+
+
+class ClusterNodeRefResources(BaseModel):
+    node_id: StrictStr = Field(..., description="The ID of the node")
+
+    free_resources: Resources = Field(..., description="The free resources of the node")
+    occupied_resources: Resources = Field(
+        ..., description="The occupied resources of the node"
     )
 
 

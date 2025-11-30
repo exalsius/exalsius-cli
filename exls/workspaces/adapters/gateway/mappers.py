@@ -1,6 +1,4 @@
-from typing import Any, Dict
-
-from exalsius_api_client.models.hardware import Hardware
+from exalsius_api_client.models.node_hardware import NodeHardware as SdkNodeHardware
 from exalsius_api_client.models.workspace import Workspace as SdkWorkspace
 from exalsius_api_client.models.workspace_access_information import (
     WorkspaceAccessInformation as SdkWorkspaceAccessInformation,
@@ -11,10 +9,11 @@ from exalsius_api_client.models.workspace_template import (
 )
 
 from exls.workspaces.core.domain import (
-    DeployWorkspaceRequest,
     Workspace,
     WorkspaceAccessInformation,
+    WorkspaceStatus,
 )
+from exls.workspaces.core.ports.gateway import DeployWorkspaceParameters
 
 
 def workspace_access_information_from_sdk(
@@ -34,7 +33,7 @@ def workspace_from_sdk(sdk_model: SdkWorkspace) -> Workspace:
         cluster_id=sdk_model.cluster_id or "",
         template_name=sdk_model.template.name,
         name=sdk_model.name,
-        status=sdk_model.workspace_status or "",
+        status=WorkspaceStatus.from_str(sdk_model.workspace_status or ""),
         created_at=sdk_model.created_at,
         access_information=[
             workspace_access_information_from_sdk(info)
@@ -43,34 +42,33 @@ def workspace_from_sdk(sdk_model: SdkWorkspace) -> Workspace:
     )
 
 
-def deploy_workspace_request_to_create_request(
-    request: DeployWorkspaceRequest,
+def deploy_workspace_parameters_to_create_request(
+    parameters: DeployWorkspaceParameters,
 ) -> WorkspaceCreateRequest:
     """
     Convert DeployWorkspaceRequest to SDK WorkspaceCreateRequest.
     """
 
-    variables: Dict[str, Any] = request.variables
     template = SdkWorkspaceTemplate(
-        name=request.template_name,
+        name=parameters.template_name_id,
         description="",
-        variables=variables,
+        variables=parameters.variables,
     )
 
-    resources = Hardware(
-        gpu_count=request.resources.gpu_count,
-        gpu_vendor=request.resources.gpu_vendor,
-        gpu_type=request.resources.gpu_type,
-        cpu_cores=request.resources.cpu_cores,
-        memory_gb=request.resources.memory_gb,
-        storage_gb=request.resources.pvc_storage_gb,
+    resources = SdkNodeHardware(
+        gpu_count=parameters.resources.gpu_count,
+        gpu_vendor=parameters.resources.gpu_vendor,
+        gpu_type=parameters.resources.gpu_type,
+        cpu_cores=parameters.resources.cpu_cores,
+        memory_gb=parameters.resources.memory_gb,
+        storage_gb=parameters.resources.storage_gb,
     )
 
     return WorkspaceCreateRequest(
-        name=request.workspace_name,
-        cluster_id=request.cluster_id,
+        name=parameters.workspace_name,
+        cluster_id=parameters.cluster_id,
         template=template,
         resources=resources,
-        description=request.description,
-        to_be_deleted_at=request.to_be_deleted_at,
+        description=parameters.description,
+        to_be_deleted_at=parameters.to_be_deleted_at,
     )

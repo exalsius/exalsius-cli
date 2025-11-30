@@ -4,6 +4,7 @@ import typer
 from pydantic import BaseModel
 
 from exls.config import AppConfig
+from exls.shared.adapters.gateway.file.gateways import StringFileIOGateway
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (
@@ -12,6 +13,7 @@ from exls.shared.adapters.ui.utils import (
     get_message_output_format_from_ctx,
     get_object_output_format_from_ctx,
 )
+from exls.shared.core.crypto import CryptoService
 
 
 class BaseBundle(ABC):
@@ -42,3 +44,7 @@ class BaseBundle(ABC):
 
     @abstractmethod
     def get_io_facade(self) -> IIOFacade[BaseModel]: ...
+
+    def get_crypto_service(self) -> CryptoService:
+        gateway = StringFileIOGateway()
+        return CryptoService(file_reader=gateway, file_writer=gateway)

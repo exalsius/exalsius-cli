@@ -7,22 +7,39 @@ from pydantic import StrictStr
 from exls.clusters.adapters.bundle import ClustersBundle
 from exls.clusters.adapters.dtos import (
     ClusterDTO,
+    ClusterNodeDTO,
     ClusterNodeResourcesDTO,
     DashboardUrlResponseDTO,
 )
 from exls.clusters.adapters.ui.display.display import IOClustersFacade
+from exls.clusters.adapters.ui.dtos import DeployClusterRequestFromFlowDTO
+from exls.clusters.adapters.ui.flows.cluster_deploy import DeployClusterFlow
 from exls.clusters.adapters.ui.mapper import (
     cluster_dto_from_domain,
+    cluster_node_dto_from_domain,
     cluster_node_resources_dto_from_domain,
+    cluster_with_nodes_dto_from_domain,
+    node_validation_issue_dto_from_domain,
 )
 from exls.clusters.core.domain import (
+    AssignedClusterNode,
     Cluster,
-    ClusterNodeRefResources,
+    ClusterNodeResources,
     ClusterStatus,
+    ClusterType,
+    ClusterWithNodes,
+    DeployClusterResult,
+    NodesLoadingResult,
 )
+from exls.clusters.core.requests import ClusterDeployRequest
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.utils import help_if_no_subcommand, open_url_in_browser
+from exls.shared.adapters.ui.flow.flow import FlowContext
+from exls.shared.adapters.ui.utils import (
+    called_with_any_user_input,
+    help_if_no_subcommand,
+    open_url_in_browser,
+)
 from exls.shared.core.domain import (
     generate_random_name,
     validate_kubernetes_name,
@@ -78,10 +95,12 @@ def get_cluster(
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    cluster_domain: Cluster = service.get_cluster(cluster_id)
-    cluster_dto: ClusterDTO = cluster_dto_from_domain(domain=cluster_domain)
+    cluster_domain: ClusterWithNodes = service.get_cluster(cluster_id)
 
-    io_facade.display_data(cluster_dto, bundle.object_output_format)
+    io_facade.display_data(
+        cluster_with_nodes_dto_from_domain(domain=cluster_domain),
+        bundle.object_output_format,
+    )
 
 
 @clusters_app.command("delete", help="Delete a cluster")
@@ -121,6 +140,14 @@ def delete_cluster(
     )
 
 
+def _validate_worker_node_ids(value: Optional[List[str]]) -> Optional[List[str]]:
+    if value is None:
+        return None
+    if len(value) == 0:
+        raise typer.BadParameter("At least one worker node ID must be specified")
+    return value
+
+
 @clusters_app.command("deploy", help="Create a cluster")
 @handle_application_layer_errors(ClustersBundle)
 def deploy_cluster(
@@ -133,11 +160,12 @@ def deploy_cluster(
         show_default=False,
         callback=validate_kubernetes_name,
     ),
-    worker_node_ids: List[str] = typer.Option(
-        [],
+    worker_node_ids: Optional[List[str]] = typer.Option(
+        None,
         "--worker-nodes",
         help="The IDs of the worker nodes to add to the cluster.",
         show_default=False,
+        callback=_validate_worker_node_ids,
     ),
     enable_multinode_training: bool = typer.Option(
         False,
@@ -149,6 +177,11 @@ def deploy_cluster(
         "--enable-telemetry",
         help="Enable telemetry for the cluster",
     ),
+    enable_vpn: bool = typer.Option(
+        False,
+        "--enable-vpn",
+        help="Enable VPN for the cluster",
+    ),
     interactive: bool = typer.Option(
         False,
         "--interactive",
@@ -158,80 +191,88 @@ def deploy_cluster(
     """
     Create a cluster.
     """
-    # bundle: ClustersBundle = ClustersBundle(ctx)
-    # interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
-    # service: ClustersService = bundle.get_clusters_service()
+    bundle: ClustersBundle = ClustersBundle(ctx)
+    io_facade: IOClustersFacade = bundle.get_io_facade()
+    service: ClustersService = bundle.get_clusters_service()
 
-    # try:
-    #     nodes_list_request: NodesListRequestDTO = NodesListRequestDTO(
-    #         status=AllowedNodeStatusFiltersDTO.AVAILABLE,
-    #     )
-    #     available_nodes: List[NodeDTO] = node_service.list_nodes(
-    #         request=nodes_list_request
-    #     )
-    # except ServiceError as e:
-    #     display_manager.display_error(ErrorDisplayModel(message=str(e)))
-    #     raise typer.Exit(1)
+    deploy_cluster_request: ClusterDeployRequest
+    if interactive or called_with_any_user_input(ctx):
+        cluster_deploy_request_dto: DeployClusterRequestFromFlowDTO = (
+            DeployClusterRequestFromFlowDTO()
+        )
+        deploy_cluster_flow: DeployClusterFlow = bundle.get_deploy_cluster_flow()
+        deploy_cluster_flow.execute(
+            cluster_deploy_request_dto, FlowContext(), io_facade
+        )
+        deploy_cluster_request = ClusterDeployRequest(
+            name=cluster_deploy_request_dto.name,
+            type=ClusterType.from_str(cluster_deploy_request_dto.cluster_type.value),
+            worker_nodes=[
+                node.id for node in cluster_deploy_request_dto.worker_node_ids
+            ],
+            control_plane_nodes=[],
+            enable_multinode_training=cluster_deploy_request_dto.enable_multinode_training,
+            enable_telemetry=cluster_deploy_request_dto.enable_telemetry,
+            enable_vpn=cluster_deploy_request_dto.enable_vpn,
+        )
+    else:
+        deploy_cluster_request = ClusterDeployRequest(
+            name=name,
+            type=ClusterType.REMOTE,
+            worker_nodes=[node for node in worker_node_ids or []],
+            enable_multinode_training=enable_multinode_training,
+            enable_telemetry=enable_telemetry,
+            enable_vpn=enable_vpn,
+        )
+    result: DeployClusterResult = service.deploy_cluster(deploy_cluster_request)
 
-    # if len(available_nodes) == 0:
-    #     display_manager.display_error(
-    #         ErrorDisplayModel(
-    #             message="No available nodes for cluster deployment found. Please import nodes first."
-    #         )
-    #     )
-    #     raise typer.Exit()
-
-    # deploy_request: Optional[DeployClusterRequestDTO] = None
-    # if interactive or _called_with_any_user_input(ctx):
-    #     display: ComposingClusterDisplayManager = ComposingClusterDisplayManager(
-    #         display_manager=display_manager
-    #     )
-
-    #     interactive_flow: DeployClusterInteractiveFlow = DeployClusterInteractiveFlow(
-    #         available_nodes, display
-    #     )
-    #     try:
-    #         deploy_request = interactive_flow.run()
-    #     except DeployClusterFlowInterruptionException as e:
-    #         display_manager.display_info(str(e))
-    #         raise typer.Exit(0)
-    #     except ExalsiusError as e:
-    #         display_manager.display_error(ErrorDisplayModel(message=str(e)))
-    #         raise typer.Exit(1)
-    # else:
-    #     # Validate worker node IDs
-    #     validation_error: Optional[ErrorDisplayModel] = _validate_node_ids(
-    #         available_nodes=available_nodes,
-    #         node_ids=worker_node_ids,
-    #     )
-    #     if validation_error:
-    #         display_manager.display_error(error=validation_error)
-    #         raise typer.Exit()
-
-    #     deploy_request = DeployClusterRequestDTO(
-    #         name=name,
-    #         cluster_type=AllowedClusterTypesDTO.REMOTE,
-    #         gpu_type=gpu_type,
-    #         worker_node_ids=worker_node_ids,
-    #         control_plane_node_ids=[],
-    #         enable_multinode_training=enable_multinode_training,
-    #         enable_telemetry=enable_telemetry,
-    #     )
-
-    # try:
-    #     create_params = cluster_create_params_from_request_dto(deploy_request)
-    #     cluster_domain: Cluster = cluster_service.deploy_cluster(create_params)
-    #     cluster_dto: ClusterDTO = ClusterDTO.from_domain(cluster_domain)
-    # except ServiceError as e:
-    #     display_manager.display_error(ErrorDisplayModel(message=str(e)))
-    #     raise typer.Exit(1)
-
-    # display_manager.display_success(
-    #     f"Started cluster deployment for cluster {cluster_dto.id}!"
-    # )
-    # display_manager.display_success(
-    #     f"You can check the status of the deployment with `exls clusters get {cluster_dto.id}`"
-    # )
+    # Handle success and error cases
+    # Case success: all nodes were added to the cluster, cluster deployment started
+    if result.is_success:
+        assert result.cluster is not None
+        io_facade.display_success_message(
+            message=f"Started deploying cluster {result.cluster.name}.",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=cluster_with_nodes_dto_from_domain(domain=result.cluster),
+            output_format=bundle.object_output_format,
+        )
+    # Case partially successful: not all nodes were added to the cluster
+    # cluster deployment started with nodes that were successfully added
+    elif result.is_partially_successful:
+        assert result.cluster is not None
+        io_facade.display_info_message(
+            message=f"Started deploying cluster {result.cluster.name} with some issues.",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=cluster_dto_from_domain(domain=result.cluster),
+            output_format=bundle.object_output_format,
+        )
+        io_facade.display_error_message(
+            message="Following nodes could not be added to the cluster:",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=[
+                node_validation_issue_dto_from_domain(issue) for issue in result.issues
+            ],
+            output_format=bundle.object_output_format,
+        )
+    # Case error: no nodes were added to the cluster
+    # cluster deployment cannot be started
+    else:
+        io_facade.display_error_message(
+            message="Failed to deploy cluster. The selected nodes cannot be added to the cluster:",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=[
+                node_validation_issue_dto_from_domain(issue) for issue in result.issues
+            ],
+            output_format=bundle.object_output_format,
+        )
 
 
 @clusters_app.command("list-nodes", help="List all nodes of a cluster")
@@ -248,69 +289,35 @@ def list_nodes(
     """
     List all nodes of a cluster.
     """
-    # bundle: ClustersBundle = ClustersBundle(ctx)
-    # interaction_manager: ClustersInteractionManager = bundle.get_interaction_manager()
-    # service: ClustersService = bundle.get_clusters_service()
+    bundle: ClustersBundle = ClustersBundle(ctx)
+    io_facade: IOClustersFacade = bundle.get_io_facade()
+    service: ClustersService = bundle.get_clusters_service()
 
-    # try:
-    #     clusters_domain: List[Cluster] = service.list_clusters(
-    #         ClusterFilterCriteria(cluster_id=cluster_id)
-    #     )
-    #     available_clusters: List[ClusterDTO] = [
-    #         cluster_dto_from_domain(domain=cluster) for cluster in available_clusters_domain
-    #     ]
-    # except ServiceError as e:
-    #     interaction_manager.display_error_message(str(e), bundle.output_format)
-    #     raise typer.Exit(1)
-    # if len(available_clusters) == 0:
-    #     display_manager.display_error(
-    #         ErrorDisplayModel(
-    #             message="No available clusters found. Please create a cluster first."
-    #         )
-    #     )
-    #     raise typer.Exit()
+    cluster: Cluster = service.get_cluster(cluster_id)
 
-    # if interactive or _called_with_any_user_input(ctx):
-    #     display: ComposingClusterDisplayManager = ComposingClusterDisplayManager(
-    #         display_manager=display_manager
-    #     )
-    #     interactive_flow: ListNodesInteractiveFlow = ListNodesInteractiveFlow(
-    #         available_clusters, display
-    #     )
-    #     try:
-    #         selected_cluster_id: str = interactive_flow.run()
-    #     except ClusterFlowInterruptionException as e:
-    #         display_manager.display_info(str(e))
-    #         raise typer.Exit(0)
-    #     except ExalsiusError as e:
-    #         display_manager.display_error(ErrorDisplayModel(message=str(e)))
-    #         raise typer.Exit(1)
-    # else:
-    #     selected_cluster_id = cluster_id
+    nodes_loading_result: NodesLoadingResult = service.get_cluster_nodes(cluster_id)
+    if not nodes_loading_result.is_success:
+        io_facade.display_error_message(
+            message=(
+                f"Failed to load nodes of cluster '{cluster.name}': "
+                f"{'\n'.join([issue.reason for issue in nodes_loading_result.issues or []])}"
+            ),
+            output_format=bundle.message_output_format,
+        )
+        raise typer.Exit(1)
 
-    # try:
-    #     # returns List[Tuple[Cluster, ClusterNodeRef, BaseNode]] (or whatever I defined in Service)
-    #     # Actually I defined List[Dict[str, Any]] as type hint but returned tuples.
-    #     # I should assume Tuple[Cluster, ClusterNodeRef, BaseNode]
-    #     nodes_data = service.get_cluster_nodes(selected_cluster_id)
-    #     nodes: List[ClusterNodeDTO] = []
-    #     for item in nodes_data:
-    #         # item is expected to be a tuple/list-like with 3 elements
-    #         # Or I could have returned a proper DTO from Service if I wanted, but I returned primitive containers.
-    #         # Let's hope my Service implementation returned tuples as I saw.
-    #         # Yes: result.append((cluster, node_ref, nodes_by_id[node_ref.node_id]))
-    #         cluster, node_ref, node = item
-    #         nodes.append(
-    #             ClusterNodeDTO.from_domain(
-    #                 cluster=cluster, cluster_node_ref=node_ref, node=node
-    #             )
-    #         )
-
-    # except ServiceError as e:
-    #     display_manager.display_error(ErrorDisplayModel(message=str(e)))
-    #     raise typer.Exit(1)
-
-    # display_manager.display_cluster_nodes(nodes)
+    cluster_nodes: List[AssignedClusterNode] = nodes_loading_result.nodes
+    cluster_nodes_dto: List[ClusterNodeDTO] = [
+        cluster_node_dto_from_domain(domain=node, cluster_name=cluster.name)
+        for node in cluster_nodes
+    ]
+    io_facade.display_info_message(
+        message=f"Nodes of cluster '{cluster.name}':",
+        output_format=bundle.message_output_format,
+    )
+    io_facade.display_data(
+        data=cluster_nodes_dto, output_format=bundle.object_output_format
+    )
 
 
 @clusters_app.command("add-nodes", help="Add nodes to a cluster")
@@ -477,15 +484,22 @@ def get_cluster_resources(
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    available_cluster_resources_domain: List[ClusterNodeRefResources] = (
-        service.get_cluster_resources(cluster_id)
+    cluster: Cluster = service.get_cluster(cluster_id=cluster_id)
+    cluster_node_resources: List[ClusterNodeResources] = service.get_cluster_resources(
+        cluster_id
     )
-    available_cluster_resources: List[ClusterNodeResourcesDTO] = [
-        cluster_node_resources_dto_from_domain(domain=res)
-        for res in available_cluster_resources_domain
+    cluster_node_resources_dto: List[ClusterNodeResourcesDTO] = [
+        cluster_node_resources_dto_from_domain(domain=res, cluster_name=cluster.name)
+        for res in cluster_node_resources
     ]
 
-    io_facade.display_data(available_cluster_resources, bundle.object_output_format)
+    io_facade.display_info_message(
+        message=f"Available resources of cluster '{cluster.name}':",
+        output_format=bundle.message_output_format,
+    )
+    io_facade.display_data(
+        data=cluster_node_resources_dto, output_format=bundle.object_output_format
+    )
 
 
 @clusters_app.command(

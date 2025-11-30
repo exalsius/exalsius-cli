@@ -11,13 +11,14 @@ from typing import (
     overload,
 )
 
+from exls.shared.adapters.ui.shared.render.render import YamlRenderContext
+
 if TYPE_CHECKING:
-    from exls.shared.adapters.ui.output.render.entities import BaseRenderContext
     from exls.shared.adapters.ui.output.render.json import JsonRenderContext
     from exls.shared.adapters.ui.output.render.table import TableRenderContext
     from exls.shared.adapters.ui.output.render.text import TextRenderContext
-    from exls.shared.adapters.ui.output.render.yaml import YamlRenderContext
     from exls.shared.adapters.ui.output.values import OutputFormat
+    from exls.shared.adapters.ui.shared.render.entities import BaseRenderContext
 
 T_Input_Cov = TypeVar("T_Input_Cov", contravariant=True)
 T_Output_Cov = TypeVar("T_Output_Cov", covariant=True)

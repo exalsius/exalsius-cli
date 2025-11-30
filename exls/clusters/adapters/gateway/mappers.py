@@ -8,12 +8,12 @@ from exalsius_api_client.models.cluster_resources_list_response_resources_inner 
 
 from exls.clusters.core.domain import (
     Cluster,
-    ClusterNodeRefResources,
     ClusterNodeRole,
     ClusterStatus,
     ClusterType,
     Resources,
 )
+from exls.clusters.core.ports.gateway import ClusterNodeRefResources
 from exls.clusters.core.requests import NodeRef
 
 logger = logging.getLogger(__name__)

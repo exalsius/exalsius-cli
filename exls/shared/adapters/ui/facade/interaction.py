@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     Dict,
     Optional,
@@ -20,6 +21,10 @@ from exls.shared.adapters.ui.output.interfaces import (
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.values import OutputFormat
+from exls.shared.adapters.ui.shared.render.render import (
+    DictToYamlStringRenderer,
+    YamlRenderContext,
+)
 
 T = TypeVar("T")
 
@@ -115,6 +120,13 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
             message=message, default=default, validator=validator
         )
 
+    def ask_password(
+        self,
+        message: str,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ) -> str:
+        return self.input_manager.ask_password(message=message, validator=validator)
+
     def ask_select_required(
         self,
         message: str,
@@ -140,4 +152,14 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
     ) -> Sequence[DisplayChoice[T]]:
         return self.input_manager.ask_checkbox(
             message=message, choices=choices, min_choices=min_choices
+        )
+
+    def edit_dictionary(
+        self,
+        dictionary: Dict[str, Any],
+        renderer: DictToYamlStringRenderer,
+        render_context: Optional[YamlRenderContext] = None,
+    ) -> Dict[str, Any]:
+        return self.input_manager.edit_dictionary(
+            dictionary=dictionary, renderer=renderer
         )

@@ -21,6 +21,8 @@ class _ExecutionResult(BaseModel, Generic[T_Input, T_Output]):
     def is_success(self) -> bool:
         return self.error is None
 
+    model_config = {"arbitrary_types_allowed": True}
+
 
 class ExecutionFailure(BaseModel, Generic[T_Input]):
     """Represents a failed execution for a specific item."""
@@ -28,6 +30,8 @@ class ExecutionFailure(BaseModel, Generic[T_Input]):
     item: T_Input
     error: Exception
     message: str
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class ParallelExecutionResult(BaseModel, Generic[T_Input, T_Output]):
@@ -39,6 +43,8 @@ class ParallelExecutionResult(BaseModel, Generic[T_Input, T_Output]):
     @property
     def has_failures(self) -> bool:
         return len(self.failures) > 0
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 def execute_in_parallel(
