@@ -20,11 +20,22 @@ class IntegratedWorkspaceTemplates(StrEnum):
             return cls.OTHER
 
 
-class DeployWorkspaceRequestDTO(BaseModel):
+class DeploySingleNodeWorkspaceRequestDTO(BaseModel):
     cluster_name: StrictStr = Field(..., description="The name of the cluster")
     workspace_name: StrictStr = Field(..., description="The name of the workspace")
     workspace_template_name: StrictStr = Field(
         ..., description="The name of the workspace template"
     )
     num_gpus: int = Field(..., description="The number of GPUs")
+    variables: StrictStr = Field(..., description="The variables of the workspace")
+
+
+class DeployMultiNodeWorkspaceRequestDTO(BaseModel):
+    cluster_name: StrictStr = Field(..., description="The name of the cluster")
+    workspace_name: StrictStr = Field(..., description="The name of the workspace")
+    workspace_template_name: StrictStr = Field(
+        ..., description="The name of the workspace template"
+    )
+    total_nodes: int = Field(..., description="The total number of nodes")
+    gpu_types: StrictStr = Field(..., description="The types of the GPUs")
     variables: StrictStr = Field(..., description="The variables of the workspace")

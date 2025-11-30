@@ -199,4 +199,11 @@ class WorkspacesService:
             memory_gb=memory_split,
             storage_gb=storage_split,
             total_nodes=total_nodes,
+            gpu_vendor=", ".join(
+                set([resource.gpu_vendor for resource in available_cluster_resources])
+            ),
+            heterogenous=len(
+                set([resource.gpu_vendor for resource in available_cluster_resources])
+            )
+            > 1,
         )

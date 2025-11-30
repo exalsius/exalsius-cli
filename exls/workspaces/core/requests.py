@@ -30,6 +30,9 @@ class RequestedWorkspaceResources(WorkspaceResources):
 
 class AssignedMultiNodeWorkspaceResources(WorkspaceResources):
     total_nodes: int = Field(..., description="The total number of nodes")
+    heterogenous: bool = Field(
+        ..., description="Whether the GPUs on the nodes are heterogeneous"
+    )
 
 
 class DeployWorkspaceRequest(BaseModel):
@@ -39,7 +42,7 @@ class DeployWorkspaceRequest(BaseModel):
     template_variables: Dict[str, Any] = Field(
         ..., description="The variables of the workspace template"
     )
-    resources: RequestedWorkspaceResources = Field(
+    resources: WorkspaceResources = Field(
         ..., description="The resources of the workspace"
     )
     description: Optional[str] = Field(
