@@ -16,30 +16,34 @@ from exls.workspaces.core.domain import Workspace
 from exls.workspaces.core.requests import DeployWorkspaceRequest
 
 
-def workspace_dto_from_domain(domain: Workspace) -> WorkspaceDTO:
+def workspace_dto_from_domain(
+    domain: Workspace, cluster_name: StrictStr
+) -> WorkspaceDTO:
     return WorkspaceDTO(
         id=domain.id,
         name=domain.name,
-        cluster_id=domain.cluster_id,
+        cluster_name=cluster_name,
         template_name=domain.template_name,
         status=domain.status.value,
         created_at=domain.created_at,
     )
 
 
-def single_node_workspace_dto_from_domain(domain: Workspace) -> SingleNodeWorkspaceDTO:
+def single_node_workspace_dto_from_domain(
+    domain: Workspace, cluster_name: StrictStr
+) -> SingleNodeWorkspaceDTO:
     access_information: List[WorkspaceAccessInformationDTO] = []
     for info in domain.access_information:
         access_information.append(
             WorkspaceAccessInformationDTO(
-                access_type=info.access_type,
-                access_endpoint=info.endpoint,
+                type=info.access_type,
+                endpoint=info.endpoint,
             )
         )
     return SingleNodeWorkspaceDTO(
         id=domain.id,
         name=domain.name,
-        cluster_id=domain.cluster_id,
+        cluster_name=cluster_name,
         template_name=domain.template_name,
         status=domain.status.value,
         created_at=domain.created_at,
@@ -48,12 +52,12 @@ def single_node_workspace_dto_from_domain(domain: Workspace) -> SingleNodeWorksp
 
 
 def multi_node_workspace_dto_from_domain(
-    domain: Workspace, total_nodes: int, gpu_types: str
+    domain: Workspace, total_nodes: int, gpu_types: str, cluster_name: StrictStr
 ) -> MultiNodeWorkspaceDTO:
     return MultiNodeWorkspaceDTO(
         id=domain.id,
         name=domain.name,
-        cluster_id=domain.cluster_id,
+        cluster_name=cluster_name,
         template_name=domain.template_name,
         status=domain.status.value,
         created_at=domain.created_at,

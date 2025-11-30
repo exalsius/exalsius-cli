@@ -11,16 +11,14 @@ class ListWorkspacesRequestDTO(BaseModel):
 
 
 class WorkspaceAccessInformationDTO(BaseModel):
-    access_type: str = Field(..., description="The type of access")
-    access_endpoint: str = Field(
-        ..., description="The access endpoint of the workspace"
-    )
+    type: str = Field(..., description="The type of access")
+    endpoint: str = Field(..., description="The access endpoint of the workspace")
 
 
 class WorkspaceDTO(BaseModel):
     id: str = Field(..., description="The ID of the workspace")
     name: str = Field(..., description="The name of the workspace")
-    cluster_id: str = Field(..., description="The ID of the cluster")
+    cluster_name: str = Field(..., description="The name of the cluster")
     template_name: str = Field(..., description="The name of the workspace template")
     status: str = Field(..., description="The status of the workspace")
     created_at: Optional[datetime] = Field(
