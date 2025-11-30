@@ -286,16 +286,34 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         gradient_compression: GradientCompression,
         wandb_token: str,
         hf_token: str,
+        node_count: int,
+        heterogenous: bool,
     ):
         super().__init__(bundle)
         self._model: DistributedTrainingModels = model
         self._gradient_compression: GradientCompression = gradient_compression
         self._wandb_token: str = wandb_token
         self._hf_token: str = hf_token
+        self._node_count: int = node_count
+        self._heterogenous: bool = heterogenous
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
         return IntegratedWorkspaceTemplates.DIST_TRAINING
+
+    def _get_torch_elastic_config(self) -> Dict[str, Any]:
+        min_nodes: int = 2
+        max_nodes: int = self._node_count * 2
+        return {
+            "minNodes": min_nodes,
+            "maxNodes": max_nodes,
+        }
+
+    def _get_prgroup_backend(self) -> str:
+        if not self._heterogenous:
+            return "nccl"
+        else:
+            return "gloo"
 
     def _translate_compression_config_for_gradient_compression(
         self, gradient_compression: GradientCompression
@@ -413,7 +431,6 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
             raise InvalidWorkspaceConfiguration(
                 "Unexpected error: Variable 'diloco' is not set in the workspace template."
             )
-
         diloco_variables: Dict[str, str] = {
             **variables["diloco"],
             **gradient_compression_variables,
@@ -421,6 +438,17 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
             **model_variables,
             **metadata_variables,
         }
-
+        diloco_variables["pgroupBackend"] = self._get_prgroup_backend()
         variables["diloco"] = diloco_variables
+
+        if "elastic" not in variables:
+            raise InvalidWorkspaceConfiguration(
+                "Unexpected error: Variable 'elastic' is not set in the workspace template."
+            )
+        elastic_variables: Dict[str, str] = {
+            **variables["elastic"],
+            **self._get_torch_elastic_config(),
+        }
+        variables["elastic"] = elastic_variables
+
         return super().configure_and_validate(variables, io_facade)

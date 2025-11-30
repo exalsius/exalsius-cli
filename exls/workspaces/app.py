@@ -12,6 +12,8 @@ from exls.shared.core.crypto import CryptoService
 from exls.shared.core.domain import generate_random_name
 from exls.workspaces.adapters.bundle import WorkspacesBundle
 from exls.workspaces.adapters.dtos import (
+    MultiNodeWorkspaceDTO,
+    SingleNodeWorkspaceDTO,
     WorkspaceDTO,
 )
 from exls.workspaces.adapters.ui.configurators import (
@@ -26,7 +28,10 @@ from exls.workspaces.adapters.ui.configurators import (
 from exls.workspaces.adapters.ui.display.display import IOWorkspacesFacade
 from exls.workspaces.adapters.ui.dtos import IntegratedWorkspaceTemplates
 from exls.workspaces.adapters.ui.mapper import (
-    deploy_workspace_request_dto_from_domain,
+    deploy_multi_node_workspace_request_dto_from_domain,
+    deploy_single_node_workspace_request_dto_from_domain,
+    multi_node_workspace_dto_from_domain,
+    single_node_workspace_dto_from_domain,
     workspace_dto_from_domain,
 )
 from exls.workspaces.core.domain import (
@@ -35,8 +40,9 @@ from exls.workspaces.core.domain import (
     WorkspaceTemplate,
 )
 from exls.workspaces.core.requests import (
+    AssignedMultiNodeWorkspaceResources,
+    AssignedSingleNodeWorkspaceResources,
     DeployWorkspaceRequest,
-    RequestedWorkspaceResources,
 )
 from exls.workspaces.core.service import WorkspacesService
 
@@ -137,63 +143,6 @@ def _get_workspace_template(
     raise ValueError(f"Workspace template {template_id} not found")
 
 
-def _deploy_workspace(
-    service: WorkspacesService,
-    cluster_id: str,
-    name: str,
-    num_gpus: Optional[int],
-    template_variables: Dict[str, Any],
-    template: WorkspaceTemplate,
-    io_facade: IOWorkspacesFacade,
-    bundle: WorkspacesBundle,
-    wait_for_ready: bool,
-    description: Optional[str],
-) -> None:
-    resources: RequestedWorkspaceResources
-    if num_gpus:
-        resources = service.get_resources_for_single_node_workspace(
-            cluster_id=cluster_id, num_gpus=num_gpus
-        )
-    else:
-        resources = service.get_resources_for_multi_node_workspace(
-            cluster_id=cluster_id
-        )
-
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
-
-    request = DeployWorkspaceRequest(
-        cluster_id=cluster_id,
-        workspace_name=name,
-        template_id=template.id_name,
-        template_variables=template_variables,
-        resources=resources,
-        description=description if description else "",
-    )
-
-    io_facade.display_data(
-        deploy_workspace_request_dto_from_domain(
-            domain=request, cluster_name=cluster.name
-        ),
-        bundle.object_output_format,
-    )
-    if io_facade.ask_confirm(
-        message="Do you want to deploy the workspace?",
-        default=False,
-    ):
-        raise UserCancellationException("User cancelled the workspace deployment")
-
-    workspace: Workspace = service.deploy_workspace(
-        request=request, wait_for_ready=wait_for_ready
-    )
-    workspace_dto: WorkspaceDTO = workspace_dto_from_domain(workspace)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(workspace_dto, bundle.object_output_format)
-
-
 def _validate_optional_password(x: Optional[str]) -> Optional[str]:
     if x is None:
         return x
@@ -254,6 +203,14 @@ def deploy_jupyter_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
+    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+
+    resources: AssignedSingleNodeWorkspaceResources = (
+        service.get_resources_for_single_node_workspace(
+            cluster_id=cluster_id, num_gpus=num_gpus
+        )
+    )
+
     template: WorkspaceTemplate = _get_workspace_template(
         service, IntegratedWorkspaceTemplates.JUPYTER
     )
@@ -266,18 +223,39 @@ def deploy_jupyter_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
-    _deploy_workspace(
-        service,
-        cluster_id,
-        name,
-        num_gpus,
-        template_variables,
-        template,
-        io_facade,
-        bundle,
-        wait_for_ready,
-        description="Jupyter workspace",
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster.id,
+        workspace_name=name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"Workspace with {num_gpus} GPUs",
     )
+
+    io_facade.display_data(
+        deploy_single_node_workspace_request_dto_from_domain(
+            domain=request, cluster_name=cluster.name
+        ),
+        bundle.object_output_format,
+    )
+    if not io_facade.ask_confirm(
+        message="Do you want to deploy the workspace?",
+        default=False,
+    ):
+        raise UserCancellationException("User cancelled the workspace deployment")
+
+    workspace: Workspace = service.deploy_workspace(
+        request=request, wait_for_ready=wait_for_ready
+    )
+    workspace_dto: SingleNodeWorkspaceDTO = single_node_workspace_dto_from_domain(
+        workspace
+    )
+
+    io_facade.display_success_message(
+        f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(workspace_dto, bundle.object_output_format)
 
 
 @workspaces_deploy_app.command("marimo", help="Deploy a Marimo workspace")
@@ -320,6 +298,14 @@ def deploy_marimo_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
+    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+
+    resources: AssignedSingleNodeWorkspaceResources = (
+        service.get_resources_for_single_node_workspace(
+            cluster_id=cluster_id, num_gpus=num_gpus
+        )
+    )
+
     template: WorkspaceTemplate = _get_workspace_template(
         service, IntegratedWorkspaceTemplates.MARIMO
     )
@@ -332,18 +318,39 @@ def deploy_marimo_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
-    _deploy_workspace(
-        service,
-        cluster_id,
-        name,
-        num_gpus,
-        template_variables,
-        template,
-        io_facade,
-        bundle,
-        wait_for_ready,
-        description="Marimo workspace",
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster.id,
+        workspace_name=name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"Marimo workspace with {num_gpus} GPUs",
     )
+
+    io_facade.display_data(
+        deploy_single_node_workspace_request_dto_from_domain(
+            domain=request, cluster_name=cluster.name
+        ),
+        bundle.object_output_format,
+    )
+    if not io_facade.ask_confirm(
+        message="Do you want to deploy the workspace?",
+        default=False,
+    ):
+        raise UserCancellationException("User cancelled the workspace deployment")
+
+    workspace: Workspace = service.deploy_workspace(
+        request=request, wait_for_ready=wait_for_ready
+    )
+    workspace_dto: SingleNodeWorkspaceDTO = single_node_workspace_dto_from_domain(
+        workspace
+    )
+
+    io_facade.display_success_message(
+        f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(workspace_dto, bundle.object_output_format)
 
 
 @workspaces_deploy_app.command("dev-pod", help="Deploy a VSCode dev pod workspace")
@@ -392,6 +399,14 @@ def deploy_vscode_dev_pod_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
+    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+
+    resources: AssignedSingleNodeWorkspaceResources = (
+        service.get_resources_for_single_node_workspace(
+            cluster_id=cluster_id, num_gpus=num_gpus
+        )
+    )
+
     if not ssh_password and not ssh_public_key:
         io_facade.display_error_message(
             "No SSH password or public key provided. Please provide at least one of them.",
@@ -420,18 +435,39 @@ def deploy_vscode_dev_pod_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
-    _deploy_workspace(
-        service,
-        cluster_id,
-        name,
-        num_gpus,
-        template_variables,
-        template,
-        io_facade,
-        bundle,
-        wait_for_ready,
-        description="VSCode dev pod workspace",
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster.id,
+        workspace_name=name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"VSCode dev pod workspace with {num_gpus} GPUs",
     )
+
+    io_facade.display_data(
+        deploy_single_node_workspace_request_dto_from_domain(
+            domain=request, cluster_name=cluster.name
+        ),
+        bundle.object_output_format,
+    )
+    if not io_facade.ask_confirm(
+        message="Do you want to deploy the workspace?",
+        default=False,
+    ):
+        raise UserCancellationException("User cancelled the workspace deployment")
+
+    workspace: Workspace = service.deploy_workspace(
+        request=request, wait_for_ready=wait_for_ready
+    )
+    workspace_dto: SingleNodeWorkspaceDTO = single_node_workspace_dto_from_domain(
+        workspace
+    )
+
+    io_facade.display_success_message(
+        f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(workspace_dto, bundle.object_output_format)
 
 
 @workspaces_deploy_app.command(
@@ -481,11 +517,23 @@ def deploy_distributed_training_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
+    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+
+    resources: AssignedMultiNodeWorkspaceResources = (
+        service.get_resources_for_multi_node_workspace(cluster_id=cluster_id)
+    )
+
     template: WorkspaceTemplate = _get_workspace_template(
         service, IntegratedWorkspaceTemplates.DIST_TRAINING
     )
     configurator: DistributedTrainingConfigurator = DistributedTrainingConfigurator(
-        bundle, model, gradient_compression, wandb_token, hf_token
+        bundle,
+        model,
+        gradient_compression,
+        wandb_token,
+        hf_token,
+        resources.total_nodes,
+        resources.heterogenous,
     )
 
     try:
@@ -496,15 +544,41 @@ def deploy_distributed_training_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
-    _deploy_workspace(
-        service,
-        cluster_id,
-        generate_random_name(prefix=f"dist-train-{model.value}"),
-        None,
-        template_variables,
-        template,
-        io_facade,
-        bundle,
-        wait_for_ready=False,
-        description=f"Distributed training of {model.value} with gradient compression {gradient_compression.value}",
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster.id,
+        workspace_name=f"dist-train-{model.value}-compression-{gradient_compression.value}",
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"Distributed training of {model.value} with gradient compression {gradient_compression.value} on 1 nodes",
     )
+
+    io_facade.display_data(
+        deploy_multi_node_workspace_request_dto_from_domain(
+            domain=request,
+            cluster_name=cluster.name,
+            total_nodes=resources.total_nodes,
+            gpu_types=resources.gpu_vendor or "",
+        ),
+        bundle.object_output_format,
+    )
+    if not io_facade.ask_confirm(
+        message="Do you want to deploy the workspace?",
+        default=False,
+    ):
+        raise UserCancellationException("User cancelled the workspace deployment")
+
+    workspace: Workspace = service.deploy_workspace(
+        request=request, wait_for_ready=False
+    )
+    workspace_dto: MultiNodeWorkspaceDTO = multi_node_workspace_dto_from_domain(
+        domain=workspace,
+        total_nodes=1,
+        gpu_types="NVIDIA, AMD",
+    )
+
+    io_facade.display_success_message(
+        f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(workspace_dto, bundle.object_output_format)

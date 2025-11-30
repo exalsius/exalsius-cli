@@ -4,56 +4,10 @@ from pydantic import BaseModel
 
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.workspaces.adapters.dtos import WorkspaceDTO
-from exls.workspaces.adapters.ui.dtos import DeployWorkspaceRequestDTO
-
-# Check this when implementing config edit feature
-# DEFAULT_WORKSPACE_DEPLOYMENT_CONFIG_COMMENTS: Dict[str, str] = {
-#     "cluster_id": "The ID of the cluster to deploy the workspace to",
-#     "workspace_name": "The name of your workspace",
-#     "workspace_template_name": "The name of the workspace template to use",
-#     "resources": "The resources you want to allocate to your workspace",
-#     "variables": "The variables you want to set for your workspace. Please adjust the values as needed.",
-# }
-
-# class TextEditorWorkspaceDeployConfigManager(
-#     BaseTextEditor[WorkspaceDeploymentConfigDTO, WorkspaceDeploymentConfigDTO]
-# ):
-#     """Display manager for workspace deployment configuration in a text editor."""
-
-#     def __init__(
-#         self,
-#         renderer: YamlSingleItemStringRenderer[
-#             WorkspaceDeploymentConfigDTO
-#         ] = YamlSingleItemStringRenderer[WorkspaceDeploymentConfigDTO](),
-#     ):
-#         self._renderer: YamlSingleItemStringRenderer[WorkspaceDeploymentConfigDTO] = (
-#             renderer
-#         )
-
-#     @property
-#     def renderer(self) -> BaseSingleItemRenderer[WorkspaceDeploymentConfigDTO, str]:
-#         return self._renderer
-
-#     def display(
-#         self,
-#         data: WorkspaceDeploymentConfigDTO,
-#         comments: Optional[Dict[str, str]] = None,
-#     ) -> WorkspaceDeploymentConfigDTO:
-#         # TODO: We need to move this deeper into commons
-#         yaml_string: str = self._renderer.render(data, comments=comments)
-#         edited_yaml_string: Optional[str] = typer.edit(yaml_string)
-#         if edited_yaml_string is None:
-#             raise UserCancellationException("User cancelled text editor")
-
-#         yaml = YAML(typ="safe")
-#         try:
-#             data_dict: Dict[str, Any] = yaml.load(edited_yaml_string)  # type: ignore
-#             return WorkspaceDeploymentConfigDTO.model_validate(data_dict)
-#         except YAMLError as e:
-#             raise ExalsiusError(f"Invalid YAML format: {e}") from e
-#         except ValidationError as e:
-#             raise ExalsiusError(f"Invalid YAML: {str(e)}") from e
-
+from exls.workspaces.adapters.ui.dtos import (
+    DeployMultiNodeWorkspaceRequestDTO,
+    DeploySingleNodeWorkspaceRequestDTO,
+)
 
 DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "workspace_id": TableRenderContext.get_column("ID", no_wrap=True),
@@ -67,7 +21,9 @@ DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     ),
 }
 
-DEFAULT_DEPLOY_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+DEFAULT_DEPLOY_SINGLE_NODE_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP: Dict[
+    str, Column
+] = {
     "cluster_name": TableRenderContext.get_column("Cluster Name"),
     "workspace_name": TableRenderContext.get_column("Workspace Name"),
     "workspace_template_name": TableRenderContext.get_column("Workspace Template"),
@@ -75,10 +31,22 @@ DEFAULT_DEPLOY_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column]
     "variables": TableRenderContext.get_column("Variables"),
 }
 
+DEFAULT_DEPLOY_MULTI_NODE_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP: Dict[
+    str, Column
+] = {
+    "cluster_name": TableRenderContext.get_column("Cluster Name"),
+    "workspace_name": TableRenderContext.get_column("Workspace Name"),
+    "workspace_template_name": TableRenderContext.get_column("Workspace Template"),
+    "total_nodes": TableRenderContext.get_column("Total GPUs"),
+    "gpu_types": TableRenderContext.get_column("GPU Types"),
+    "variables": TableRenderContext.get_column("Variables"),
+}
+
 
 DTO_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
     WorkspaceDTO: DEFAULT_WORKSPACES_COLUMNS_RENDERING_MAP,
-    DeployWorkspaceRequestDTO: DEFAULT_DEPLOY_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP,
+    DeploySingleNodeWorkspaceRequestDTO: DEFAULT_DEPLOY_SINGLE_NODE_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP,
+    DeployMultiNodeWorkspaceRequestDTO: DEFAULT_DEPLOY_MULTI_NODE_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP,
 }
 
 

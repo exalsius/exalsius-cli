@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,9 +26,17 @@ class WorkspaceDTO(BaseModel):
     created_at: Optional[datetime] = Field(
         ..., description="The creation date of the workspace"
     )
-    access_information: List[WorkspaceAccessInformationDTO] = Field(
+
+
+class SingleNodeWorkspaceDTO(WorkspaceDTO):
+    access_information: WorkspaceAccessInformationDTO = Field(
         ..., description="The access information of the workspace"
     )
+
+
+class MultiNodeWorkspaceDTO(WorkspaceDTO):
+    total_nodes: int = Field(..., description="The total number of nodes")
+    gpu_types: str = Field(..., description="The types of the GPUs")
 
 
 class ResourcePoolDTO(BaseModel):
