@@ -76,9 +76,11 @@ def list_workspaces(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
+    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+
     workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
     workspace_dtos: List[WorkspaceDTO] = [
-        workspace_dto_from_domain(workspace) for workspace in workspaces
+        workspace_dto_from_domain(workspace, cluster.name) for workspace in workspaces
     ]
 
     io_facade.display_data(workspace_dtos, bundle.object_output_format)
@@ -97,7 +99,9 @@ def get_workspace(
     service = bundle.get_workspaces_service()
 
     workspace: Workspace = service.get_workspace(workspace_id)
-    workspace_dto: WorkspaceDTO = workspace_dto_from_domain(workspace)
+    cluster: WorkspaceCluster = service.get_cluster(workspace.cluster_id)
+
+    workspace_dto: WorkspaceDTO = workspace_dto_from_domain(workspace, cluster.name)
 
     io_facade.display_data(workspace_dto, bundle.object_output_format)
 
@@ -248,7 +252,7 @@ def deploy_jupyter_workspace(
         request=request, wait_for_ready=wait_for_ready
     )
     workspace_dto: SingleNodeWorkspaceDTO = single_node_workspace_dto_from_domain(
-        workspace
+        workspace, cluster.name
     )
 
     io_facade.display_success_message(
@@ -343,7 +347,7 @@ def deploy_marimo_workspace(
         request=request, wait_for_ready=wait_for_ready
     )
     workspace_dto: SingleNodeWorkspaceDTO = single_node_workspace_dto_from_domain(
-        workspace
+        workspace, cluster.name
     )
 
     io_facade.display_success_message(
@@ -460,7 +464,7 @@ def deploy_vscode_dev_pod_workspace(
         request=request, wait_for_ready=wait_for_ready
     )
     workspace_dto: SingleNodeWorkspaceDTO = single_node_workspace_dto_from_domain(
-        workspace
+        workspace, cluster.name
     )
 
     io_facade.display_success_message(
@@ -573,8 +577,9 @@ def deploy_distributed_training_workspace(
     )
     workspace_dto: MultiNodeWorkspaceDTO = multi_node_workspace_dto_from_domain(
         domain=workspace,
-        total_nodes=1,
-        gpu_types="NVIDIA, AMD",
+        total_nodes=resources.total_nodes,
+        gpu_types=resources.gpu_vendor or "",
+        cluster_name=cluster.name,
     )
 
     io_facade.display_success_message(
