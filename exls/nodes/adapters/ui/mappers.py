@@ -40,6 +40,9 @@ def _(node: SelfManagedNode) -> SelfManagedNodeDTO:
         hostname=node.hostname,
         import_time=node.import_time,
         node_status=node.status,
+        username=node.username,
+        ssh_key_id=node.ssh_key_id,
+        ssh_key_name=node.ssh_key_name or "Unknown",
         endpoint=node.endpoint,
     )
 

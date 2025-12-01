@@ -40,7 +40,14 @@ class NodesService:
 
     @handle_service_layer_errors("getting node")
     def get_node(self, node_id: str) -> BaseNode:
-        return self.nodes_gateway.get(node_id)
+        node: BaseNode = self.nodes_gateway.get(node_id)
+        if isinstance(node, SelfManagedNode):
+            ssh_key: Optional[NodeSshKey] = self.ssh_key_provider.get_key(
+                node.ssh_key_id
+            )
+            if ssh_key:
+                node.ssh_key_name = ssh_key.name
+        return node
 
     @handle_service_layer_errors("deleting node")
     def delete_node(self, node_id: str) -> str:

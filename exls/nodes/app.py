@@ -74,7 +74,7 @@ def list_nodes(
 @handle_application_layer_errors(NodesBundle)
 def get_node(
     ctx: typer.Context,
-    node_id: str = typer.Argument(help="The ID of the node to get"),
+    node_id: str = typer.Argument("--node-id", help="The ID of the node to get"),
 ):
     """Get a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
@@ -91,7 +91,7 @@ def get_node(
 @handle_application_layer_errors(NodesBundle)
 def delete_node(
     ctx: typer.Context,
-    node_id: str = typer.Argument(help="The ID of the node to delete"),
+    node_id: str = typer.Argument("--node-id", help="The ID of the node to delete"),
 ):
     """Delete a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
@@ -116,12 +116,20 @@ def import_selfmanaged_node(
     ),
     endpoint: str = typer.Option(help="The endpoint of the node to import"),
     username: str = typer.Option(help="The username of the node to import"),
-    ssh_key_id: Optional[str] = typer.Option(help="The ID of the SSH key to import"),
+    ssh_key_id: Optional[str] = typer.Option(
+        None,
+        "--ssh-key-id",
+        help="The ID of the SSH key to import",
+    ),
     ssh_key_path: Optional[Path] = typer.Option(
-        help="The path to the SSH key to import"
+        None,
+        "--ssh-key-path",
+        help="The path to the SSH key to import",
     ),
     ssh_key_name: Optional[str] = typer.Option(
-        help="The name of the SSH key to import"
+        None,
+        "--ssh-key-name",
+        help="The name of the SSH key to import",
     ),
 ):
     """Import a self-managed node into the node pool."""
@@ -130,16 +138,19 @@ def import_selfmanaged_node(
     io_facade: IONodesFacade = bundle.get_io_facade()
 
     final_ssh_key: Optional[Union[str, SshKeySpecification]] = None
+    if ssh_key_id and ssh_key_path and ssh_key_name:
+        raise ValueError(
+            "You can either provide an SSH key ID or a SSH key name and path to "
+            "the private key file to import a new SSH key, but not all three"
+        )
     if ssh_key_id:
         final_ssh_key = ssh_key_id
     elif ssh_key_path and ssh_key_name:
         final_ssh_key = SshKeySpecification(name=ssh_key_name, key_path=ssh_key_path)
     else:
-        io_facade.display_error_message(
-            "No SSH key provided. Please provide an SSH key ID or a name and path to a new SSH key.",
-            output_format=bundle.message_output_format,
+        raise ValueError(
+            "No SSH key provided. Please provide an SSH key ID or a name and path to a new SSH key."
         )
-        raise typer.Exit(1)
 
     result: SelfManagedNodesImportResult = service.import_selfmanaged_nodes(
         [
