@@ -78,13 +78,13 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
                     default=False,
                 ),
                 ConfirmStep[DeployClusterRequestFromFlowDTO](
-                    key="enable_telemetry",
-                    message="Enable telemetry for the cluster?",
+                    key="enable_vpn",
+                    message="Enable VPN for the cluster?",
                     default=False,
                 ),
                 ConfirmStep[DeployClusterRequestFromFlowDTO](
-                    key="enable_vpn",
-                    message="Enable VPN for the cluster?",
+                    key="enable_telemetry",
+                    message="Enable telemetry for the cluster?",
                     default=False,
                 ),
             ]

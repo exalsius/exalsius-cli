@@ -3,10 +3,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import typer
+from pydantic import BaseModel, Field
 
 from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.flow.flow import FlowContext, SequentialFlow
+from exls.shared.adapters.ui.flow.steps import ChoicesSpec, SelectRequiredStep
 from exls.shared.adapters.ui.flows.keys import PublicKeySpecDTO
-from exls.shared.adapters.ui.input.values import UserCancellationException
+from exls.shared.adapters.ui.input.values import (
+    DisplayChoice,
+    UserCancellationException,
+)
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.crypto import CryptoService
 from exls.shared.core.domain import generate_random_name
@@ -150,8 +157,8 @@ def _get_workspace_template(
 def _validate_optional_password(x: Optional[str]) -> Optional[str]:
     if x is None:
         return x
-    if len(x) < 8:
-        raise ValueError("Password must be at least 8 characters long")
+    if len(x) < 6:
+        raise ValueError("Password must be at least 6 characters long")
     return x
 
 
@@ -167,12 +174,49 @@ def _validate_num_gpus(x: int) -> int:
     return x
 
 
+# TODO: Move this to a better place
+def _get_cluster_id(
+    service: WorkspacesService, io_facade: IIOFacade[BaseModel]
+) -> Optional[str]:
+    clusters: List[WorkspaceCluster] = service.list_clusters()
+    if len(clusters) == 0:
+        return None
+    if len(clusters) == 1:
+        return clusters[0].id
+    if len(clusters) > 1:
+
+        class ClusterSelectionDTO(BaseModel):
+            cluster_id: Optional[str] = Field(
+                default=None, description="The ID of the cluster"
+            )
+
+        flow: SequentialFlow[ClusterSelectionDTO] = SequentialFlow[ClusterSelectionDTO](
+            steps=[
+                SelectRequiredStep[ClusterSelectionDTO, str](
+                    key="cluster_id",
+                    message="Select a cluster:",
+                    choices_spec=ChoicesSpec[str](
+                        choices=[
+                            DisplayChoice[str](title=cluster.name, value=cluster.id)
+                            for cluster in clusters
+                        ]
+                    ),
+                )
+            ]
+        )
+        cluster_selection_dto: ClusterSelectionDTO = ClusterSelectionDTO()
+        flow.execute(cluster_selection_dto, FlowContext(), io_facade)
+        return cluster_selection_dto.cluster_id
+
+
 @workspaces_deploy_app.command("jupyter", help="Deploy a Jupyter workspace")
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_jupyter_workspace(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        help="The ID of the cluster to deploy the workspace to"
+    cluster_id: Optional[str] = typer.Argument(
+        help="The ID of the cluster to deploy the workspace to",
+        show_default=False,
+        default=None,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="jupyter"),
@@ -184,8 +228,7 @@ def deploy_jupyter_workspace(
         None,
         "--password",
         "-p",
-        help="The password to use for the Jupyter workspace",
-        callback=_validate_optional_password,
+        help="The password to use for the Jupyter workspace. Must be at least 6 characters long.",
         prompt=True,
         show_default=False,
     ),
@@ -207,11 +250,27 @@ def deploy_jupyter_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+    if len(password) < 6:
+        raise ValueError("Password must be at least 6 characters long")
+
+    valid_cluster_id: str
+    if not cluster_id:
+        loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
+        if not loaded_cluster_id:
+            io_facade.display_error_message(
+                "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
+                bundle.message_output_format,
+            )
+            raise typer.Exit(0)
+        valid_cluster_id = loaded_cluster_id
+    else:
+        valid_cluster_id = cluster_id
+
+    cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
     resources: AssignedSingleNodeWorkspaceResources = (
         service.get_resources_for_single_node_workspace(
-            cluster_id=cluster_id, num_gpus=num_gpus
+            cluster_id=valid_cluster_id, num_gpus=num_gpus
         )
     )
 
@@ -266,8 +325,10 @@ def deploy_jupyter_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_marimo_workspace(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        help="The ID of the cluster to deploy the workspace to"
+    cluster_id: Optional[str] = typer.Argument(
+        help="The ID of the cluster to deploy the workspace to",
+        show_default=False,
+        default=None,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="marimo"),
@@ -302,11 +363,27 @@ def deploy_marimo_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+    if len(password) < 6:
+        raise ValueError("Password must be at least 6 characters long")
+
+    valid_cluster_id: str
+    if not cluster_id:
+        loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
+        if not loaded_cluster_id:
+            io_facade.display_error_message(
+                "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
+                bundle.message_output_format,
+            )
+            raise typer.Exit(0)
+        valid_cluster_id = loaded_cluster_id
+    else:
+        valid_cluster_id = cluster_id
+
+    cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
     resources: AssignedSingleNodeWorkspaceResources = (
         service.get_resources_for_single_node_workspace(
-            cluster_id=cluster_id, num_gpus=num_gpus
+            cluster_id=valid_cluster_id, num_gpus=num_gpus
         )
     )
 
@@ -361,8 +438,10 @@ def deploy_marimo_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_vscode_dev_pod_workspace(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        help="The ID of the cluster to deploy the workspace to"
+    cluster_id: Optional[str] = typer.Argument(
+        None,
+        help="The ID of the cluster to deploy the workspace to",
+        show_default=False,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="dev-pod"),
@@ -403,20 +482,34 @@ def deploy_vscode_dev_pod_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+    if not ssh_password and not ssh_public_key:
+        raise ValueError(
+            "No SSH password or public key provided. Please provide at least one of them."
+        )
+
+    if ssh_password and len(ssh_password) < 6:
+        raise ValueError("SSH password must be at least 6 characters long")
+
+    valid_cluster_id: str
+    if not cluster_id:
+        loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
+        if not loaded_cluster_id:
+            io_facade.display_error_message(
+                "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
+                bundle.message_output_format,
+            )
+            raise typer.Exit(0)
+        valid_cluster_id = loaded_cluster_id
+    else:
+        valid_cluster_id = cluster_id
+
+    cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
     resources: AssignedSingleNodeWorkspaceResources = (
         service.get_resources_for_single_node_workspace(
-            cluster_id=cluster_id, num_gpus=num_gpus
+            cluster_id=valid_cluster_id, num_gpus=num_gpus
         )
     )
-
-    if not ssh_password and not ssh_public_key:
-        io_facade.display_error_message(
-            "No SSH password or public key provided. Please provide at least one of them.",
-            bundle.message_output_format,
-        )
-        raise typer.Exit(1)
 
     ssh_public_key_str: Optional[str] = None
     crypto_service: CryptoService = bundle.get_crypto_service()
@@ -480,8 +573,10 @@ def deploy_vscode_dev_pod_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_distributed_training_workspace(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        help="The ID of the cluster to deploy the workspace to"
+    cluster_id: Optional[str] = typer.Argument(
+        help="The ID of the cluster to deploy the workspace to",
+        show_default=False,
+        default=None,
     ),
     model: DistributedTrainingModels = typer.Option(
         DistributedTrainingModels.GPT_NEO_X,
@@ -521,10 +616,23 @@ def deploy_distributed_training_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+    valid_cluster_id: str
+    if not cluster_id:
+        loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
+        if not loaded_cluster_id:
+            io_facade.display_error_message(
+                "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
+                bundle.message_output_format,
+            )
+            raise typer.Exit(0)
+        valid_cluster_id = loaded_cluster_id
+    else:
+        valid_cluster_id = cluster_id
+
+    cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
     resources: AssignedMultiNodeWorkspaceResources = (
-        service.get_resources_for_multi_node_workspace(cluster_id=cluster_id)
+        service.get_resources_for_multi_node_workspace(cluster_id=valid_cluster_id)
     )
 
     template: WorkspaceTemplate = _get_workspace_template(

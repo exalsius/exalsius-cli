@@ -37,6 +37,9 @@ class AccessDTO(BaseModel):
     )
 
 
+# TODO: This seems like a common flow, we should probably move it to the shared package
+
+
 class ConfigureWorkspaceAccessFlow(FlowStep[AccessDTO]):
     def __init__(self, service: CryptoService):
         self._service: CryptoService = service
