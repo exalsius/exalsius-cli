@@ -32,22 +32,27 @@ class NodesService:
         self.nodes_gateway: INodesGateway = nodes_gateway
         self.ssh_key_provider: ISshKeyProvider = ssh_key_provider
 
+    def _resolve_ssh_key_name(self, nodes: List[BaseNode]) -> List[BaseNode]:
+        for node in nodes:
+            if isinstance(node, SelfManagedNode):
+                ssh_key_map: Dict[str, NodeSshKey] = {
+                    k.id: k for k in self.ssh_key_provider.list_keys()
+                }
+                if node.ssh_key_id in ssh_key_map:
+                    node.ssh_key_name = ssh_key_map[node.ssh_key_id].name
+        return nodes
+
     @handle_service_layer_errors("listing nodes")
     def list_nodes(
         self, filter: Optional[NodesFilterCriteria] = None
     ) -> List[BaseNode]:
-        return self.nodes_gateway.list(filter=filter)
+        nodes: List[BaseNode] = self.nodes_gateway.list(filter=filter)
+        return self._resolve_ssh_key_name(nodes)
 
     @handle_service_layer_errors("getting node")
     def get_node(self, node_id: str) -> BaseNode:
         node: BaseNode = self.nodes_gateway.get(node_id)
-        if isinstance(node, SelfManagedNode):
-            ssh_key: Optional[NodeSshKey] = self.ssh_key_provider.get_key(
-                node.ssh_key_id
-            )
-            if ssh_key:
-                node.ssh_key_name = ssh_key.name
-        return node
+        return self._resolve_ssh_key_name([node])[0]
 
     @handle_service_layer_errors("deleting node")
     def delete_node(self, node_id: str) -> str:

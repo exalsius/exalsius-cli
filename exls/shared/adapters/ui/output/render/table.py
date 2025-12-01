@@ -47,8 +47,6 @@ def _get_nested_attribute(obj: Any, attr: str, default: Any = "") -> Any:
 class DefaultColumnRenderingConfig(BaseSettings):
     """
     Default column configuration.
-
-    This is used to configure the default column configuration for the table.
     """
 
     color: str = Field(description="The color of the column", default="blue")
@@ -77,11 +75,6 @@ class DefaultColumnRenderingConfig(BaseSettings):
 class Column(BaseModel):
     """
     Represents the structure of a table column.
-
-    Note: This is a low-level data model. To ensure that user-defined
-    styling and configurations are applied, you should always create
-    instances using the `get_column()` factory function instead of
-    instantiating this class directly.
     """
 
     header: str = Field(..., description="The header of the column")
@@ -251,6 +244,13 @@ class _BaseTableRenderer:
             header_style=render_context.header_style,
             border_style=render_context.border_style,
         )
+        for column in render_context.columns.values():
+            table.add_column(
+                column.header,
+                justify=column.justify,
+                no_wrap=column.no_wrap,
+                style=column.style,
+            )
         return table
 
 
@@ -280,19 +280,10 @@ class TableListRenderer(IListRenderer[T, Table], Generic[T], _BaseTableRenderer)
         )
         table: Table = self._create_table(validated_render_context)
 
-        for key, column in validated_render_context.columns.items():
-            table.add_column(
-                validated_render_context.columns[key].header,
-                justify=validated_render_context.columns[key].justify,
-                no_wrap=validated_render_context.columns[key].no_wrap,
-                style=validated_render_context.columns[key].style,
-            )
-
         for item_data in data:
             row_values: List[str] = []
             for key, column in validated_render_context.columns.items():
                 value: Any = _get_nested_attribute(item_data, key)
-                column: Column = validated_render_context.columns[key]
                 value = column.value_formatter(value)
                 row_values.append(str(value))
             table.add_row(*row_values)
@@ -315,40 +306,45 @@ class TableSingleItemRenderer(
     ) -> Table:
         """Render the attributes of a single item as a two-column table (Property, Value)."""
         # Always use columns "Property" and "Value"
-        columns = None
-        if not render_context:
-            column_property = TableRenderContext.get_column(
+        columns = {
+            "Property": TableRenderContext.get_column(
                 header="Property", style=Style(color="blue", bold=True)
-            )
-            column_value = TableRenderContext.get_column(header="Value")
-            columns = {
-                "Property": column_property,
-                "Value": column_value,
-            }
-        validated_render_context: TableRenderContext = self.resolve_context(
-            render_context, columns
-        )
-        table = self._create_table(validated_render_context)
+            ),
+            "Value": TableRenderContext.get_column(header="Value"),
+        }
 
-        table.add_column(
-            validated_render_context.columns["Property"].header,
-            justify=validated_render_context.columns["Property"].justify,
-            no_wrap=validated_render_context.columns["Property"].no_wrap,
-            style=validated_render_context.columns["Property"].style,
+        # If context is provided, we can use it to filter/order the properties shown
+        validated_render_context: Optional[TableRenderContext] = None
+        if render_context:
+            validated_render_context = self.resolve_context(render_context)
+
+        single_item_table_render_context = TableRenderContext.get_table_render_context(
+            columns=columns
         )
-        table.add_column(
-            validated_render_context.columns["Value"].header,
-            justify=validated_render_context.columns["Value"].justify,
-            no_wrap=validated_render_context.columns["Value"].no_wrap,
-            style=validated_render_context.columns["Value"].style,
-        )
+        table = self._create_table(single_item_table_render_context)
 
         attrs: Dict[str, Any] = data.model_dump()
-        for key, value in attrs.items():
-            property_column: Column = validated_render_context.columns["Property"]
-            property: str = property_column.value_formatter(key)
 
-            value_column: Column = validated_render_context.columns["Value"]
-            value: str = value_column.value_formatter(value)
-            table.add_row(property, value)
+        # Determine which keys to show and in what order
+        keys_to_show = attrs.keys()
+        if validated_render_context:
+            # Use the columns from the context to determine order and visibility
+            # Note: We only care about keys present in both the data and the context columns
+            keys_to_show = [
+                k for k in validated_render_context.columns.keys() if k in attrs
+            ]
+
+        for key in keys_to_show:
+            value = attrs[key]
+
+            # Format property name
+            prop_col = single_item_table_render_context.columns["Property"]
+            prop_str = prop_col.value_formatter(key)
+
+            # Format value
+            val_col = single_item_table_render_context.columns["Value"]
+            val_str = val_col.value_formatter(value)
+
+            table.add_row(prop_str, val_str)
+
         return table
