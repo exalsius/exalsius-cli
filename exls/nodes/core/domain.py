@@ -45,6 +45,9 @@ class SelfManagedNode(BaseNode):
     """Domain object representing a self-managed node."""
 
     ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key")
+    ssh_key_name: Optional[StrictStr] = Field(
+        default="", description="The name of the SSH key"
+    )
     username: StrictStr = Field(..., description="The username of the node")
     endpoint: Optional[StrictStr] = Field(
         default=None, description="The endpoint of the node"

@@ -32,6 +32,8 @@ DEFAULT_SELFMANAGED_NODE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
         "Import Time", value_formatter=format_datetime
     ),
     "node_status": TableRenderContext.get_column("Status"),
+    "username": TableRenderContext.get_column("Username"),
+    "ssh_key_name": TableRenderContext.get_column("SSH Key"),
     "endpoint": TableRenderContext.get_column("Endpoint", value_formatter=format_na),
 }
 

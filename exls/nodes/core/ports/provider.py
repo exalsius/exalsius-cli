@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -13,6 +13,9 @@ class NodeSshKey(BaseModel):
 class ISshKeyProvider(ABC):
     @abstractmethod
     def list_keys(self) -> List[NodeSshKey]: ...
+
+    @abstractmethod
+    def get_key(self, id: str) -> Optional[NodeSshKey]: ...
 
     @abstractmethod
     def import_key(self, name: str, key_path: Path) -> NodeSshKey: ...

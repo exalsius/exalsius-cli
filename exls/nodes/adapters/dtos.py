@@ -22,4 +22,7 @@ class CloudNodeDTO(NodeDTO):
 
 
 class SelfManagedNodeDTO(NodeDTO):
+    username: StrictStr = Field(..., description="The username of the node")
+    ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key")
+    ssh_key_name: StrictStr = Field(..., description="The name of the SSH key")
     endpoint: Optional[StrictStr] = Field(..., description="The endpoint of the node")

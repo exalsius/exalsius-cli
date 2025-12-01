@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel
 
 from exls.management.adapters.dtos import ImportSshKeyRequestDTO
@@ -16,6 +18,11 @@ from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.domain import generate_random_name
 
 
+class ImportSshKeyChoices(StrEnum):
+    EXISTING = "existing"
+    NEW = "new"
+
+
 class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
     """Flow for importing a new SSH key."""
 
@@ -29,7 +36,7 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
         io_facade: IIOFacade[BaseModel],
     ) -> None:
         flow = SequentialFlow[ImportSshKeyRequestDTO](
-            [
+            steps=[
                 PathInputStep[ImportSshKeyRequestDTO](
                     key="key_path",
                     message="Path to SSH key file:",
