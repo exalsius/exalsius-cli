@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, StrictStr
 class NodeStatus(StrEnum):
     DISCOVERING = "DISCOVERING"
     AVAILABLE = "AVAILABLE"
+    ADDED = "ADDED"
     DEPLOYED = "DEPLOYED"
     FAILED = "FAILED"
     UNKNOWN = "UNKNOWN"

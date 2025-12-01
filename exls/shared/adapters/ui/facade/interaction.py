@@ -46,49 +46,35 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
         # Subclasses can override this method to e.g. return the columns rendering map
         return None
 
-    def _display_sequence(
-        self,
-        data: Sequence[BaseModel],
-        output_format: OutputFormat,
-        render_context: Optional[TableRenderContext] = None,
-    ):
-        if output_format == OutputFormat.TABLE:
-            self.output_manager.display(
-                data, output_format=output_format, render_context=render_context
+    def _get_render_context(
+        self, data: BaseModel, output_format: OutputFormat
+    ) -> Optional[TableRenderContext]:
+        columns: Optional[Dict[str, Column]] = self.get_columns_rendering_map(
+            type(data)
+        )
+        render_context: Optional[TableRenderContext] = None
+        if columns and output_format == OutputFormat.TABLE:
+            render_context = TableRenderContext.get_table_render_context(
+                columns=columns
             )
-        else:
-            self.output_manager.display(
-                data, output_format=output_format, render_context=None
-            )
+        return render_context
 
     def display_data(
         self,
         data: Union[BaseModel, Sequence[BaseModel]],
         output_format: OutputFormat,
     ):
-        if isinstance(data, Sequence):
-            if not data:
-                self.output_manager.display(
-                    [], output_format=output_format, render_context=None
-                )
-                return
-
-            columns: Optional[Dict[str, Column]] = self.get_columns_rendering_map(
-                type(data[0])
+        render_context: Optional[TableRenderContext] = None
+        if output_format == OutputFormat.TABLE:
+            render_context = self._get_render_context(
+                data[0] if isinstance(data, Sequence) else data, output_format
             )
-            render_context: Optional[TableRenderContext] = None
-            if columns and output_format == OutputFormat.TABLE:
-                render_context = TableRenderContext.get_table_render_context(
-                    columns=columns
-                )
-            self._display_sequence(
+            self.output_manager.display(
                 data, output_format=output_format, render_context=render_context
             )
         else:
             self.output_manager.display(
-                data,
-                output_format=output_format,
-                render_context=None,
+                data, output_format=output_format, render_context=None
             )
 
     def display_info_message(self, message: str, output_format: OutputFormat):
