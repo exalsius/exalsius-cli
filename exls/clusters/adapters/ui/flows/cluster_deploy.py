@@ -10,6 +10,7 @@ from exls.clusters.core.domain import UnassignedClusterNode
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.flow.flow import (
+    FlowCancelationByUserException,
     FlowContext,
     FlowStep,
     InvalidFlowStateError,
@@ -22,6 +23,7 @@ from exls.shared.adapters.ui.flow.steps import (
     TextInputStep,
 )
 from exls.shared.adapters.ui.input.values import DisplayChoice
+from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.domain import generate_random_name
 
 
@@ -45,19 +47,12 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
             ],
         )
 
-    def execute(
+    def _run(
         self,
         model: DeployClusterRequestFromFlowDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:
-        deployable_nodes: List[UnassignedClusterNode] = (
-            self._service.get_deployable_nodes()
-        )
-        # TODO: We can check and ask to initiate a node import flow if no deployable nodes are found
-        if len(deployable_nodes) == 0:
-            raise InvalidFlowStateError("No deployable nodes found")
-
         flow: SequentialFlow[DeployClusterRequestFromFlowDTO] = SequentialFlow[
             DeployClusterRequestFromFlowDTO
         ](
@@ -90,3 +85,44 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
             ]
         )
         flow.execute(model, context, io_facade)
+
+    def _confirm_import(
+        self,
+        deploy_cluster_request: DeployClusterRequestFromFlowDTO,
+        io_facade: IIOFacade[BaseModel],
+    ) -> bool:
+        io_facade.display_info_message(
+            message="Deploying the following cluster:", output_format=OutputFormat.TEXT
+        )
+        io_facade.display_data(
+            data=deploy_cluster_request, output_format=OutputFormat.TABLE
+        )
+        confirmed: bool = io_facade.ask_confirm(
+            message="Deploy this cluster?", default=True
+        )
+        return confirmed
+
+    def execute(
+        self,
+        model: DeployClusterRequestFromFlowDTO,
+        context: FlowContext,
+        io_facade: IIOFacade[BaseModel],
+    ) -> None:
+        deployable_nodes: List[UnassignedClusterNode] = (
+            self._service.get_deployable_nodes()
+        )
+        # TODO: We can check and ask to initiate a node import flow if no deployable nodes are found
+        if len(deployable_nodes) == 0:
+            raise InvalidFlowStateError("No deployable nodes found")
+
+        io_facade.display_info_message(
+            message="🚀 Deploying a new cluster - Interactive Mode: This will guide you through the process of deploying a new cluster",
+            output_format=OutputFormat.TEXT,
+        )
+
+        self._run(model, context, io_facade)
+
+        if not self._confirm_import(model, io_facade):
+            raise FlowCancelationByUserException(
+                "Cluster deployment cancelled by user."
+            )

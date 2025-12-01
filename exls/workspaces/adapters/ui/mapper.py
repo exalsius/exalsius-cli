@@ -47,7 +47,7 @@ def single_node_workspace_dto_from_domain(
         template_name=domain.template_name,
         status=domain.status.value,
         created_at=domain.created_at,
-        access_information=access_information[0],
+        access_information=access_information[0] if access_information else None,
     )
 
 

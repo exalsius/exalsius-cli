@@ -11,7 +11,7 @@ from exls.clusters.core.domain import (
     ClusterType,
     Resources,
 )
-from exls.clusters.core.requests import AddNodesRequest, NodeRef, RemoveNodesRequest
+from exls.clusters.core.requests import AddNodesRequest, NodeRef
 
 
 class ClusterLabels(StrEnum):
@@ -94,7 +94,9 @@ class IClustersGateway(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def remove_nodes_from_cluster(self, request: RemoveNodesRequest) -> List[str]:
+    def remove_nodes_from_cluster(
+        self, cluster_id: str, node_ids: List[StrictStr]
+    ) -> List[StrictStr]:
         raise NotImplementedError
 
     @abstractmethod

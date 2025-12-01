@@ -2,6 +2,8 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, cast
 
+from pydantic import StrictStr
+
 from exls.clusters.core.domain import (
     AssignedClusterNode,
     Cluster,
@@ -28,7 +30,6 @@ from exls.clusters.core.requests import (
     ClusterDeployRequest,
     NodeRef,
     NodeSpecification,
-    RemoveNodesRequest,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.adapters.gateway.file.gateways import IFileWriteGateway
@@ -445,13 +446,15 @@ class ClustersService:
         return loaded_nodes
 
     @handle_service_layer_errors("removing nodes from cluster")
-    def remove_nodes_from_cluster(self, request: RemoveNodesRequest) -> List[str]:
-        self._validate_cluster_status(
-            cluster=self.get_cluster(cluster_id=request.cluster_id)
-        )
+    def remove_nodes_from_cluster(
+        self, cluster_id: str, node_ids: List[StrictStr]
+    ) -> List[str]:
+        self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
 
-        removed_node_ids: List[str] = self.clusters_gateway.remove_nodes_from_cluster(
-            request=request
+        removed_node_ids: List[StrictStr] = (
+            self.clusters_gateway.remove_nodes_from_cluster(
+                cluster_id=cluster_id, node_ids=node_ids
+            )
         )
         return removed_node_ids
 

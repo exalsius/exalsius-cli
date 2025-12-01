@@ -6,13 +6,15 @@ from pydantic import BaseModel
 
 from exls.management.adapters.dtos import ImportSshKeyRequestDTO
 from exls.shared.adapters.ui.facade.interface import IIOFacade
-from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialFlow
+from exls.shared.adapters.ui.flow.flow import (
+    FlowCancelationByUserException,
+    FlowContext,
+    FlowStep,
+    SequentialFlow,
+)
 from exls.shared.adapters.ui.flow.steps import PathInputStep, TextInputStep
 from exls.shared.adapters.ui.input.service import (
     non_empty_string_validator,
-)
-from exls.shared.adapters.ui.input.values import (
-    UserCancellationException,
 )
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.domain import generate_random_name
@@ -88,4 +90,4 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
         self._run(model, context, io_facade)
 
         if self._ask_confirm and not self._confirm_import(model, io_facade):
-            raise UserCancellationException("SSH key import cancelled by user.")
+            raise FlowCancelationByUserException("SSH key import cancelled by user.")
