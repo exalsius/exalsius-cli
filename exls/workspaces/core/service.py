@@ -58,9 +58,16 @@ class WorkspacesService:
         return cluster
 
     @handle_service_layer_errors("listing workspaces")
-    def list_workspaces(self, cluster_id: str) -> List[Workspace]:
-        self._get_and_validate_cluster(cluster_id=cluster_id)
-        return self._workspaces_gateway.list(cluster_id=cluster_id)
+    def list_workspaces(self, cluster_ids: List[str]) -> List[Workspace]:
+        workspaces: List[Workspace] = []
+        for cluster_id in cluster_ids:
+            cluster: WorkspaceCluster = self._clusters_provider.get_cluster(
+                cluster_id=cluster_id
+            )
+            if cluster.status != WorkspaceClusterStatus.READY:
+                continue
+            workspaces.extend(self._workspaces_gateway.list(cluster_id=cluster_id))
+        return workspaces
 
     @handle_service_layer_errors("getting workspace")
     def get_workspace(self, workspace_id: str) -> Workspace:

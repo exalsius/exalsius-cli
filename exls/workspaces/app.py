@@ -75,22 +75,37 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 @handle_application_layer_errors(WorkspacesBundle)
 def list_workspaces(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        help="The ID of the cluster to list the workspaces for"
+    cluster_id: Optional[str] = typer.Argument(
+        help="The ID of the cluster to list the workspaces for",
+        show_default=False,
+        default=None,
     ),
 ):
     bundle = WorkspacesBundle(ctx)
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
+    cluster_id_map: Dict[str, WorkspaceCluster] = {}
+    if not cluster_id:
+        cluster_id_map = {cluster.id: cluster for cluster in service.list_clusters()}
+    else:
+        cluster_id_map[cluster_id] = service.get_cluster(cluster_id)
 
-    workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
+    workspaces: List[Workspace] = service.list_workspaces(
+        cluster_ids=list(cluster_id_map.keys())
+    )
     workspace_dtos: List[WorkspaceDTO] = [
-        workspace_dto_from_domain(workspace, cluster.name) for workspace in workspaces
+        workspace_dto_from_domain(workspace, cluster_id_map[workspace.cluster_id].name)
+        for workspace in workspaces
+        for workspace in workspaces
     ]
-
-    io_facade.display_data(workspace_dtos, bundle.object_output_format)
+    if len(workspace_dtos) == 0:
+        io_facade.display_info_message(
+            "No workspaces found. Run 'exls workspaces deploy <workspace-type>' to deploy a workspace.",
+            bundle.message_output_format,
+        )
+    else:
+        io_facade.display_data(workspace_dtos, bundle.object_output_format)
 
 
 @workspaces_app.command("get", help="Get a workspace of a cluster")
