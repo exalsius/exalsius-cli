@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional, Type
 
 from pydantic import BaseModel
 
+from exls.shared.adapters.ui.output.render.service import format_na
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.workspaces.adapters.dtos import MultiNodeWorkspaceDTO, SingleNodeWorkspaceDTO
 from exls.workspaces.adapters.ui.dtos import (
@@ -24,7 +25,9 @@ DEFAULT_SINGLE_NODE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "template_name": TableRenderContext.get_column("Template"),
     "status": TableRenderContext.get_column("Status"),
     "created_at": TableRenderContext.get_column("Created At"),
-    "access_information.endpoint": TableRenderContext.get_column("Access Endpoint"),
+    "access_information.endpoint": TableRenderContext.get_column(
+        "Access Endpoint", value_formatter=format_na
+    ),
     "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
 }
 

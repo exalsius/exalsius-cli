@@ -27,7 +27,7 @@ class WorkspaceDTO(BaseModel):
 
 
 class SingleNodeWorkspaceDTO(WorkspaceDTO):
-    access_information: WorkspaceAccessInformationDTO = Field(
+    access_information: Optional[WorkspaceAccessInformationDTO] = Field(
         ..., description="The access information of the workspace"
     )
 

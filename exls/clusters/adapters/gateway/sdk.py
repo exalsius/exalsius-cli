@@ -52,7 +52,7 @@ from exls.clusters.core.ports.gateway import (
     ClusterNodeRefResources,
     IClustersGateway,
 )
-from exls.clusters.core.requests import AddNodesRequest, NodeRef, RemoveNodesRequest
+from exls.clusters.core.requests import AddNodesRequest, NodeRef
 from exls.shared.adapters.gateway.sdk.service import create_api_client
 
 
@@ -142,14 +142,16 @@ class ClustersGatewaySdk(IClustersGateway):
         )
 
     # TODO: Move this to the core service layer to run in parallel
-    def remove_nodes_from_cluster(self, request: RemoveNodesRequest) -> List[str]:
+    def remove_nodes_from_cluster(
+        self, cluster_id: str, node_ids: List[str]
+    ) -> List[str]:
         commands: List[RemoveNodeSdkCommand] = [
             RemoveNodeSdkCommand(
                 self._clusters_api,
-                cluster_id=request.cluster_id,
-                node_id=n.id,
+                cluster_id=cluster_id,
+                node_id=node_id,
             )
-            for n in request.nodes_to_remove
+            for node_id in node_ids
         ]
         responses: List[ClusterNodeRemoveResponse] = [
             command.execute() for command in commands

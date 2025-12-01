@@ -75,6 +75,7 @@ class ClusterNodeResources(BaseModel):
 class ClusterNodeStatus(StrEnum):
     AVAILABLE = "AVAILABLE"
     DISCOVERING = "DISCOVERING"
+    ADDED = "ADDED"
     DEPLOYED = "DEPLOYED"
     FAILED = "FAILED"
     UNKNOWN = "UNKNOWN"

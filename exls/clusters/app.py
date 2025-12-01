@@ -436,12 +436,12 @@ def add_nodes(
     # display_manager.display_cluster_nodes(nodes)
 
 
-@clusters_app.command("remove-node", help="Remove a node from a cluster")
+@clusters_app.command("remove-nodes", help="Remove nodes from a cluster")
 @handle_application_layer_errors(ClustersBundle)
-def remove_node(
+def remove_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to remove a node from"
+        ..., help="The ID of the cluster to remove nodes from"
     ),
     node_ids: List[StrictStr] = typer.Option(
         [],
@@ -451,13 +451,13 @@ def remove_node(
     ),
 ):
     """
-    Remove a node from a cluster.
+    Remove nodes from a cluster.
     """
     bundle: ClustersBundle = ClustersBundle(ctx)
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    removed_node_ids: List[str] = service.remove_nodes_from_cluster(
+    removed_node_ids: List[StrictStr] = service.remove_nodes_from_cluster(
         cluster_id=cluster_id,
         node_ids=node_ids,
     )
