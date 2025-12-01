@@ -35,6 +35,7 @@ from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
     help_if_no_subcommand,
 )
+from exls.shared.core.domain import generate_random_name
 
 management_app = typer.Typer()
 
@@ -165,7 +166,10 @@ def list_ssh_keys(
 def import_ssh_key(
     ctx: typer.Context,
     name: Optional[str] = typer.Option(
-        None, "--name", "-n", help="Name for the SSH key"
+        generate_random_name(prefix="exls-key"),
+        "--name",
+        "-n",
+        help="Name for the SSH key",
     ),
     key_path: Optional[Path] = typer.Option(
         None, "--key-path", "-k", help="Path to the SSH private key file"

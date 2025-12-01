@@ -118,6 +118,10 @@ class WorkspacesService:
     def get_workspace_templates(self) -> List[WorkspaceTemplate]:
         return self._workspace_templates_provider.list_workspace_templates()
 
+    @handle_service_layer_errors("listing clusters")
+    def list_clusters(self) -> List[WorkspaceCluster]:
+        return self._clusters_provider.list_clusters()
+
     @handle_service_layer_errors("getting resources for workspace")
     def get_resources_for_single_node_workspace(
         self, cluster_id: str, num_gpus: int
