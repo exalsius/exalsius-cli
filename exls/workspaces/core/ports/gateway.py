@@ -37,13 +37,15 @@ class DeployWorkspaceParameters(BaseModel):
     variables: Dict[str, Any] = Field(..., description="The variables of the workspace")
 
 
+# TODO: This is really ambiguous. We should have a better data model to
+# represent requested workspace resources.
 def deploy_workspace_request_to_deploy_parameters(
     request: DeployWorkspaceRequest,
 ) -> DeployWorkspaceParameters:
     resources: WorkspaceResourceParameters = WorkspaceResourceParameters(
         gpu_count=request.resources.gpu_count,
         gpu_type=request.resources.gpu_type,
-        gpu_vendor=request.resources.gpu_vendor,
+        gpu_vendor=None,
         cpu_cores=request.resources.cpu_cores,
         memory_gb=request.resources.memory_gb,
         storage_gb=request.resources.storage_gb,
