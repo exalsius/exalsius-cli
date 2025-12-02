@@ -11,6 +11,7 @@ from exls.workspaces.core.domain import (
     Workspace,
     WorkspaceCluster,
     WorkspaceClusterStatus,
+    WorkspaceGPUVendor,
     WorkspaceStatus,
     WorkspaceTemplate,
 )
@@ -145,7 +146,7 @@ class WorkspacesService:
                 return AssignedSingleNodeWorkspaceResources(
                     gpu_count=num_gpus,
                     gpu_type=resource.gpu_type,
-                    gpu_vendor=resource.gpu_vendor,
+                    gpu_vendors=resource.gpu_vendor.value,
                     cpu_cores=int((resource.cpu_cores / resource.gpu_count) * num_gpus),
                     memory_gb=int((resource.memory_gb / resource.gpu_count) * num_gpus),
                     storage_gb=int(
@@ -204,17 +205,35 @@ class WorkspacesService:
             memory_split = int(memory_split * (1 - resource_split_tolerance))
             storage_split = int(storage_split * (1 - resource_split_tolerance))
 
+        # TODO: This is really ambiguous. We should have a better data model to
+        # represent multi-node workspace resources      .
         return AssignedMultiNodeWorkspaceResources(
             gpu_count=1,
             cpu_cores=cpu_split,
             memory_gb=memory_split,
             storage_gb=storage_split,
-            total_nodes=total_nodes,
-            gpu_vendor=", ".join(
-                set([resource.gpu_vendor for resource in available_cluster_resources])
+            gpu_vendors=", ".join(
+                set(
+                    [
+                        resource.gpu_vendor.value
+                        for resource in available_cluster_resources
+                        if resource.gpu_vendor != WorkspaceGPUVendor.NO_GPU
+                        and resource.gpu_vendor != WorkspaceGPUVendor.UNKNOWN
+                    ]
+                )
             ),
-            heterogenous=len(
-                set([resource.gpu_vendor for resource in available_cluster_resources])
-            )
-            > 1,
+            num_amd_nodes=len(
+                [
+                    resource
+                    for resource in available_cluster_resources
+                    if resource.gpu_vendor == WorkspaceGPUVendor.AMD
+                ]
+            ),
+            num_nvidia_nodes=len(
+                [
+                    resource
+                    for resource in available_cluster_resources
+                    if resource.gpu_vendor == WorkspaceGPUVendor.NVIDIA
+                ]
+            ),
         )

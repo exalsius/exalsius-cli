@@ -660,7 +660,8 @@ def deploy_distributed_training_workspace(
         wandb_token,
         hf_token,
         resources.total_nodes,
-        resources.heterogenous,
+        resources.num_amd_nodes,
+        resources.num_nvidia_nodes,
     )
 
     try:
@@ -685,7 +686,7 @@ def deploy_distributed_training_workspace(
             domain=request,
             cluster_name=cluster.name,
             total_nodes=resources.total_nodes,
-            gpu_types=resources.gpu_vendor or "",
+            gpu_types=resources.gpu_vendors or "",
         ),
         bundle.object_output_format,
     )
@@ -701,7 +702,7 @@ def deploy_distributed_training_workspace(
     workspace_dto: MultiNodeWorkspaceDTO = multi_node_workspace_dto_from_domain(
         domain=workspace,
         total_nodes=resources.total_nodes,
-        gpu_types=resources.gpu_vendor or "",
+        gpu_types=resources.gpu_vendors or "",
         cluster_name=cluster.name,
     )
 

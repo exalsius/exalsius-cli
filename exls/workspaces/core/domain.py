@@ -38,6 +38,20 @@ class WorkspaceStatus(StrEnum):
             return cls.UNKNOWN
 
 
+class WorkspaceGPUVendor(StrEnum):
+    AMD = "AMD"
+    NVIDIA = "NVIDIA"
+    NO_GPU = "NO_GPU"
+    UNKNOWN = "UNKNOWN"
+
+    @classmethod
+    def from_str(cls, value: str) -> WorkspaceGPUVendor:
+        try:
+            return cls(value.upper())
+        except ValueError:
+            return cls.UNKNOWN
+
+
 class WorkspaceAccessInformation(BaseModel):
     access_type: str = Field(..., description="The access type")
     access_protocol: str = Field(..., description="The access protocol")
@@ -78,7 +92,7 @@ class AvailableClusterResources(BaseModel):
     node_id: StrictStr = Field(..., description="The ID of the node")
     node_name: StrictStr = Field(..., description="The name of the node")
     gpu_type: StrictStr = Field(..., description="The type of the GPU")
-    gpu_vendor: StrictStr = Field(..., description="The vendor of the GPU")
+    gpu_vendor: WorkspaceGPUVendor = Field(..., description="The vendor of the GPU")
     gpu_count: int = Field(..., description="The count of the GPU")
     cpu_cores: int = Field(..., description="The count of the CPU cores")
     memory_gb: int = Field(..., description="The amount of memory in GB")

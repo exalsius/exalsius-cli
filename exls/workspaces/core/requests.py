@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, StrictStr
 class WorkspaceResources(BaseModel):
     gpu_count: int = Field(..., description="The number of GPUs")
     gpu_type: Optional[str] = Field(default=None, description="The type of the GPUs")
-    gpu_vendor: Optional[str] = Field(
+    gpu_vendors: Optional[StrictStr] = Field(
         default=None, description="The vendor of the GPUs"
     )
     cpu_cores: int = Field(..., description="The number of CPU cores")
@@ -29,10 +29,16 @@ class RequestedWorkspaceResources(WorkspaceResources):
 
 
 class AssignedMultiNodeWorkspaceResources(WorkspaceResources):
-    total_nodes: int = Field(..., description="The total number of nodes")
-    heterogenous: bool = Field(
-        ..., description="Whether the GPUs on the nodes are heterogeneous"
-    )
+    num_amd_nodes: int = Field(..., description="The number of AMD nodes")
+    num_nvidia_nodes: int = Field(..., description="The number of NVIDIA nodes")
+
+    @property
+    def total_nodes(self) -> int:
+        return self.num_amd_nodes + self.num_nvidia_nodes
+
+    @property
+    def heterogenous(self) -> bool:
+        return self.num_amd_nodes > 0 and self.num_nvidia_nodes > 0
 
 
 class DeployWorkspaceRequest(BaseModel):
