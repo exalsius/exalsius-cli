@@ -6,6 +6,7 @@ from exls.workspaces.core.domain import (
     AvailableClusterResources,
     WorkspaceCluster,
     WorkspaceClusterStatus,
+    WorkspaceGPUVendor,
 )
 from exls.workspaces.core.ports.provider import IClustersProvider
 
@@ -55,7 +56,9 @@ class ClustersDomainProvider(IClustersProvider):
                     node_id=node_id,
                     node_name=node_name,
                     gpu_type=resource.free_resources.gpu_type,
-                    gpu_vendor=resource.free_resources.gpu_vendor,
+                    gpu_vendor=WorkspaceGPUVendor.from_str(
+                        resource.free_resources.gpu_vendor
+                    ),
                     gpu_count=resource.free_resources.gpu_count,
                     cpu_cores=resource.free_resources.cpu_cores,
                     memory_gb=resource.free_resources.memory_gb,
