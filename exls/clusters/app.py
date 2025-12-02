@@ -300,7 +300,7 @@ def list_nodes(
         io_facade.display_error_message(
             message=(
                 f"Failed to load nodes of cluster '{cluster.name}': "
-                f"{'\n'.join([issue.reason for issue in nodes_loading_result.issues or []])}"
+                f"{'\n'.join([issue.issue for issue in nodes_loading_result.issues or []])}"
             ),
             output_format=bundle.message_output_format,
         )

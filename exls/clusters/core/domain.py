@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import List, Optional, cast
+from typing import List, Optional, Union, cast
 
 from pydantic import BaseModel, Field, StrictInt, StrictStr, field_validator
 
@@ -64,7 +64,9 @@ class Resources(BaseModel):
 
 
 class ClusterNodeResources(BaseModel):
-    cluster_node: AssignedClusterNode = Field(..., description="The cluster node")
+    cluster_node: Union[AssignedClusterNode, StrictStr] = Field(
+        ..., description="The cluster node or the node ID if the node is not loaded"
+    )
 
     free_resources: Resources = Field(..., description="The free resources of the node")
     occupied_resources: Resources = Field(
@@ -160,14 +162,14 @@ class DeployClusterResult(BaseModel):
         return self.cluster is not None and len(self.issues) > 0
 
 
-class NodesLoadingIssue(BaseModel):
+class NodeLoadingIssue(BaseModel):
     node_id: StrictStr = Field(..., description="The ID of the node")
-    reason: StrictStr = Field(..., description="The reason for loading failure")
+    issue: StrictStr = Field(..., description="The reason for loading failure")
 
 
 class NodesLoadingResult(BaseModel):
     nodes: List[AssignedClusterNode] = Field(..., description="The loaded nodes")
-    issues: Optional[List[NodesLoadingIssue]] = Field(
+    issues: Optional[List[NodeLoadingIssue]] = Field(
         default=None, description="List of loading issues encountered"
     )
 
