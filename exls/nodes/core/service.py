@@ -55,8 +55,9 @@ class NodesService:
         return self._resolve_ssh_key_name([node])[0]
 
     @handle_service_layer_errors("deleting node")
-    def delete_node(self, node_id: str) -> str:
-        return self.nodes_gateway.delete(node_id)
+    def delete_nodes(self, node_ids: List[str]) -> List[str]:
+        # TODO: run in parallel, improve robustness by collecting errors
+        return [self.nodes_gateway.delete(node_id) for node_id in node_ids]
 
     def _wait_for_node_status(
         self, node_id: str, target_status: NodeStatus, timeout_seconds: int = 120

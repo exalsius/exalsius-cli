@@ -66,9 +66,13 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
     ):
         render_context: Optional[TableRenderContext] = None
         if output_format == OutputFormat.TABLE:
-            render_context = self._get_render_context(
-                data[0] if isinstance(data, Sequence) else data, output_format
+            ref_data: Optional[BaseModel] = (
+                data[0]
+                if isinstance(data, Sequence) and len(data) > 0
+                else data if isinstance(data, BaseModel) else None
             )
+            if ref_data:
+                render_context = self._get_render_context(ref_data, output_format)
             self.output_manager.display(
                 data, output_format=output_format, render_context=render_context
             )
