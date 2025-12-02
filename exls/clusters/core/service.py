@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple, Union, cast
 
 from pydantic import StrictStr
 
@@ -486,13 +486,21 @@ class ClustersService:
                 cluster_node_ref_resources_map[node_id]
             )
 
+            # This case should ideally never happen, but we handle it
+            # since there were some issues with node IDs in the past
+            # Nodes ids from loaded resources should always be in the node pool
+            cluster_node: Union[AssignedClusterNode, StrictStr] = node_id
+            if node_id in loaded_nodes_map:
+                cluster_node = loaded_nodes_map[node_id]
+            else:
+                cluster_node = node_id
+                logger.warning(
+                    f"Node {node_id} not found in node pool. Node name is set to Unknown."
+                )
+
             cluster_node_resources.append(
                 ClusterNodeResources(
-                    cluster_node=(
-                        loaded_nodes_map[node_id]
-                        if node_id in loaded_nodes_map
-                        else node_id
-                    ),
+                    cluster_node=cluster_node,
                     free_resources=cluster_node_resource.free_resources,
                     occupied_resources=cluster_node_resource.occupied_resources,
                 )
