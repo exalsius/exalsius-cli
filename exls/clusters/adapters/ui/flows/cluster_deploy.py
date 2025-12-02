@@ -113,7 +113,9 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
         )
         # TODO: We can check and ask to initiate a node import flow if no deployable nodes are found
         if len(deployable_nodes) == 0:
-            raise InvalidFlowStateError("No deployable nodes found")
+            raise InvalidFlowStateError(
+                "No deployable nodes in your node pool found. You need to import nodes first and they need to be in status 'AVAILABLE'."
+            )
 
         io_facade.display_info_message(
             message="🚀 Deploying a new cluster - Interactive Mode: This will guide you through the process of deploying a new cluster",
