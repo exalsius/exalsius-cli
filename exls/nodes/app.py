@@ -74,7 +74,7 @@ def list_nodes(
 @handle_application_layer_errors(NodesBundle)
 def get_node(
     ctx: typer.Context,
-    node_id: str = typer.Argument("--node-id", help="The ID of the node to get"),
+    node_id: str = typer.Argument(..., help="The ID of the node to get"),
 ):
     """Get a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
@@ -89,19 +89,19 @@ def get_node(
 
 @nodes_app.command("delete", help="Delete a node in the node pool.")
 @handle_application_layer_errors(NodesBundle)
-def delete_node(
+def delete_nodes(
     ctx: typer.Context,
-    node_id: str = typer.Argument("--node-id", help="The ID of the node to delete"),
+    node_ids: List[str] = typer.Argument(..., help="The IDs of the nodes to delete"),
 ):
     """Delete a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IONodesFacade = bundle.get_io_facade()
 
-    deleted_node_id: str = service.delete_node(node_id)
+    deleted_node_ids: List[str] = service.delete_nodes(node_ids)
 
     io_facade.display_success_message(
-        f"Node {deleted_node_id} deleted successfully",
+        f"Nodes {', '.join(deleted_node_ids)} deleted successfully",
         output_format=bundle.message_output_format,
     )
 
