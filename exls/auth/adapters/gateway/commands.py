@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Dict, Optional
 
@@ -135,7 +135,7 @@ class StoreTokenOnKeyringCommand(BaseCommand[None]):
             keyring.set_password(
                 KeyringKeys.SERVICE_KEY,
                 f"{self.params.client_id}_{KeyringKeys.EXPIRY_KEY}",
-                self.params.expiry.isoformat(),
+                self.params.expiry.astimezone(timezone.utc).isoformat(),
             )
             if self.params.refresh_token:
                 keyring.set_password(
@@ -171,6 +171,8 @@ class LoadTokenFromKeyringCommand(BaseCommand[LoadedTokenDTO]):
             )
             if token and expiry_str and id_token:
                 expiry: datetime = datetime.fromisoformat(expiry_str)
+                if expiry.tzinfo is None:
+                    expiry = expiry.astimezone(timezone.utc)
                 return LoadedTokenDTO(
                     client_id=self.client_id,
                     access_token=token,

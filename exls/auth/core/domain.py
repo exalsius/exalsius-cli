@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
@@ -28,7 +28,7 @@ class LoadedToken(BaseModel):
 
     @property
     def expires_in(self) -> int:
-        return int((self.expiry - datetime.now()).total_seconds())
+        return int((self.expiry - datetime.now(timezone.utc)).total_seconds())
 
     @property
     def is_expired(self) -> bool:
@@ -48,7 +48,7 @@ class Token(BaseModel):
 
     @property
     def expiry(self) -> datetime:
-        return datetime.now() + timedelta(seconds=self.expires_in)
+        return datetime.now(timezone.utc) + timedelta(seconds=self.expires_in)
 
 
 class User(BaseModel):
