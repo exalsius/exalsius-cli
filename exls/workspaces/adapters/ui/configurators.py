@@ -287,7 +287,8 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         wandb_token: str,
         hf_token: str,
         node_count: int,
-        heterogenous: bool,
+        num_amd_nodes: int,
+        num_nvidia_nodes: int,
     ):
         super().__init__(bundle)
         self._model: DistributedTrainingModels = model
@@ -295,7 +296,12 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         self._wandb_token: str = wandb_token
         self._hf_token: str = hf_token
         self._node_count: int = node_count
-        self._heterogenous: bool = heterogenous
+        self._num_amd_nodes: int = num_amd_nodes
+        self._num_nvidia_nodes: int = num_nvidia_nodes
+
+    @property
+    def _heterogenous(self) -> bool:
+        return self._num_amd_nodes > 0 and self._num_nvidia_nodes > 0
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -314,6 +320,14 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
             return "nccl"
         else:
             return "gloo"
+
+    def _get_gpu_variables(
+        self, num_amd_nodes: int, num_nvidia_nodes: int
+    ) -> Dict[str, Any]:
+        return {
+            "nvidia": {"enabled": num_nvidia_nodes > 0},
+            "amd": {"enabled": num_amd_nodes > 0},
+        }
 
     def _translate_compression_config_for_gradient_compression(
         self, gradient_compression: GradientCompression
@@ -414,6 +428,10 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
     def configure_and_validate(
         self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
     ) -> Dict[str, Any]:
+        if "diloco" not in variables:
+            raise InvalidWorkspaceConfiguration(
+                "Unexpected error: Variable 'diloco' is not set in the workspace template."
+            )
         gradient_compression_variables: Dict[str, str] = (
             self._translate_compression_config_for_gradient_compression(
                 self._gradient_compression
@@ -426,29 +444,31 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         metadata_variables: Dict[str, str] = self._get_metadata_variable_defaults(
             self._model, self._gradient_compression
         )
-
-        if "diloco" not in variables:
-            raise InvalidWorkspaceConfiguration(
-                "Unexpected error: Variable 'diloco' is not set in the workspace template."
-            )
-        diloco_variables: Dict[str, str] = {
+        variables["diloco"] = {
             **variables["diloco"],
             **gradient_compression_variables,
             **training_config,
             **model_variables,
             **metadata_variables,
         }
-        diloco_variables["pgroupBackend"] = self._get_prgroup_backend()
-        variables["diloco"] = diloco_variables
+        variables["diloco"]["pgroupBackend"] = self._get_prgroup_backend()
 
         if "elastic" not in variables:
             raise InvalidWorkspaceConfiguration(
                 "Unexpected error: Variable 'elastic' is not set in the workspace template."
             )
-        elastic_variables: Dict[str, str] = {
+        variables["elastic"] = {
             **variables["elastic"],
             **self._get_torch_elastic_config(),
         }
-        variables["elastic"] = elastic_variables
+
+        if "gpu" not in variables:
+            raise InvalidWorkspaceConfiguration(
+                "Unexpected error: Variable 'gpu' is not set in the workspace template."
+            )
+        variables["gpu"] = {
+            **variables["gpu"],
+            **self._get_gpu_variables(self._num_amd_nodes, self._num_nvidia_nodes),
+        }
 
         return super().configure_and_validate(variables, io_facade)
