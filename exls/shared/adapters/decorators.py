@@ -103,6 +103,13 @@ def handle_application_layer_errors(
                 else:
                     typer.echo(f"{e}", err=True)
                 raise typer.Exit(1)
+            except Exception as e:
+                ctx = _get_ctx(args, kwargs)
+                if ctx:
+                    _display_error_message(ctx, ExalsiusError(str(e)))
+                else:
+                    typer.echo(f"{e}", err=True)
+                raise typer.Exit(1)
 
         return wrapper
 
