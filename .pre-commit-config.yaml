@@ -40,3 +40,5 @@ repos:
         entry: pyright --project pyproject.toml
         language: system
         types: [python]
+        pass_filenames: false
+        always_run: true
