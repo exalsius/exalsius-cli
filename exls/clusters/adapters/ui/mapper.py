@@ -15,6 +15,7 @@ from exls.clusters.core.domain import (
     Cluster,
     ClusterNodeResources,
     ClusterNodeRole,
+    ClusterNodeStatus,
     ClusterWithNodes,
     NodeValidationIssue,
 )
@@ -96,14 +97,23 @@ def cluster_node_resources_dto_from_domain(
         memory_gb=domain.occupied_resources.memory_gb,
         storage_gb=domain.occupied_resources.storage_gb,
     )
-
-    cluster_node: ClusterNodeDTO = ClusterNodeDTO(
-        id=domain.cluster_node.id,
-        role=domain.cluster_node.role.value,
-        hostname=domain.cluster_node.hostname,
-        status=domain.cluster_node.status.value,
-        cluster_name=cluster_name,
-    )
+    cluster_node: ClusterNodeDTO
+    if isinstance(domain.cluster_node, AssignedClusterNode):
+        cluster_node = ClusterNodeDTO(
+            id=domain.cluster_node.id,
+            role=domain.cluster_node.role.value,
+            hostname=domain.cluster_node.hostname,
+            status=domain.cluster_node.status.value,
+            cluster_name=cluster_name,
+        )
+    else:
+        cluster_node = ClusterNodeDTO(
+            id=domain.cluster_node,
+            role=ClusterNodeRole.WORKER.value,
+            hostname="Unknown",
+            status=ClusterNodeStatus.UNKNOWN.value,
+            cluster_name=cluster_name,
+        )
     return ClusterNodeResourcesDTO(
         cluster_node=cluster_node,
         free_resources=free_resources,

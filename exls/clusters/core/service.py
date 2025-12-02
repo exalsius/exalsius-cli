@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple, Union, cast
 
 from pydantic import StrictStr
 
@@ -14,7 +14,7 @@ from exls.clusters.core.domain import (
     ClusterStatus,
     ClusterWithNodes,
     DeployClusterResult,
-    NodesLoadingIssue,
+    NodeLoadingIssue,
     NodesLoadingResult,
     NodeValidationIssue,
     UnassignedClusterNode,
@@ -380,7 +380,7 @@ class ClustersService:
 
     def _load_cluster_node_by_refs(
         self, cluster_node_refs: List[NodeRef]
-    ) -> Tuple[List[AssignedClusterNode], List[NodesLoadingIssue]]:
+    ) -> Tuple[List[AssignedClusterNode], List[NodeLoadingIssue]]:
         if not cluster_node_refs:
             return [], []
 
@@ -388,14 +388,14 @@ class ClustersService:
         all_nodes_map: Dict[str, ClusterNode] = {n.id: n for n in all_nodes}
 
         loaded_nodes: List[AssignedClusterNode] = []
-        issues: List[NodesLoadingIssue] = []
+        issues: List[NodeLoadingIssue] = []
 
         for ref in cluster_node_refs:
             if ref.id not in all_nodes_map:
                 issues.append(
-                    NodesLoadingIssue(
+                    NodeLoadingIssue(
                         node_id=ref.id,
-                        reason="Unexpected: Cluster node not found in nodes pool",
+                        issue="Unexpected: Cluster node not found in nodes pool",
                     )
                 )
                 continue
@@ -475,22 +475,32 @@ class ClustersService:
         loaded_nodes, _ = self._load_cluster_node_by_refs(
             cluster_node_refs=cluster_node_refs
         )
+
         loaded_nodes_map: Dict[str, AssignedClusterNode] = {
             node.id: node for node in loaded_nodes
         }
 
         cluster_node_resources: List[ClusterNodeResources] = []
         for node_id in cluster_node_ref_resources_map:
-            if node_id not in loaded_nodes_map:
-                continue
-
             cluster_node_resource: ClusterNodeRefResources = (
                 cluster_node_ref_resources_map[node_id]
             )
 
+            # This case should ideally never happen, but we handle it
+            # since there were some issues with node IDs in the past
+            # Nodes ids from loaded resources should always be in the node pool
+            cluster_node: Union[AssignedClusterNode, StrictStr] = node_id
+            if node_id in loaded_nodes_map:
+                cluster_node = loaded_nodes_map[node_id]
+            else:
+                cluster_node = node_id
+                logger.warning(
+                    f"Node {node_id} not found in node pool. Node name is set to Unknown."
+                )
+
             cluster_node_resources.append(
                 ClusterNodeResources(
-                    cluster_node=loaded_nodes_map[node_id],
+                    cluster_node=cluster_node,
                     free_resources=cluster_node_resource.free_resources,
                     occupied_resources=cluster_node_resource.occupied_resources,
                 )

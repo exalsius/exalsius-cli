@@ -1,6 +1,6 @@
 from typing import List
 
-from exls.clusters.core.domain import Cluster, ClusterNodeResources
+from exls.clusters.core.domain import AssignedClusterNode, Cluster, ClusterNodeResources
 from exls.clusters.core.service import ClustersService
 from exls.workspaces.core.domain import (
     AvailableClusterResources,
@@ -37,16 +37,29 @@ class ClustersDomainProvider(IClustersProvider):
         cluster_node_resources: List[ClusterNodeResources] = (
             self.clusters_service.get_cluster_resources(cluster_id=cluster_id)
         )
-        return [
-            AvailableClusterResources(
-                node_id=resource.cluster_node.id,
-                node_name=resource.cluster_node.hostname,
-                gpu_type=resource.free_resources.gpu_type,
-                gpu_vendor=resource.free_resources.gpu_vendor,
-                gpu_count=resource.free_resources.gpu_count,
-                cpu_cores=resource.free_resources.cpu_cores,
-                memory_gb=resource.free_resources.memory_gb,
-                storage_gb=resource.free_resources.storage_gb,
+
+        available_cluster_resources: List[AvailableClusterResources] = []
+        for resource in cluster_node_resources:
+            node_name: str = (
+                resource.cluster_node.hostname
+                if isinstance(resource.cluster_node, AssignedClusterNode)
+                else "Unknown"
             )
-            for resource in cluster_node_resources
-        ]
+            node_id: str = (
+                resource.cluster_node.id
+                if isinstance(resource.cluster_node, AssignedClusterNode)
+                else resource.cluster_node
+            )
+            available_cluster_resources.append(
+                AvailableClusterResources(
+                    node_id=node_id,
+                    node_name=node_name,
+                    gpu_type=resource.free_resources.gpu_type,
+                    gpu_vendor=resource.free_resources.gpu_vendor,
+                    gpu_count=resource.free_resources.gpu_count,
+                    cpu_cores=resource.free_resources.cpu_cores,
+                    memory_gb=resource.free_resources.memory_gb,
+                    storage_gb=resource.free_resources.storage_gb,
+                )
+            )
+        return available_cluster_resources
