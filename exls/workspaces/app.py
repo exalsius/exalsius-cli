@@ -660,15 +660,13 @@ def deploy_distributed_training_workspace(
         resources.total_nodes,
         resources.num_amd_nodes,
         resources.num_nvidia_nodes,
+        resources.storage_gb,
+        resources.memory_gb,
     )
 
-    try:
-        template_variables: Dict[str, Any] = configurator.configure_and_validate(
-            template.variables, io_facade
-        )
-    except InvalidWorkspaceConfiguration as e:
-        io_facade.display_error_message(str(e), bundle.message_output_format)
-        raise typer.Exit(1)
+    template_variables: Dict[str, Any] = configurator.configure_and_validate(
+        template.variables, io_facade
+    )
 
     request = DeployWorkspaceRequest(
         cluster_id=cluster.id,
