@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Dict, Optional
 
+import jwt
 import keyring
 from auth0.authentication.token_verifier import (
     AsymmetricSignatureVerifier,
@@ -13,8 +14,9 @@ from auth0.exceptions import TokenValidationError
 from exls.auth.adapters.gateway.dtos import (
     Auth0DeviceCodeResponse,
     Auth0TokenResponse,
-    Auth0UserResponse,
     LoadedTokenDTO,
+    TokenExpiryMetadataResponse,
+    ValidatedAuthUserResponse,
 )
 from exls.auth.adapters.gateway.errors import Auth0TokenError, KeyringCommandError
 from exls.auth.core.domain import (
@@ -80,16 +82,43 @@ class Auth0GetTokenFromDeviceCodeCommand(
         }
 
 
-class Auth0ValidateTokenCommand(BaseCommand[Auth0UserResponse]):
+class LoadTokenExpiryMetadataCommand(BaseCommand[TokenExpiryMetadataResponse]):
+    def __init__(self, token: str):
+        self.token: str = token
+        self.deserializer: PydanticDeserializer[TokenExpiryMetadataResponse] = (
+            PydanticDeserializer()
+        )
+
+    def execute(self) -> TokenExpiryMetadataResponse:
+        try:
+            decoded_token = jwt.decode(self.token, options={"verify_signature": False})
+            return self.deserializer.deserialize(
+                decoded_token, TokenExpiryMetadataResponse
+            )
+        except DeserializationError as e:
+            raise Auth0TokenError(
+                message=f"error while deserializing decoded token: {e}",
+            ) from e
+        except Exception as e:
+            raise Auth0TokenError(
+                message=f"unexpected error while validating token: {e}",
+            ) from e
+
+
+class ValidateTokenCommand(BaseCommand[ValidatedAuthUserResponse]):
     def __init__(
         self,
         params: ValidateTokenRequest,
-        deserializer: PydanticDeserializer[Auth0UserResponse] = PydanticDeserializer(),
+        deserializer: PydanticDeserializer[
+            ValidatedAuthUserResponse
+        ] = PydanticDeserializer(),
     ):
         self.params: ValidateTokenRequest = params
-        self.deserializer: PydanticDeserializer[Auth0UserResponse] = deserializer
+        self.deserializer: PydanticDeserializer[ValidatedAuthUserResponse] = (
+            deserializer
+        )
 
-    def execute(self) -> Auth0UserResponse:
+    def execute(self) -> ValidatedAuthUserResponse:
         jwks_url: str = f"https://{self.params.domain}/.well-known/jwks.json"
         issuer: str = f"https://{self.params.domain}/"
         sv: AsymmetricSignatureVerifier = AsymmetricSignatureVerifier(jwks_url)
@@ -101,7 +130,7 @@ class Auth0ValidateTokenCommand(BaseCommand[Auth0UserResponse]):
         )
         try:
             resp: Dict[str, Any] = tv.verify(self.params.id_token)
-            return self.deserializer.deserialize(resp, Auth0UserResponse)
+            return self.deserializer.deserialize(resp, ValidatedAuthUserResponse)
         except DeserializationError as e:
             raise Auth0TokenError(
                 message=f"{e}",

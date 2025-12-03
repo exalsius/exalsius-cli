@@ -5,16 +5,19 @@ from exls.auth.adapters.gateway.commands import (
     Auth0GetTokenFromDeviceCodeCommand,
     Auth0RefreshTokenCommand,
     Auth0RevokeTokenCommand,
-    Auth0ValidateTokenCommand,
+    LoadTokenExpiryMetadataCommand,
+    ValidateTokenCommand,
 )
 from exls.auth.adapters.gateway.dtos import (
     Auth0DeviceCodeResponse,
     Auth0HTTPErrorResponse,
     Auth0TokenResponse,
-    Auth0UserResponse,
+    TokenExpiryMetadataResponse,
+    ValidatedAuthUserResponse,
 )
 from exls.auth.adapters.gateway.mappers import (
     device_code_from_response,
+    token_expiry_metadata_from_response,
     token_from_response,
     user_from_response,
 )
@@ -25,6 +28,7 @@ from exls.auth.core.domain import (
     RefreshTokenRequest,
     RevokeTokenRequest,
     Token,
+    TokenExpiryMetadata,
     User,
     ValidateTokenRequest,
 )
@@ -88,10 +92,20 @@ class Auth0Gateway(IAuthGateway):
             except CommandError as e:
                 raise AuthGatewayError(f"failed to authenticate: {str(e)}") from e
 
-    def validate_token(self, request: ValidateTokenRequest) -> User:
-        command: Auth0ValidateTokenCommand = Auth0ValidateTokenCommand(params=request)
+    def load_token_expiry_metadata(self, token: str) -> TokenExpiryMetadata:
+        command: LoadTokenExpiryMetadataCommand = LoadTokenExpiryMetadataCommand(
+            token=token
+        )
         try:
-            response: Auth0UserResponse = command.execute()
+            response: TokenExpiryMetadataResponse = command.execute()
+            return token_expiry_metadata_from_response(response=response)
+        except CommandError as e:
+            raise AuthGatewayError(f"failed to decode token: {str(e)}") from e
+
+    def validate_token(self, request: ValidateTokenRequest) -> User:
+        command: ValidateTokenCommand = ValidateTokenCommand(params=request)
+        try:
+            response: ValidatedAuthUserResponse = command.execute()
             return user_from_response(response=response)
         except CommandError as e:
             raise AuthGatewayError(

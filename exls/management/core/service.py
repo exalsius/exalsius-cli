@@ -45,7 +45,6 @@ class ManagementService:
 
     @handle_service_layer_errors("importing ssh key")
     def import_ssh_key(self, name: str, key_path: Path) -> SshKey:
-        print(name, key_path)
         key_content_base64: str = self.fileio_gateway.read_file(file_path=key_path)
         ssh_key_id: str = self.management_gateway.import_ssh_key(
             name=name, base64_key_content=key_content_base64

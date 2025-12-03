@@ -35,7 +35,14 @@ class Auth0HTTPErrorResponse(BaseModel):
     model_config = {"extra": "allow"}
 
 
-class Auth0UserResponse(BaseModel):
+class TokenExpiryMetadataResponse(BaseModel):
+    iat: datetime.datetime = Field(..., description="The issued at datetime")
+    exp: datetime.datetime = Field(..., description="The expires at datetime")
+
+    model_config = {"extra": "allow"}
+
+
+class ValidatedAuthUserResponse(BaseModel):
     email: StrictStr = Field(..., description="The email")
     nickname: StrictStr = Field(..., description="The nickname")
     sub: StrictStr = Field(..., description="The subject")

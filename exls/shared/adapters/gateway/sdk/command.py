@@ -65,7 +65,6 @@ class ExalsiusSdkCommand(
         try:
             return self._execute_api_call()
         except UnexpectedSdkCommandResponseError as e:
-            print("HIER1")
             raise ExalsiusSdkCommandError(
                 message=f"The API returned an unexpected response: {e.message}",
                 sdk_command=self.__class__.__name__,

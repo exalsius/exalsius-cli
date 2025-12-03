@@ -1,10 +1,17 @@
 from exls.auth.adapters.gateway.dtos import (
     Auth0DeviceCodeResponse,
     Auth0TokenResponse,
-    Auth0UserResponse,
     LoadedTokenDTO,
+    TokenExpiryMetadataResponse,
+    ValidatedAuthUserResponse,
 )
-from exls.auth.core.domain import DeviceCode, LoadedToken, Token, User
+from exls.auth.core.domain import (
+    DeviceCode,
+    LoadedToken,
+    Token,
+    TokenExpiryMetadata,
+    User,
+)
 
 
 def token_from_response(client_id: str, response: Auth0TokenResponse) -> Token:
@@ -30,7 +37,16 @@ def device_code_from_response(response: Auth0DeviceCodeResponse) -> DeviceCode:
     )
 
 
-def user_from_response(response: Auth0UserResponse) -> User:
+def token_expiry_metadata_from_response(
+    response: TokenExpiryMetadataResponse,
+) -> TokenExpiryMetadata:
+    return TokenExpiryMetadata(
+        iat=response.iat,
+        exp=response.exp,
+    )
+
+
+def user_from_response(response: ValidatedAuthUserResponse) -> User:
     return User(
         email=response.email,
         nickname=response.nickname,
