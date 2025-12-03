@@ -9,7 +9,6 @@ from exls.shared.core.service import ServiceError
 from exls.workspaces.core.domain import (
     AvailableClusterResources,
     Workspace,
-    WorkspaceAccessType,
     WorkspaceCluster,
     WorkspaceClusterStatus,
     WorkspaceGPUVendor,
@@ -65,28 +64,7 @@ class WorkspacesService:
 
     @handle_service_layer_errors("getting workspace")
     def get_workspace(self, workspace_id: str) -> Workspace:
-        workspace: Workspace = self._workspaces_gateway.get(workspace_id=workspace_id)
-
-        cluster_resources: List[AvailableClusterResources] = (
-            self._clusters_provider.get_cluster_resources(
-                cluster_id=workspace.cluster_id
-            )
-        )
-        endpoint: Optional[str] = None
-        for resource in cluster_resources:
-            if resource.node_endpoint:
-                # node_endpoint can have a port postfix (e.g. "10.0.0.1:22"), we want just the IP part.
-                endpoint = (
-                    resource.node_endpoint.split(":")[0]
-                    if resource.node_endpoint
-                    else None
-                )
-                break
-        if workspace.status == WorkspaceStatus.RUNNING:
-            for access_information in workspace.access_information:
-                if access_information.access_type == WorkspaceAccessType.NODE_PORT:
-                    access_information.external_ip = endpoint
-        return workspace
+        return self._workspaces_gateway.get(workspace_id=workspace_id)
 
     @handle_service_layer_errors("deleting workspace")
     def delete_workspaces(self, workspace_ids: List[str]) -> None:
