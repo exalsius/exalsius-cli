@@ -14,7 +14,7 @@ from exls.workspaces.adapters.ui.dtos import (
     DeploySingleNodeWorkspaceRequestDTO,
 )
 
-DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+DEFAULT_LIST_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "template_name": TableRenderContext.get_column("Template"),
@@ -23,7 +23,7 @@ DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
 }
 
-DEFAULT_LIST_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "template_name": TableRenderContext.get_column("Template"),
@@ -88,7 +88,7 @@ DTO_LIST_DATA_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
     DeployMultiNodeWorkspaceRequestDTO: DEFAULT_DEPLOY_MULTI_NODE_WORKSPACE_DEPLOY_REQUEST_COLUMNS_RENDERING_MAP,
 }
 
-DTO_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
+DTO_SINGLE_DATA_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
     WorkspaceDTO: DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP,
     SingleNodeWorkspaceDTO: DEFAULT_SINGLE_NODE_WORKSPACE_COLUMNS_RENDERING_MAP,
     MultiNodeWorkspaceDTO: DEFAULT_MULTI_NODE_WORKSPACE_COLUMNS_RENDERING_MAP,
@@ -103,4 +103,4 @@ def get_columns_rendering_map(
     if list_data:
         return DTO_LIST_DATA_DISPLAY_CONFIG_MAP.get(dto_type, None)
     else:
-        return DTO_DISPLAY_CONFIG_MAP.get(dto_type, None)
+        return DTO_SINGLE_DATA_DISPLAY_CONFIG_MAP.get(dto_type, None)
