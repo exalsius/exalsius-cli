@@ -58,8 +58,12 @@ def deploy_workspace_parameters_to_create_request(
 
     resources = SdkNodeHardware(
         gpu_count=parameters.resources.gpu_count,
-        gpu_vendor=parameters.resources.gpu_vendor,
-        gpu_type=parameters.resources.gpu_type,
+        gpu_vendor=(
+            parameters.resources.gpu_vendor if parameters.resources.gpu_vendor else None
+        ),
+        gpu_type=(
+            parameters.resources.gpu_type if parameters.resources.gpu_type else None
+        ),
         cpu_cores=parameters.resources.cpu_cores,
         memory_gb=parameters.resources.memory_gb,
         storage_gb=parameters.resources.storage_gb,
