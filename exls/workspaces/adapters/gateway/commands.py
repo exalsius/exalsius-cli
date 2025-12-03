@@ -1,3 +1,5 @@
+from typing import Optional
+
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
 from exalsius_api_client.models.workspace_create_response import WorkspaceCreateResponse
@@ -17,9 +19,9 @@ class BaseWorkspacesSdkCommand[T_Cmd_Return](
 
 
 class ListWorkspacesSdkCommand(BaseWorkspacesSdkCommand[WorkspacesListResponse]):
-    def __init__(self, api_client: WorkspacesApi, cluster_id: str):
+    def __init__(self, api_client: WorkspacesApi, cluster_id: Optional[str] = None):
         super().__init__(api_client)
-        self._cluster_id: str = cluster_id
+        self._cluster_id: Optional[str] = cluster_id
 
     def _execute_api_call(self) -> WorkspacesListResponse:
         response: WorkspacesListResponse = self.api_client.list_workspaces(

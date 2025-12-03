@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from exls.clusters.core.domain import AssignedClusterNode, Cluster, ClusterNodeResources
 from exls.clusters.core.service import ClustersService
@@ -51,10 +51,16 @@ class ClustersDomainProvider(IClustersProvider):
                 if isinstance(resource.cluster_node, AssignedClusterNode)
                 else resource.cluster_node
             )
+            node_endpoint: Optional[str] = (
+                resource.cluster_node.endpoint
+                if isinstance(resource.cluster_node, AssignedClusterNode)
+                else None
+            )
             available_cluster_resources.append(
                 AvailableClusterResources(
                     node_id=node_id,
                     node_name=node_name,
+                    node_endpoint=node_endpoint,
                     gpu_type=resource.free_resources.gpu_type,
                     gpu_vendor=WorkspaceGPUVendor.from_str(
                         resource.free_resources.gpu_vendor

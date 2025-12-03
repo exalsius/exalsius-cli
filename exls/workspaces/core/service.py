@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic.types import PositiveFloat
 
@@ -9,6 +9,7 @@ from exls.shared.core.service import ServiceError
 from exls.workspaces.core.domain import (
     AvailableClusterResources,
     Workspace,
+    WorkspaceAccessType,
     WorkspaceCluster,
     WorkspaceClusterStatus,
     WorkspaceGPUVendor,
@@ -59,24 +60,38 @@ class WorkspacesService:
         return cluster
 
     @handle_service_layer_errors("listing workspaces")
-    def list_workspaces(self, cluster_ids: List[str]) -> List[Workspace]:
-        workspaces: List[Workspace] = []
-        for cluster_id in cluster_ids:
-            cluster: WorkspaceCluster = self._clusters_provider.get_cluster(
-                cluster_id=cluster_id
-            )
-            if cluster.status != WorkspaceClusterStatus.READY:
-                continue
-            workspaces.extend(self._workspaces_gateway.list(cluster_id=cluster_id))
-        return workspaces
+    def list_workspaces(self, cluster_id: Optional[str] = None) -> List[Workspace]:
+        return self._workspaces_gateway.list(cluster_id=cluster_id)
 
     @handle_service_layer_errors("getting workspace")
     def get_workspace(self, workspace_id: str) -> Workspace:
-        return self._workspaces_gateway.get(workspace_id=workspace_id)
+        workspace: Workspace = self._workspaces_gateway.get(workspace_id=workspace_id)
+
+        cluster_resources: List[AvailableClusterResources] = (
+            self._clusters_provider.get_cluster_resources(
+                cluster_id=workspace.cluster_id
+            )
+        )
+        endpoint: Optional[str] = None
+        for resource in cluster_resources:
+            if resource.node_endpoint:
+                # node_endpoint can have a port postfix (e.g. "10.0.0.1:22"), we want just the IP part.
+                endpoint = (
+                    resource.node_endpoint.split(":")[0]
+                    if resource.node_endpoint
+                    else None
+                )
+                break
+        if workspace.status == WorkspaceStatus.RUNNING:
+            for access_information in workspace.access_information:
+                if access_information.access_type == WorkspaceAccessType.NODE_PORT:
+                    access_information.external_ip = endpoint
+        return workspace
 
     @handle_service_layer_errors("deleting workspace")
-    def delete_workspace(self, workspace_id: str) -> None:
-        self._workspaces_gateway.delete(workspace_id=workspace_id)
+    def delete_workspaces(self, workspace_ids: List[str]) -> None:
+        for workspace_id in workspace_ids:
+            self._workspaces_gateway.delete(workspace_id=workspace_id)
 
     def _wait_for_workspace_status(
         self, workspace_id: str, target_status: WorkspaceStatus
@@ -143,15 +158,47 @@ class WorkspacesService:
 
         for resource in available_cluster_resources:
             if resource.gpu_count >= num_gpus:
+                # These are the minimum requirements for a single node workspace
+                # TODO: This is a temporary solution. We should move this to a config
+                if resource.cpu_cores < 2:
+                    continue
+                if resource.memory_gb < 10:
+                    continue
+                if resource.storage_gb < 20:
+                    continue
+
+                requested_cpu_cores: int = int(
+                    (resource.cpu_cores / resource.gpu_count) * num_gpus
+                )
+                requested_memory_gb: int = int(
+                    (resource.memory_gb / resource.gpu_count) * num_gpus
+                )
+                requested_storage_gb: int = int(
+                    (resource.storage_gb / resource.gpu_count) * num_gpus
+                )
+
+                # We need a bit of tolerance here
+                if requested_cpu_cores == resource.cpu_cores:
+                    tolerance: int = int(requested_cpu_cores * 0.1)
+                    tolerance = max(tolerance, 1)
+                    requested_cpu_cores -= tolerance
+                if requested_memory_gb == resource.memory_gb:
+                    requested_memory_gb -= int(requested_memory_gb * 0.1)
+                if requested_storage_gb == resource.storage_gb:
+                    requested_storage_gb -= int(requested_storage_gb * 0.1)
+                    # We need to keep 10GB for ephemeral storage of the workspace
+                    requested_storage_gb -= 10
+                    # Not enough storage for the workspace
+                    if requested_storage_gb < 10:
+                        continue
+
                 return AssignedSingleNodeWorkspaceResources(
                     gpu_count=num_gpus,
                     gpu_type=resource.gpu_type,
                     gpu_vendors=resource.gpu_vendor.value,
-                    cpu_cores=int((resource.cpu_cores / resource.gpu_count) * num_gpus),
-                    memory_gb=int((resource.memory_gb / resource.gpu_count) * num_gpus),
-                    storage_gb=int(
-                        (resource.storage_gb / resource.gpu_count) * num_gpus
-                    ),
+                    cpu_cores=requested_cpu_cores,
+                    memory_gb=requested_memory_gb,
+                    storage_gb=requested_storage_gb,
                 )
         raise ServiceError(
             f"Cluster {cluster.name} ({cluster_id}) does not have a node with at least {num_gpus} requested "

@@ -19,6 +19,14 @@ from exls.workspaces.core.requests import DeployWorkspaceRequest
 def workspace_dto_from_domain(
     domain: Workspace, cluster_name: StrictStr
 ) -> WorkspaceDTO:
+    access_information: List[WorkspaceAccessInformationDTO] = []
+    for info in domain.access_information:
+        access_information.append(
+            WorkspaceAccessInformationDTO(
+                type=info.access_type,
+                endpoint=info.endpoint,
+            )
+        )
     return WorkspaceDTO(
         id=domain.id,
         name=domain.name,
@@ -26,6 +34,7 @@ def workspace_dto_from_domain(
         template_name=domain.template_name,
         status=domain.status.value,
         created_at=domain.created_at,
+        access_information=access_information[0] if access_information else None,
     )
 
 
@@ -63,6 +72,7 @@ def multi_node_workspace_dto_from_domain(
         created_at=domain.created_at,
         total_nodes=total_nodes,
         gpu_types=gpu_types,
+        access_information=None,
     )
 
 

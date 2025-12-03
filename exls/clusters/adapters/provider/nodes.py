@@ -35,6 +35,7 @@ class NodesDomainProvider(INodesProvider):
                         username=node.username,
                         ssh_key_id=node.ssh_key_id,
                         status=ClusterNodeStatus.from_str(node.status.value),
+                        endpoint=node.endpoint,
                     )
                 )
         return nodes
