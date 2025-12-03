@@ -347,7 +347,9 @@ class TableSingleItemRenderer(
             ]
 
         for key in keys_to_show:
+            print("key: ", key)
             value = all_attrs[key]
+            print("value: ", value)
             if validated_render_context:
                 value = validated_render_context.columns[key].value_formatter(value)
 

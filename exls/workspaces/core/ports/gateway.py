@@ -55,8 +55,6 @@ def deploy_workspace_request_to_deploy_parameters(
         storage_gb=request.resources.storage_gb,
     )
     variables: Dict[str, Any] = request.template_variables
-    if request.resources.ephemeral_storage_gb is not None:
-        variables["ephemeral_storage_gb"] = request.resources.ephemeral_storage_gb
 
     return DeployWorkspaceParameters(
         cluster_id=request.cluster_id,

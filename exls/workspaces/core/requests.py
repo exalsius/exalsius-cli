@@ -15,9 +15,6 @@ class WorkspaceResources(BaseModel):
     cpu_cores: int = Field(..., description="The number of CPU cores")
     memory_gb: int = Field(..., description="The amount of memory in GB")
     storage_gb: int = Field(..., description="The amount of storage in GB")
-    ephemeral_storage_gb: Optional[int] = Field(
-        default=None, description="The amount of ephemeral storage in GB"
-    )
 
 
 class AssignedSingleNodeWorkspaceResources(WorkspaceResources):

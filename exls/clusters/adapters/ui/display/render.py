@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, cast
 
 from pydantic import BaseModel
 
@@ -21,6 +21,7 @@ DEFAULT_CLUSTER_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "updated_at": TableRenderContext.get_column("Updated At"),
 }
 
+# TODO: Refactor this to use a proper formatter function
 DEFAULT_CLUSTER_WITH_NODES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
@@ -29,7 +30,20 @@ DEFAULT_CLUSTER_WITH_NODES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "updated_at": TableRenderContext.get_column("Updated At"),
     "worker_nodes": TableRenderContext.get_column(
         "Worker Nodes",
-        value_formatter=lambda nodes: ", ".join([node.hostname for node in nodes]),
+        value_formatter=lambda nodes: ", ".join(
+            [
+                (
+                    node.hostname
+                    if isinstance(node, ClusterNodeDTO)
+                    else (
+                        str(cast(str, node["hostname"]))
+                        if isinstance(node, dict)
+                        else str(node)
+                    )
+                )
+                for node in nodes
+            ]
+        ),
     ),
 }
 
