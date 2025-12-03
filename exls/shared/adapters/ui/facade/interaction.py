@@ -41,16 +41,16 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
         )
 
     def get_columns_rendering_map(
-        self, data_type: Type[BaseModel]
+        self, data_type: Type[BaseModel], list_data: bool = False
     ) -> Optional[Dict[str, Column]]:
         # Subclasses can override this method to e.g. return the columns rendering map
         return None
 
     def _get_render_context(
-        self, data: BaseModel, output_format: OutputFormat
+        self, data: BaseModel, output_format: OutputFormat, list_data: bool = False
     ) -> Optional[TableRenderContext]:
         columns: Optional[Dict[str, Column]] = self.get_columns_rendering_map(
-            type(data)
+            type(data), list_data
         )
         render_context: Optional[TableRenderContext] = None
         if columns and output_format == OutputFormat.TABLE:
@@ -72,7 +72,9 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
                 else data if isinstance(data, BaseModel) else None
             )
             if ref_data:
-                render_context = self._get_render_context(ref_data, output_format)
+                render_context = self._get_render_context(
+                    ref_data, output_format, list_data=isinstance(data, Sequence)
+                )
             self.output_manager.display(
                 data, output_format=output_format, render_context=render_context
             )
