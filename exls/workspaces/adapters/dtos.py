@@ -57,4 +57,4 @@ class WorkspaceResourcesRequestDTO(BaseModel):
     gpu_vendor: Optional[str] = Field(None, description="The vendor of the GPUs")
     cpu_cores: int = Field(..., description="The number of CPU cores")
     memory_gb: int = Field(..., description="The amount of memory in GB")
-    pvc_storage_gb: int = Field(..., description="The amount of PVC storage in GB")
+    storage_gb: int = Field(..., description="The amount of storage in GB")
