@@ -59,16 +59,16 @@ def resources_from_sdk_model(
         return None
 
     available_resources: Resources = Resources(
-        gpu_type=sdk_model.available.gpu_type or "N/A",
-        gpu_vendor=sdk_model.available.gpu_vendor or "N/A",
+        gpu_type=sdk_model.available.gpu_type or "",
+        gpu_vendor=sdk_model.available.gpu_vendor or "",
         gpu_count=sdk_model.available.gpu_count or 0,
         cpu_cores=sdk_model.available.cpu_cores or 0,
         memory_gb=sdk_model.available.memory_gb or 0,
         storage_gb=sdk_model.available.storage_gb or 0,
     )
     occupied_resources: Resources = Resources(
-        gpu_type=sdk_model.occupied.gpu_type or "N/A",
-        gpu_vendor=sdk_model.occupied.gpu_vendor or "N/A",
+        gpu_type=sdk_model.occupied.gpu_type or "",
+        gpu_vendor=sdk_model.occupied.gpu_vendor or "",
         gpu_count=sdk_model.occupied.gpu_count or 0,
         cpu_cores=sdk_model.occupied.cpu_cores or 0,
         memory_gb=sdk_model.occupied.memory_gb or 0,
