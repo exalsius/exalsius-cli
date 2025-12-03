@@ -77,11 +77,11 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
                     message="Enable VPN for the cluster?",
                     default=False,
                 ),
-                ConfirmStep[DeployClusterRequestFromFlowDTO](
-                    key="enable_telemetry",
-                    message="Enable telemetry for the cluster?",
-                    default=False,
-                ),
+                # ConfirmStep[DeployClusterRequestFromFlowDTO](
+                #     key="enable_telemetry",
+                #     message="Enable telemetry for the cluster?",
+                #     default=False,
+                # ),
             ]
         )
         flow.execute(model, context, io_facade)

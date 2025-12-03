@@ -172,11 +172,6 @@ def deploy_cluster(
         "--enable-multinode-training",
         help="Enable multinode AI model training for the cluster",
     ),
-    enable_telemetry: bool = typer.Option(
-        False,
-        "--enable-telemetry",
-        help="Enable telemetry for the cluster",
-    ),
     enable_vpn: bool = typer.Option(
         False,
         "--enable-vpn",
@@ -221,7 +216,7 @@ def deploy_cluster(
             type=ClusterType.REMOTE,
             worker_nodes=[node for node in worker_node_ids or []],
             enable_multinode_training=enable_multinode_training,
-            enable_telemetry=enable_telemetry,
+            enable_telemetry=False,
             enable_vpn=enable_vpn,
         )
     result: DeployClusterResult = service.deploy_cluster(deploy_cluster_request)
