@@ -9,6 +9,6 @@ from exls.workspaces.adapters.ui.display.render import get_columns_rendering_map
 
 class IOWorkspacesFacade(IOBaseModelFacade):
     def get_columns_rendering_map(
-        self, data_type: Type[BaseModel]
+        self, data_type: Type[BaseModel], list_data: bool = False
     ) -> Optional[Dict[str, Column]]:
-        return get_columns_rendering_map(data_type)
+        return get_columns_rendering_map(data_type, list_data)

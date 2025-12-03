@@ -79,7 +79,7 @@ def _open_browser_for_device_code_authentication(uri: str) -> bool:
 
 class IOAuthFacade(IOBaseModelFacade):
     def get_columns_rendering_map(
-        self, data_type: Type[BaseModel]
+        self, data_type: Type[BaseModel], list_data: bool = False
     ) -> Optional[Dict[str, Column]]:
         return get_columns_rendering_map(data_type)
 

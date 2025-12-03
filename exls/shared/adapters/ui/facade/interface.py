@@ -19,7 +19,7 @@ class IIOFacade(
 ):
     @abstractmethod
     def get_columns_rendering_map(
-        self, data_type: Type[T]
+        self, data_type: Type[T], list_data: bool = False
     ) -> Optional[Dict[str, Column]]: ...
 
     @abstractmethod
