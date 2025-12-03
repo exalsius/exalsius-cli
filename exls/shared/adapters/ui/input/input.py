@@ -187,5 +187,4 @@ class ConsoleInputManager(IInputManager):
             except DeserializationError as e:
                 raise EditDictionaryError(f"Failed to deserialize YAML: {e}") from e
             except Exception as e:
-                print(type(e))
                 raise EditDictionaryError(f"Failed to edit dictionary: {e}") from e

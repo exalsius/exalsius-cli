@@ -10,6 +10,7 @@ from exls.auth.core.domain import (
     RevokeTokenRequest,
     StoreTokenRequest,
     Token,
+    TokenExpiryMetadata,
     User,
     ValidateTokenRequest,
 )
@@ -137,6 +138,10 @@ class AuthService:
             )
             token: Token = self._poll_for_authentication(device_code)
             user: User = self._validate_token(token.id_token)
+            token_expiry_metadata: TokenExpiryMetadata = (
+                self.auth_gateway.load_token_expiry_metadata(token=token.id_token)
+            )
+            token.expires_in = token_expiry_metadata.expires_in
 
             store_request = self._create_store_token_request(token)
             self.token_storage_gateway.store_token(request=store_request)
@@ -147,7 +152,7 @@ class AuthService:
                 access_token=token.access_token,
                 id_token=token.id_token,
                 refresh_token=token.refresh_token,
-                expiry=token.expiry,
+                expiry=token_expiry_metadata.exp,
             )
 
             return AuthSession(user=user, token=loaded_token)

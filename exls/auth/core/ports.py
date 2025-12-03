@@ -9,6 +9,7 @@ from exls.auth.core.domain import (
     RevokeTokenRequest,
     StoreTokenRequest,
     Token,
+    TokenExpiryMetadata,
     User,
     ValidateTokenRequest,
 )
@@ -32,6 +33,9 @@ class IAuthGateway(ABC):
         self,
         request: AuthenticationRequest,
     ) -> Token: ...
+
+    @abstractmethod
+    def load_token_expiry_metadata(self, token: str) -> TokenExpiryMetadata: ...
 
     @abstractmethod
     def validate_token(self, request: ValidateTokenRequest) -> User: ...

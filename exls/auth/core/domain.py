@@ -51,6 +51,15 @@ class Token(BaseModel):
         return datetime.now(timezone.utc) + timedelta(seconds=self.expires_in)
 
 
+class TokenExpiryMetadata(BaseModel):
+    iat: datetime = Field(..., description="The issued at datetime")
+    exp: datetime = Field(..., description="The expires at datetime")
+
+    @property
+    def expires_in(self) -> int:
+        return int((self.exp - datetime.now(timezone.utc)).total_seconds())
+
+
 class User(BaseModel):
     email: StrictStr = Field(..., description="The email")
     nickname: StrictStr = Field(..., description="The nickname")
