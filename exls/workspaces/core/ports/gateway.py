@@ -67,7 +67,7 @@ def deploy_workspace_request_to_deploy_parameters(
 
 class IWorkspacesGateway(ABC):
     @abstractmethod
-    def list(self, cluster_id: str) -> List[Workspace]:
+    def list(self, cluster_id: Optional[str] = None) -> List[Workspace]:
         raise NotImplementedError
 
     @abstractmethod

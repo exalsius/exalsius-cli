@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from exalsius_api_client.models.workspace_create_request import WorkspaceCreateRequest
@@ -31,7 +31,7 @@ class WorkspacesGatewaySdk(IWorkspacesGateway):
     def __init__(self, workspaces_api: WorkspacesApi):
         self._workspaces_api = workspaces_api
 
-    def list(self, cluster_id: str) -> List[Workspace]:
+    def list(self, cluster_id: Optional[str] = None) -> List[Workspace]:
         command: ListWorkspacesSdkCommand = ListWorkspacesSdkCommand(
             self._workspaces_api, cluster_id=cluster_id
         )

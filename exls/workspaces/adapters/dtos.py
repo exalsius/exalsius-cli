@@ -24,12 +24,17 @@ class WorkspaceDTO(BaseModel):
     created_at: Optional[datetime] = Field(
         ..., description="The creation date of the workspace"
     )
-
-
-class SingleNodeWorkspaceDTO(WorkspaceDTO):
     access_information: Optional[WorkspaceAccessInformationDTO] = Field(
         ..., description="The access information of the workspace"
     )
+
+    @property
+    def access_endpoint(self) -> Optional[str]:
+        return self.access_information.endpoint if self.access_information else None
+
+
+class SingleNodeWorkspaceDTO(WorkspaceDTO):
+    pass
 
 
 class MultiNodeWorkspaceDTO(WorkspaceDTO):

@@ -52,8 +52,21 @@ class WorkspaceGPUVendor(StrEnum):
             return cls.UNKNOWN
 
 
+class WorkspaceAccessType(StrEnum):
+    NODE_PORT = "NODE_PORT"
+    INGRESS = "INGRESS"
+    UNKNOWN = "UNKNOWN"
+
+    @classmethod
+    def from_str(cls, value: str) -> WorkspaceAccessType:
+        try:
+            return cls(value.upper())
+        except ValueError:
+            return cls.UNKNOWN
+
+
 class WorkspaceAccessInformation(BaseModel):
-    access_type: str = Field(..., description="The access type")
+    access_type: WorkspaceAccessType = Field(..., description="The access type")
     access_protocol: str = Field(..., description="The access protocol")
     external_ip: Optional[str] = Field(None, description="The external IP")
     port_number: int = Field(..., description="The port number")
@@ -91,6 +104,9 @@ class WorkspaceCluster(BaseModel):
 class AvailableClusterResources(BaseModel):
     node_id: StrictStr = Field(..., description="The ID of the node")
     node_name: StrictStr = Field(..., description="The name of the node")
+    node_endpoint: Optional[StrictStr] = Field(
+        None, description="The endpoint of the node"
+    )
     gpu_type: StrictStr = Field(..., description="The type of the GPU")
     gpu_vendor: WorkspaceGPUVendor = Field(..., description="The vendor of the GPU")
     gpu_count: int = Field(..., description="The count of the GPU")
