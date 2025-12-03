@@ -9,6 +9,7 @@ from typing_extensions import Optional
 from exls.shared.adapters.ui.input.interfaces import EditDictionaryError
 from exls.shared.adapters.ui.input.values import UserCancellationException
 from exls.shared.adapters.ui.shared.render.render import YamlRenderContext
+from exls.shared.core.dictionaries import deep_merge
 from exls.shared.core.domain import ExalsiusError, generate_random_name
 from exls.workspaces.adapters.bundle import WorkspacesBundle
 from exls.workspaces.adapters.ui.display.display import IOWorkspacesFacade
@@ -253,7 +254,7 @@ class DistributedTrainingModels(StrEnum):
     WAV2VEC2 = "wav2vec2"
     GPT_NEO = "gpt-neo"
     GPT_NEO_X = "gpt-neo-x"
-    GPT_NEO_TINY = "gpt-neo-tiny"
+    # GPT_NEO_TINY = "gpt-neo-tiny"
     GCN = "gcn"
 
     @classmethod
@@ -268,8 +269,8 @@ class DistributedTrainingModels(StrEnum):
             return "c4"
         elif model == cls.GPT_NEO_X:
             return "c4"
-        elif model == cls.GPT_NEO_TINY:
-            return "c4_prime"
+        # elif model == cls.GPT_NEO_TINY:
+        #    return "c4"
         elif model == cls.GCN:
             return "ogbn_arxiv"
 
@@ -293,6 +294,8 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         node_count: int,
         num_amd_nodes: int,
         num_nvidia_nodes: int,
+        storage_gb: int,
+        memory_gb: int,
     ):
         super().__init__(bundle)
         self._model: DistributedTrainingModels = model
@@ -302,6 +305,8 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         self._node_count: int = node_count
         self._num_amd_nodes: int = num_amd_nodes
         self._num_nvidia_nodes: int = num_nvidia_nodes
+        self._storage_gb: int = storage_gb
+        self._memory_gb: int = memory_gb
 
     @property
     def _heterogenous(self) -> bool:
@@ -310,6 +315,24 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
         return IntegratedWorkspaceTemplates.DIST_TRAINING
+
+    def _verify_resources(self):
+        if (
+            self._model
+            in [
+                DistributedTrainingModels.WAV2VEC2,
+                DistributedTrainingModels.RESNET50,
+                DistributedTrainingModels.RESNET101,
+            ]
+            and self._storage_gb < 250
+        ):
+            raise InvalidWorkspaceConfiguration(
+                f"{self._model.value} model requires at least 250GB of storage."
+            )
+        if self._model == DistributedTrainingModels.GCN and self._memory_gb < 32:
+            raise InvalidWorkspaceConfiguration(
+                "GCN model requires at least 32GB of memory."
+            )
 
     def _get_torch_elastic_config(self) -> Dict[str, Any]:
         min_nodes: int = 2
@@ -339,7 +362,7 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         if gradient_compression == GradientCompression.NO_COMPRESSION:
             return {
                 "localSteps": 1,
-                "optimMethod": "ddp",
+                "optimMethod": "sgd",
             }
         elif gradient_compression == GradientCompression.WEAK_COMPRESSION:
             return {"localSteps": 20, "optimMethod": "sgd"}
@@ -367,7 +390,6 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         if model in [
             DistributedTrainingModels.GPT_NEO,
             DistributedTrainingModels.GPT_NEO_X,
-            DistributedTrainingModels.GPT_NEO_TINY,
         ]:
             compressionDecay = 0.999
             if gradient_compression == GradientCompression.ULTRA_COMPRESSION:
@@ -436,6 +458,7 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
             raise InvalidWorkspaceConfiguration(
                 "Unexpected error: Variable 'diloco' is not set in the workspace template."
             )
+        self._verify_resources()
         gradient_compression_variables: Dict[str, str] = (
             self._translate_compression_config_for_gradient_compression(
                 self._gradient_compression
@@ -448,31 +471,30 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         metadata_variables: Dict[str, str] = self._get_metadata_variable_defaults(
             self._model, self._gradient_compression
         )
-        variables["diloco"] = {
-            **variables["diloco"],
-            **gradient_compression_variables,
-            **training_config,
-            **model_variables,
-            **metadata_variables,
-        }
+        variables["diloco"] = deep_merge(
+            variables["diloco"],
+            gradient_compression_variables,
+            training_config,
+            model_variables,
+            metadata_variables,
+        )
         variables["diloco"]["pgroupBackend"] = self._get_prgroup_backend()
 
         if "elastic" not in variables:
             raise InvalidWorkspaceConfiguration(
                 "Unexpected error: Variable 'elastic' is not set in the workspace template."
             )
-        variables["elastic"] = {
-            **variables["elastic"],
-            **self._get_torch_elastic_config(),
-        }
+        variables["elastic"] = deep_merge(
+            variables["elastic"], self._get_torch_elastic_config()
+        )
 
         if "gpu" not in variables:
             raise InvalidWorkspaceConfiguration(
                 "Unexpected error: Variable 'gpu' is not set in the workspace template."
             )
-        variables["gpu"] = {
-            **variables["gpu"],
-            **self._get_gpu_variables(self._num_amd_nodes, self._num_nvidia_nodes),
-        }
+        variables["gpu"] = deep_merge(
+            variables["gpu"],
+            self._get_gpu_variables(self._num_amd_nodes, self._num_nvidia_nodes),
+        )
 
         return super().configure_and_validate(variables, io_facade)

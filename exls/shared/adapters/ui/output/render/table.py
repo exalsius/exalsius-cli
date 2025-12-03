@@ -49,7 +49,7 @@ class DefaultColumnRenderingConfig(BaseSettings):
     Default column configuration.
     """
 
-    color: str = Field(description="The color of the column", default="blue")
+    color: str = Field(description="The color of the column", default="white")
     bgcolor: Optional[str] = Field(
         description="The background color of the column", default=None
     )
