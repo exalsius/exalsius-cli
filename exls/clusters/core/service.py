@@ -472,10 +472,10 @@ class ClustersService:
         cluster_node_refs: List[NodeRef] = self.clusters_gateway.get_cluster_nodes(
             cluster_id=cluster_id
         )
+
         loaded_nodes, _ = self._load_cluster_node_by_refs(
             cluster_node_refs=cluster_node_refs
         )
-
         loaded_nodes_map: Dict[str, AssignedClusterNode] = {
             node.id: node for node in loaded_nodes
         }
@@ -495,7 +495,7 @@ class ClustersService:
             else:
                 cluster_node = node_id
                 logger.warning(
-                    f"Node {node_id} not found in node pool. Node name is set to Unknown."
+                    f"Node ID '{node_id}' not found in node pool. Node name is set to Unknown."
                 )
 
             cluster_node_resources.append(
@@ -513,7 +513,7 @@ class ClustersService:
         cluster_id: str,
         kubeconfig_file_path: str = Path.home().joinpath(".kube", "config").as_posix(),
     ) -> None:
-        self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
+        # self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
 
         kubeconfig_content: str = self.clusters_gateway.get_kubeconfig(
             cluster_id=cluster_id

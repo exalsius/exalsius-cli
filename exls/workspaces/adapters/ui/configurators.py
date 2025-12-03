@@ -208,8 +208,8 @@ class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
         ssh_public_key: Optional[str],
     ):
         super().__init__(bundle)
-        self._ssh_password: Optional[str] = None
-        self._ssh_public_key: Optional[str] = None
+        self._ssh_password: Optional[str] = ssh_password
+        self._ssh_public_key: Optional[str] = ssh_public_key
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -232,14 +232,18 @@ class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
     def configure_and_validate(
         self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
     ) -> Dict[str, Any]:
+        variables["sshPassword"] = self._ssh_password or ""
+        variables["sshPublicKey"] = self._ssh_public_key or ""
         edited_variables: Dict[str, Any] = self._configure(variables.copy(), io_facade)
+
+        self._validate(variables, edited_variables)
         # This is allows users to delete one of the two access methods during the configuration
         # and still pass the validation.
-        if "sshPassword" not in edited_variables:
-            edited_variables["sshPassword"] = ""
-        if "sshPublicKey" not in edited_variables:
-            edited_variables["sshPublicKey"] = ""
-        self._validate(variables, edited_variables)
+        if "sshPassword" not in variables:
+            variables["sshPassword"] = ""
+        if "sshPublicKey" not in variables:
+            variables["sshPublicKey"] = ""
+
         return edited_variables
 
 

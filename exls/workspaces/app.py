@@ -91,12 +91,9 @@ def list_workspaces(
     else:
         cluster_id_map[cluster_id] = service.get_cluster(cluster_id)
 
-    workspaces: List[Workspace] = service.list_workspaces(
-        cluster_ids=list(cluster_id_map.keys())
-    )
+    workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
     workspace_dtos: List[WorkspaceDTO] = [
         workspace_dto_from_domain(workspace, cluster_id_map[workspace.cluster_id].name)
-        for workspace in workspaces
         for workspace in workspaces
     ]
     if len(workspace_dtos) == 0:
@@ -128,11 +125,12 @@ def get_workspace(
     io_facade.display_data(workspace_dto, bundle.object_output_format)
 
 
-@workspaces_app.command("delete", help="Delete a workspace of a cluster")
+@workspaces_app.command("delete", help="Delete workspace of a cluster")
 @handle_application_layer_errors(WorkspacesBundle)
 def delete_workspace(
     ctx: typer.Context,
     workspace_id: str = typer.Argument(
+        ...,
         help="The ID of the workspace to delete",
     ),
 ):
@@ -140,10 +138,11 @@ def delete_workspace(
     io_facade: IOWorkspacesFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    service.delete_workspace(workspace_id=workspace_id)
+    service.delete_workspaces(workspace_ids=[workspace_id])
 
     io_facade.display_success_message(
-        f"Workspace {workspace_id} deleted successfully.", bundle.message_output_format
+        f"Workspace {workspace_id} deleted successfully.",
+        bundle.message_output_format,
     )
 
 
@@ -244,7 +243,7 @@ def deploy_jupyter_workspace(
         "--password",
         "-p",
         help="The password to use for the Jupyter workspace. Must be at least 6 characters long.",
-        prompt=True,
+        prompt="You need a password to access your Jupyter workspace. Please enter the password (min. 6 characters)",
         show_default=False,
     ),
     num_gpus: int = typer.Option(
@@ -355,9 +354,9 @@ def deploy_marimo_workspace(
         None,
         "--password",
         "-p",
-        help="The password to use for the Marimo workspace",
+        help="The password to use for the Marimo workspace. Must be at least 6 characters long.",
+        prompt="You need a password to access your Marimo workspace. Please enter the password (min. 6 characters)",
         callback=_validate_optional_password,
-        prompt=True,
         show_default=False,
     ),
     num_gpus: int = typer.Option(
@@ -473,7 +472,6 @@ def deploy_vscode_dev_pod_workspace(
         "-p",
         help="The password to use for the SSH connection",
         callback=_validate_optional_password,
-        prompt=False,
         show_default=False,
     ),
     ssh_public_key: Optional[Path] = typer.Option(

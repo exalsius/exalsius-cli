@@ -11,6 +11,7 @@ from exalsius_api_client.models.workspace_template import (
 from exls.workspaces.core.domain import (
     Workspace,
     WorkspaceAccessInformation,
+    WorkspaceAccessType,
     WorkspaceStatus,
 )
 from exls.workspaces.core.ports.gateway import DeployWorkspaceParameters
@@ -20,7 +21,7 @@ def workspace_access_information_from_sdk(
     sdk_model: SdkWorkspaceAccessInformation,
 ) -> WorkspaceAccessInformation:
     return WorkspaceAccessInformation(
-        access_type=sdk_model.access_type,
+        access_type=WorkspaceAccessType.from_str(sdk_model.access_type),
         access_protocol=sdk_model.access_protocol,
         external_ip=sdk_model.external_ip,
         port_number=sdk_model.port_number,

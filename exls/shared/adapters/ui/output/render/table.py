@@ -38,7 +38,7 @@ def _get_nested_attribute(obj: Any, attr: str, default: Any = "") -> Any:
     try:
         return functools.reduce(getattr, attr.split("."), obj)
     except (AttributeError, TypeError) as e:
-        logging.error(
+        logging.debug(
             f"Error getting nested attribute {attr} from {obj} - Returning default value: {default} - Error: {e}"
         )
         return default
@@ -325,17 +325,29 @@ class TableSingleItemRenderer(
 
         attrs: Dict[str, Any] = data.model_dump()
 
+        # Include @property attributes as well
+        property_names = [
+            name
+            for name in dir(data.__class__)
+            if isinstance(getattr(data.__class__, name, None), property)
+            and not name.startswith("_")
+        ]
+        property_values = {name: getattr(data, name) for name in property_names}
+
+        # Merge regular attributes and property attributes (property values take precedence if same key)
+        all_attrs = {**attrs, **property_values}
+
         # Determine which keys to show and in what order
-        keys_to_show = attrs.keys()
+        keys_to_show = all_attrs.keys()
         if validated_render_context:
             # Use the columns from the context to determine order and visibility
             # Note: We only care about keys present in both the data and the context columns
             keys_to_show = [
-                k for k in validated_render_context.columns.keys() if k in attrs
+                k for k in validated_render_context.columns.keys() if k in all_attrs
             ]
 
         for key in keys_to_show:
-            value = attrs[key]
+            value = all_attrs[key]
 
             # Format property name
             prop_col = single_item_table_render_context.columns["Property"]

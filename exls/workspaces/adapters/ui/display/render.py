@@ -14,15 +14,6 @@ from exls.workspaces.adapters.ui.dtos import (
     DeploySingleNodeWorkspaceRequestDTO,
 )
 
-DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
-    "id": TableRenderContext.get_column("ID", no_wrap=True),
-    "name": TableRenderContext.get_column("Name"),
-    "template_name": TableRenderContext.get_column("Template"),
-    "status": TableRenderContext.get_column("Status"),
-    "created_at": TableRenderContext.get_column("Created At"),
-    "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
-}
-
 DEFAULT_LIST_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
@@ -32,13 +23,25 @@ DEFAULT_LIST_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
 }
 
+DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "name": TableRenderContext.get_column("Name"),
+    "template_name": TableRenderContext.get_column("Template"),
+    "status": TableRenderContext.get_column("Status"),
+    "created_at": TableRenderContext.get_column("Created At"),
+    "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
+    "access_endpoint": TableRenderContext.get_column(
+        "Access Endpoint", value_formatter=format_na
+    ),
+}
+
 DEFAULT_SINGLE_NODE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "template_name": TableRenderContext.get_column("Template"),
     "status": TableRenderContext.get_column("Status"),
     "created_at": TableRenderContext.get_column("Created At"),
-    "access_information.endpoint": TableRenderContext.get_column(
+    "access_endpoint": TableRenderContext.get_column(
         "Access Endpoint", value_formatter=format_na
     ),
     "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
