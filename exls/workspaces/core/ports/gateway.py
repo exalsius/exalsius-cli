@@ -42,10 +42,14 @@ class DeployWorkspaceParameters(BaseModel):
 def deploy_workspace_request_to_deploy_parameters(
     request: DeployWorkspaceRequest,
 ) -> DeployWorkspaceParameters:
+    gpu_vendor: Optional[str] = request.resources.gpu_vendors
+    if gpu_vendor:
+        gpu_vendor = gpu_vendor.split(",")[0]
+
     resources: WorkspaceResourceParameters = WorkspaceResourceParameters(
         gpu_count=request.resources.gpu_count,
         gpu_type=request.resources.gpu_type,
-        gpu_vendor=None,
+        gpu_vendor=gpu_vendor,
         cpu_cores=request.resources.cpu_cores,
         memory_gb=request.resources.memory_gb,
         storage_gb=request.resources.storage_gb,

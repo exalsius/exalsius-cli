@@ -348,6 +348,8 @@ class TableSingleItemRenderer(
 
         for key in keys_to_show:
             value = all_attrs[key]
+            if validated_render_context:
+                value = validated_render_context.columns[key].value_formatter(value)
 
             # Format property name
             prop_col = single_item_table_render_context.columns["Property"]

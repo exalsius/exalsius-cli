@@ -39,6 +39,7 @@ class GetWorkspaceSdkCommand(BaseWorkspacesSdkCommand[WorkspaceResponse]):
         response: WorkspaceResponse = self.api_client.describe_workspace(
             workspace_id=self._workspace_id
         )
+        print("response: ", response)
         return response
 
 
