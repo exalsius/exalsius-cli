@@ -73,18 +73,6 @@ class WorkspaceAccessInformation(BaseModel):
     )
     port_number: int = Field(..., description="The port number")
 
-    @property
-    def endpoint(self) -> str:
-        if not self.external_ips or not self.port_number:
-            return "N/A"
-
-        # edge case for SSH access
-        # TODO: move this to the API at some point (?)
-        if self.access_protocol.upper() == "SSH":
-            return f"ssh -p {self.port_number} dev@{self.external_ips[0]}"
-
-        return f"{self.access_protocol.lower()}://{self.external_ips[0]}:{self.port_number}"
-
 
 class Workspace(BaseModel):
     id: StrictStr = Field(..., description="The ID of the workspace")

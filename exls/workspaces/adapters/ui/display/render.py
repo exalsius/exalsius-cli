@@ -30,9 +30,7 @@ DEFAULT_SINGLE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "status": TableRenderContext.get_column("Status"),
     "created_at": TableRenderContext.get_column("Created At"),
     "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
-    "access_endpoint": TableRenderContext.get_column(
-        "Access Endpoint", value_formatter=format_na
-    ),
+    "access": TableRenderContext.get_column("Access", value_formatter=format_na),
 }
 
 DEFAULT_SINGLE_NODE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
@@ -41,9 +39,7 @@ DEFAULT_SINGLE_NODE_WORKSPACE_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "template_name": TableRenderContext.get_column("Template"),
     "status": TableRenderContext.get_column("Status"),
     "created_at": TableRenderContext.get_column("Created At"),
-    "access_endpoint": TableRenderContext.get_column(
-        "Access Endpoint", value_formatter=format_na
-    ),
+    "access": TableRenderContext.get_column("Access", value_formatter=format_na),
     "cluster_name": TableRenderContext.get_column("Deployed to Cluster"),
 }
 

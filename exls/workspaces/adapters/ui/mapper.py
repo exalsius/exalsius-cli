@@ -23,8 +23,10 @@ def workspace_dto_from_domain(
     for info in domain.access_information:
         access_information.append(
             WorkspaceAccessInformationDTO(
-                type=info.access_type,
-                endpoint=info.endpoint,
+                type=info.access_type.value,
+                protocol=info.access_protocol,
+                ip=info.external_ips[0] if info.external_ips else None,
+                port=info.port_number,
             )
         )
     return WorkspaceDTO(
@@ -45,8 +47,10 @@ def single_node_workspace_dto_from_domain(
     for info in domain.access_information:
         access_information.append(
             WorkspaceAccessInformationDTO(
-                type=info.access_type,
-                endpoint=info.endpoint,
+                type=info.access_type.value,
+                protocol=info.access_protocol,
+                ip=info.external_ips[0] if info.external_ips else None,
+                port=info.port_number,
             )
         )
     return SingleNodeWorkspaceDTO(
