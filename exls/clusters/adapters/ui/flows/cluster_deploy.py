@@ -22,6 +22,7 @@ from exls.shared.adapters.ui.flow.steps import (
     ConfirmStep,
     TextInputStep,
 )
+from exls.shared.adapters.ui.input.service import kubernetes_name_validator
 from exls.shared.adapters.ui.input.values import DisplayChoice
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.domain import generate_random_name
@@ -61,6 +62,7 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
                     key="name",
                     message="Name:",
                     default=generate_random_name(prefix="exls-cluster"),
+                    validator=kubernetes_name_validator,
                 ),
                 CheckboxStep[DeployClusterRequestFromFlowDTO, UnassignedClusterNodeDTO](
                     key="worker_node_ids",
