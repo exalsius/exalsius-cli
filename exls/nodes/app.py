@@ -9,11 +9,11 @@ from exls.nodes.adapters.dtos import (
 )
 from exls.nodes.adapters.ui.display.display import IONodesFacade
 from exls.nodes.adapters.ui.dtos import (
-    ImportSelfmanagedNodeRequestListDTO,
+    ImportSelfmanagedNodeRequestDTO,
     NodeImportFailureDTO,
 )
 from exls.nodes.adapters.ui.flows.node_import import (
-    ImportSelfmanagedNodeRequestListFlow,
+    ImportSelfmanagedNodeFlow,
 )
 from exls.nodes.adapters.ui.mappers import (
     node_dto_from_domain,
@@ -174,21 +174,17 @@ def import_nodes(ctx: typer.Context):
     node_service: NodesService = bundle.get_nodes_service()
     io_facade: IONodesFacade = bundle.get_io_facade()
 
-    flow: ImportSelfmanagedNodeRequestListFlow = (
-        bundle.get_import_selfmanaged_nodes_flow()
+    flow: ImportSelfmanagedNodeFlow = bundle.get_import_selfmanaged_node_flow()
+    import_selfmanaged_node_request: ImportSelfmanagedNodeRequestDTO = (
+        ImportSelfmanagedNodeRequestDTO()
     )
-    import_selfmanaged_node_request_list: ImportSelfmanagedNodeRequestListDTO = (
-        ImportSelfmanagedNodeRequestListDTO()
-    )
-    flow.execute(import_selfmanaged_node_request_list, FlowContext(), io_facade)
+    flow.execute(import_selfmanaged_node_request, FlowContext(), io_facade)
 
     result: SelfManagedNodesImportResult = node_service.import_selfmanaged_nodes(
-        import_selfmanaged_node_request_list.nodes
+        [import_selfmanaged_node_request]
     )
 
-    _display_import_result(
-        len(import_selfmanaged_node_request_list.nodes), result, bundle, io_facade
-    )
+    _display_import_result(1, result, bundle, io_facade)
 
 
 def _display_import_result(

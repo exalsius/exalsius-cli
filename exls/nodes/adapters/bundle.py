@@ -40,18 +40,19 @@ class NodesBundle(BaseBundle):
             output_manager=io_facade_factory.get_output_manager(),
         )
 
-    def get_import_selfmanaged_nodes_flow(self) -> ImportSelfmanagedNodeRequestListFlow:
+    def get_import_selfmanaged_node_flow(self) -> ImportSelfmanagedNodeFlow:
         import_ssh_key_flow: IImportSshKeyFlow = ImportSshKeyManagementAdapterFlow(
             import_ssh_key_flow=self._management_bundle.get_import_ssh_key_flow(
                 ask_confirm=False
             )
         )
-        import_selfmanaged_node_flow: ImportSelfmanagedNodeFlow = (
-            ImportSelfmanagedNodeFlow(
-                service=self.get_nodes_service(),
-                import_ssh_key_flow=import_ssh_key_flow,
-            )
+        return ImportSelfmanagedNodeFlow(
+            service=self.get_nodes_service(),
+            import_ssh_key_flow=import_ssh_key_flow,
+            ask_confirmation=True,
         )
+
+    def get_import_selfmanaged_nodes_flow(self) -> ImportSelfmanagedNodeRequestListFlow:
         return ImportSelfmanagedNodeRequestListFlow(
-            import_selfmanaged_node_flow=import_selfmanaged_node_flow,
+            import_selfmanaged_node_flow=self.get_import_selfmanaged_node_flow(),
         )
