@@ -23,7 +23,7 @@ def workspace_access_information_from_sdk(
     return WorkspaceAccessInformation(
         access_type=WorkspaceAccessType.from_str(sdk_model.access_type),
         access_protocol=sdk_model.access_protocol,
-        external_ip=sdk_model.external_ip,
+        external_ips=sdk_model.external_ips or [],
         port_number=sdk_model.port_number,
     )
 

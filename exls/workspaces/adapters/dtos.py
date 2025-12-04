@@ -11,8 +11,10 @@ class ListWorkspacesRequestDTO(BaseModel):
 
 
 class WorkspaceAccessInformationDTO(BaseModel):
-    type: str = Field(..., description="The type of access")
-    endpoint: str = Field(..., description="The access endpoint of the workspace")
+    type: Optional[str] = Field(..., description="The type of access")
+    protocol: Optional[str] = Field(..., description="The protocol of the access")
+    ip: Optional[str] = Field(..., description="The IP address of the workspace")
+    port: Optional[int] = Field(..., description="The port of the access")
 
 
 class WorkspaceDTO(BaseModel):
@@ -29,8 +31,18 @@ class WorkspaceDTO(BaseModel):
     )
 
     @property
-    def access_endpoint(self) -> Optional[str]:
-        return self.access_information.endpoint if self.access_information else None
+    def access(self) -> Optional[str]:
+        if (
+            self.access_information
+            and self.access_information.ip
+            and self.access_information.port
+            and self.access_information.protocol
+        ):
+            if self.access_information.protocol.upper() == "SSH":
+                return f"ssh -p {self.access_information.port} dev@{self.access_information.ip}"
+            else:
+                return f"{self.access_information.protocol.lower()}://{self.access_information.ip}:{self.access_information.port}"
+        return "N/A"
 
 
 class SingleNodeWorkspaceDTO(WorkspaceDTO):
