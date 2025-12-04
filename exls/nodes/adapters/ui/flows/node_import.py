@@ -47,10 +47,12 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
         self,
         service: NodesService,
         import_ssh_key_flow: IImportSshKeyFlow,
+        ask_confirmation: bool = True,
     ):
         self._service: NodesService = service
         self._import_ssh_key_flow: IImportSshKeyFlow = import_ssh_key_flow
         self._cached_ssh_keys: Optional[Sequence[NodesSshKeyDTO]] = None
+        self._ask_confirmation: bool = ask_confirmation
 
     def _get_available_ssh_keys(self) -> Sequence[NodesSshKeyDTO]:
         if self._cached_ssh_keys is None:
@@ -153,6 +155,26 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
         )
 
         flow.execute(model, context, io_facade)
+
+        if self._ask_confirmation:
+            try:
+                io_facade.display_info_message(
+                    message="Importing the following node:",
+                    output_format=OutputFormat.TEXT,
+                )
+                io_facade.display_data(
+                    data=model,
+                    output_format=OutputFormat.TABLE,
+                )
+                confirm: bool = io_facade.ask_confirm(
+                    message="Import this node?",
+                    default=True,
+                )
+            except UserCancellationException:
+                raise UserCancellationException("User cancelled the nodes import.")
+
+            if not confirm:
+                raise UserCancellationException("User cancelled the nodes import.")
 
 
 class ImportSelfmanagedNodeRequestListFlow(
