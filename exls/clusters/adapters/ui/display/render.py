@@ -10,7 +10,10 @@ from exls.clusters.adapters.dtos import (
     ClusterWithNodesDTO,
     NodeValidationIssueDTO,
 )
-from exls.clusters.adapters.ui.dtos import DeployClusterRequestFromFlowDTO
+from exls.clusters.adapters.ui.dtos import (
+    DeployClusterRequestFromFlowDTO,
+    UnassignedClusterNodeDTO,
+)
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 
 DEFAULT_CLUSTER_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
@@ -75,9 +78,28 @@ DEFAULT_DEPLOY_CLUSTER_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "name": TableRenderContext.get_column("Name"),
     "cluster_type": TableRenderContext.get_column("Cluster Type"),
     "gpu_type": TableRenderContext.get_column("GPU Type"),
-    "enable_multinode_training": TableRenderContext.get_column("Multinode Training"),
-    "enable_telemetry": TableRenderContext.get_column("Telemetry Enabled"),
-    "worker_node_ids": TableRenderContext.get_column("Worker Node IDs"),
+    "enable_multinode_training": TableRenderContext.get_column(
+        "Multinode Training Enabled"
+    ),
+    "enable_vpn": TableRenderContext.get_column("VPN Enabled"),
+    # "enable_telemetry": TableRenderContext.get_column("Telemetry Enabled"),
+    "worker_node_ids": TableRenderContext.get_column(
+        "Worker Node IDs",
+        value_formatter=lambda nodes: ", ".join(
+            [
+                (
+                    node.name
+                    if isinstance(node, UnassignedClusterNodeDTO)
+                    else (
+                        str(cast(str, node["name"]))
+                        if isinstance(node, dict)
+                        else str(node)
+                    )
+                )
+                for node in nodes
+            ]
+        ),
+    ),
 }
 
 DEFAULT_ADD_NODES_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
