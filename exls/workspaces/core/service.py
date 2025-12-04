@@ -208,19 +208,31 @@ class WorkspacesService:
 
         cpu_split: int = min(
             [
-                int(resource.cpu_cores / resource.gpu_count)
+                (
+                    int(resource.cpu_cores / resource.gpu_count)
+                    if resource.gpu_count > 0
+                    else 0
+                )
                 for resource in available_cluster_resources
             ]
         )
         memory_split: int = min(
             [
-                int(resource.memory_gb / resource.gpu_count)
+                (
+                    int(resource.memory_gb / resource.gpu_count)
+                    if resource.gpu_count > 0
+                    else 0
+                )
                 for resource in available_cluster_resources
             ]
         )
         storage_split: int = min(
             [
-                int(resource.storage_gb / resource.gpu_count)
+                (
+                    int(resource.storage_gb / resource.gpu_count)
+                    if resource.gpu_count > 0
+                    else 0
+                )
                 for resource in available_cluster_resources
             ]
         )
@@ -247,16 +259,16 @@ class WorkspacesService:
                     ]
                 )
             ),
-            num_amd_nodes=len(
+            num_amd_nodes=sum(
                 [
-                    resource
+                    resource.gpu_count
                     for resource in available_cluster_resources
                     if resource.gpu_vendor == WorkspaceGPUVendor.AMD
                 ]
             ),
-            num_nvidia_nodes=len(
+            num_nvidia_nodes=sum(
                 [
-                    resource
+                    resource.gpu_count
                     for resource in available_cluster_resources
                     if resource.gpu_vendor == WorkspaceGPUVendor.NVIDIA
                 ]
