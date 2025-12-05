@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, List
 
 
 def format_datetime(value: datetime) -> str:
@@ -12,3 +12,7 @@ def format_na(value: Any) -> str:
 
 def format_float(value: float | int, precision: int = 2) -> str:
     return f"{float(value):.{precision}f}"
+
+
+def format_list(value: List[Any]) -> str:
+    return ", ".join(value)

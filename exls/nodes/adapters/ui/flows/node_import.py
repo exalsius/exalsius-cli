@@ -124,8 +124,8 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
                 ),
                 TextInputStep[ImportSelfmanagedNodeRequestDTO](
                     key="username",
-                    message="Username:",
-                    default="ubuntu",
+                    message="Node's SSH username:",
+                    default="",
                     validator=non_empty_string_validator,
                 ),
                 SelectRequiredStep[
