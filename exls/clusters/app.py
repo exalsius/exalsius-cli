@@ -335,6 +335,7 @@ def add_nodes(
     """
     Add nodes to a cluster.
     """
+    raise NotImplementedError("Not implemented yet")
     # bundle: ClustersBundle = ClustersBundle(ctx)
     # display_manager = TableClusterDisplayManager()
     # config: AppConfig = bundle.config
