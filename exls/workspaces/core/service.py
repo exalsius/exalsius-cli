@@ -211,7 +211,7 @@ class WorkspacesService:
                 (
                     int(resource.cpu_cores / resource.gpu_count)
                     if resource.gpu_count > 0
-                    else 0
+                    else resource.cpu_cores
                 )
                 for resource in available_cluster_resources
             ]
@@ -221,7 +221,7 @@ class WorkspacesService:
                 (
                     int(resource.memory_gb / resource.gpu_count)
                     if resource.gpu_count > 0
-                    else 0
+                    else resource.memory_gb
                 )
                 for resource in available_cluster_resources
             ]
@@ -231,16 +231,16 @@ class WorkspacesService:
                 (
                     int(resource.storage_gb / resource.gpu_count)
                     if resource.gpu_count > 0
-                    else 0
+                    else resource.storage_gb
                 )
                 for resource in available_cluster_resources
             ]
         )
 
         if resource_split_tolerance > 0:
-            cpu_split = int(cpu_split * (1 - resource_split_tolerance))
-            memory_split = int(memory_split * (1 - resource_split_tolerance))
-            storage_split = int(storage_split * (1 - resource_split_tolerance))
+            cpu_split = max(int(cpu_split * (1 - resource_split_tolerance)), 1)
+            memory_split = max(int(memory_split * (1 - resource_split_tolerance)), 1)
+            storage_split = max(int(storage_split * (1 - resource_split_tolerance)), 1)
 
         # TODO: This is really ambiguous. We should have a better data model to
         # represent multi-node workspace resources      .
