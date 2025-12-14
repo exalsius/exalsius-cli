@@ -1,35 +1,34 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, cast
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import StrictStr
 
 from exls.clusters.core.domain import (
-    AssignedClusterNode,
     Cluster,
     ClusterNode,
-    ClusterNodeResources,
     ClusterNodeRole,
     ClusterNodeStatus,
     ClusterStatus,
-    ClusterWithNodes,
-    DeployClusterResult,
-    NodeLoadingIssue,
-    NodesLoadingResult,
-    NodeValidationIssue,
-    UnassignedClusterNode,
 )
-from exls.clusters.core.ports.gateway import (
+from exls.clusters.core.ports.operations import ClusterOperations
+from exls.clusters.core.ports.provider import (
+    ClusterNodesImportResult,
+    NodesProvider,
+)
+from exls.clusters.core.ports.repository import (
     ClusterCreateParameters,
-    ClusterNodeRefResources,
-    IClustersGateway,
+    ClusterRepository,
 )
-from exls.clusters.core.ports.provider import ClusterNodesImportResult, INodesProvider
 from exls.clusters.core.requests import (
-    AddNodesRequest,
     ClusterDeployRequest,
-    NodeRef,
     NodeSpecification,
+)
+from exls.clusters.core.results import (
+    ClusterNodeIssue,
+    ClusterScaleIssue,
+    ClusterScaleResult,
+    DeployClusterResult,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.adapters.gateway.file.gateways import IFileWriteGateway
@@ -42,60 +41,36 @@ logger = logging.getLogger(__name__)
 class ClustersService:
     def __init__(
         self,
-        clusters_gateway: IClustersGateway,
-        nodes_provider: INodesProvider,
+        clusters_operations: ClusterOperations,
+        clusters_repository: ClusterRepository,
+        nodes_provider: NodesProvider,
         file_write_gateway: IFileWriteGateway[str],
     ):
-        self.clusters_gateway: IClustersGateway = clusters_gateway
-        self.nodes_provider: INodesProvider = nodes_provider
-        self.file_write_gateway: IFileWriteGateway[str] = file_write_gateway
+        self._clusters_operations: ClusterOperations = clusters_operations
+        self._clusters_repository: ClusterRepository = clusters_repository
+        self._nodes_provider: NodesProvider = nodes_provider
+        self._file_write_gateway: IFileWriteGateway[str] = file_write_gateway
 
     @handle_service_layer_errors("listing clusters")
     def list_clusters(self, status: Optional[ClusterStatus] = None) -> List[Cluster]:
-        clusters: List[Cluster] = self.clusters_gateway.list(status=status)
+        clusters: List[Cluster] = self._clusters_repository.list(status=status)
         return clusters
 
     @handle_service_layer_errors("getting cluster")
-    def get_cluster(self, cluster_id: str) -> ClusterWithNodes:
-        cluster: Cluster = self.clusters_gateway.get(cluster_id=cluster_id)
-        cluster_node_refs: List[NodeRef] = self.clusters_gateway.get_cluster_nodes(
-            cluster_id=cluster_id
-        )
-        # TODO: Handle node loading issues
-        loaded_nodes, _ = self._load_cluster_node_by_refs(
-            cluster_node_refs=cluster_node_refs
-        )
-        return ClusterWithNodes(
-            id=cluster.id,
-            name=cluster.name,
-            status=cluster.status,
-            type=cluster.type,
-            created_at=cluster.created_at,
-            updated_at=cluster.updated_at,
-            nodes=loaded_nodes,
-        )
+    def get_cluster(self, cluster_id: str) -> Cluster:
+        cluster: Cluster = self._clusters_repository.get(cluster_id=cluster_id)
+        return cluster
 
     @handle_service_layer_errors("deleting cluster")
-    def delete_cluster(self, cluster_id: str) -> None:
-        self.clusters_gateway.delete(cluster_id=cluster_id)
-
-    def _get_unassigned_valid_nodes(self) -> List[UnassignedClusterNode]:
-        """
-        Gets all unassigned nodes that are available or discovering.
-        """
-        cluster_nodes: List[ClusterNode] = self.nodes_provider.list_nodes()
-        return [
-            cast(UnassignedClusterNode, cn)
-            for cn in cluster_nodes
-            if cn.status == ClusterNodeStatus.AVAILABLE
-            or cn.status == ClusterNodeStatus.DISCOVERING
-        ]
+    def delete_cluster(self, cluster_id: str) -> str:
+        self._clusters_repository.delete(cluster_id=cluster_id)
+        return cluster_id
 
     def _validate_node_ids(
         self,
         node_ids: List[str],
-        available_nodes_map: Dict[str, UnassignedClusterNode],
-    ) -> Tuple[List[str], List[str], List[NodeValidationIssue]]:
+        available_nodes_map: Dict[str, ClusterNode],
+    ) -> Tuple[List[str], List[str], List[ClusterNodeIssue]]:
         """
         Validates existence of node IDs and categorizes them.
         Returns:
@@ -105,20 +80,19 @@ class ClustersService:
         """
         valid_ready_ids: List[str] = []
         nodes_to_poll: List[str] = []
-        issues: List[NodeValidationIssue] = []
+        issues: List[ClusterNodeIssue] = []
 
         for node_id in node_ids:
             if node_id not in available_nodes_map:
                 issues.append(
-                    NodeValidationIssue(
-                        node_id=node_id,
-                        node_spec_repr=node_id,
-                        reason=f"Node {node_id} not found in available nodes",
+                    ClusterNodeIssue(
+                        node=None,
+                        error_message=f"Node {node_id} not found in available nodes",
                     )
                 )
                 continue
 
-            node: UnassignedClusterNode = available_nodes_map[node_id]
+            node: ClusterNode = available_nodes_map[node_id]
 
             if node.status == ClusterNodeStatus.AVAILABLE:
                 valid_ready_ids.append(node_id)
@@ -130,27 +104,27 @@ class ClustersService:
     def _import_nodes_bulk(
         self,
         node_specs: List[NodeSpecification],
-    ) -> Tuple[List[AssignedClusterNode], List[NodeValidationIssue]]:
+    ) -> Tuple[List[ClusterNode], List[ClusterNodeIssue]]:
         if not node_specs:
             return [], []
 
         # The provider handles bulk import and should return a result with successes and failures
         # Assuming import_nodes waits if wait_for_available=True
-        import_result: ClusterNodesImportResult = self.nodes_provider.import_nodes(
+        import_result: ClusterNodesImportResult = self._nodes_provider.import_nodes(
             nodes_specs=node_specs, wait_for_available=True
         )
 
-        valid_nodes: List[AssignedClusterNode] = []
-        issues: List[NodeValidationIssue] = []
+        valid_nodes: List[ClusterNode] = []
+        issues: List[ClusterNodeIssue] = []
 
         for node in import_result.nodes:
             valid_nodes.append(node)
 
         for issue in import_result.issues:
             issues.append(
-                NodeValidationIssue(
-                    node_spec_repr=issue.node_spec_repr,
-                    reason=issue.error_message,
+                ClusterNodeIssue(
+                    node=None,
+                    error_message=f"Error importing node {str(issue.node_specification)}: {issue.error_message}",
                 )
             )
 
@@ -158,12 +132,12 @@ class ClustersService:
 
     def _wait_for_nodes(
         self, node_ids: List[str]
-    ) -> Tuple[List[str], List[NodeValidationIssue]]:
+    ) -> Tuple[List[str], List[ClusterNodeIssue]]:
         if not node_ids:
             return [], []
 
         def fetch() -> List[ClusterNode]:
-            return self.nodes_provider.list_nodes()
+            return self._nodes_provider.list_available_nodes()
 
         def predicate(nodes: List[ClusterNode]) -> bool:
             node_map = {n.id: n for n in nodes}
@@ -200,13 +174,14 @@ class ClustersService:
 
         node_map = {n.id: n for n in final_nodes}
         ready_ids: List[str] = []
-        issues: List[NodeValidationIssue] = []
+        issues: List[ClusterNodeIssue] = []
 
         for nid in node_ids:
             if nid not in node_map:
                 issues.append(
-                    NodeValidationIssue(
-                        node_id=nid, reason="Node not found after polling"
+                    ClusterNodeIssue(
+                        node=None,
+                        error_message=f"Node {nid} not found after polling",
                     )
                 )
                 continue
@@ -216,16 +191,16 @@ class ClustersService:
                 ready_ids.append(nid)
             elif node.status == ClusterNodeStatus.DISCOVERING:
                 issues.append(
-                    NodeValidationIssue(
-                        node_id=nid,
-                        reason=f"Timed out waiting for node {nid} to become available. Node is still in DISCOVERING status.",
+                    ClusterNodeIssue(
+                        node=None,
+                        error_message=f"Timed out waiting for node {nid} to become available. Node is still in DISCOVERING status.",
                     )
                 )
             else:
                 issues.append(
-                    NodeValidationIssue(
-                        node_id=nid,
-                        reason=f"Node in invalid status after polling: {node.status}",
+                    ClusterNodeIssue(
+                        node=None,
+                        error_message=f"Node in invalid status after polling: {node.status}",
                     )
                 )
         return ready_ids, issues
@@ -235,10 +210,8 @@ class ClustersService:
         self, create_params: ClusterDeployRequest
     ) -> DeployClusterResult:
         # List the available nodes that can be deployed to
-        available_nodes: List[UnassignedClusterNode] = (
-            self._get_unassigned_valid_nodes()
-        )
-        available_nodes_map: Dict[str, UnassignedClusterNode] = {
+        available_nodes: List[ClusterNode] = self._nodes_provider.list_available_nodes()
+        available_nodes_map: Dict[str, ClusterNode] = {
             node.id: node for node in available_nodes
         }
 
@@ -280,7 +253,7 @@ class ClustersService:
         )
 
         # Combine all issues so far
-        all_issues: List[NodeValidationIssue] = (
+        all_issues: List[ClusterNodeIssue] = (
             worker_id_issues + worker_import_issues + cp_id_issues + cp_import_issues
         )
 
@@ -311,17 +284,18 @@ class ClustersService:
 
         # Check if we have any valid nodes left to deploy
         if not final_worker_ids and not final_cp_ids:
-            return DeployClusterResult(issues=all_issues)
+            return DeployClusterResult(
+                cluster=None,
+                issues=all_issues,
+            )
 
         # Build the create parameters with only valid nodes
         create_parameters: ClusterCreateParameters = ClusterCreateParameters(
             name=create_params.name,
             type=create_params.type,
-            vpn_cluster=create_params.enable_vpn,
-            telemetry_enabled=create_params.enable_telemetry,
-            labels=ClusterCreateParameters.get_labels(
-                enable_multinode_training=create_params.enable_multinode_training
-            ),
+            enable_vpn=create_params.enable_vpn,
+            enable_telemetry=create_params.enable_telemetry,
+            enable_multinode_training=create_params.enable_multinode_training,
             colony_id=create_params.colony_id,
             to_be_deleted_at=create_params.to_be_deleted_at,
             worker_node_ids=final_worker_ids,
@@ -329,26 +303,27 @@ class ClustersService:
         )
 
         # Create the cluster
-        cluster_id: str = self.clusters_gateway.create(parameters=create_parameters)
+        cluster_id: str = self._clusters_repository.create(parameters=create_parameters)
 
         # Deploy the cluster
-        deployed_cluster_id: str = self.clusters_gateway.deploy(cluster_id)
+        deployed_cluster_id: str = self._clusters_operations.deploy(
+            cluster_id=cluster_id
+        )
 
-        final_worker_nodes: List[AssignedClusterNode] = [
-            AssignedClusterNode.from_unassigned_node(
-                node=available_nodes_map[node_id], role=ClusterNodeRole.WORKER
-            )
-            for node_id in (valid_worker_ids + polled_ready_worker_ids)
-        ]
-        final_cp_nodes: List[AssignedClusterNode] = [
-            AssignedClusterNode.from_unassigned_node(
-                node=available_nodes_map[node_id], role=ClusterNodeRole.CONTROL_PLANE
-            )
-            for node_id in (valid_cp_ids + polled_ready_cp_ids)
-        ]
+        final_worker_nodes: List[ClusterNode] = []
+        for node_id in valid_worker_ids + polled_ready_worker_ids:
+            worker_node: ClusterNode = available_nodes_map[node_id]
+            worker_node.role = ClusterNodeRole.WORKER
+            final_worker_nodes.append(worker_node)
 
-        cluster: Cluster = self.get_cluster(cluster_id=deployed_cluster_id)
-        cluster_with_nodes: ClusterWithNodes = ClusterWithNodes(
+        final_cp_nodes: List[ClusterNode] = []
+        for node_id in valid_cp_ids + polled_ready_cp_ids:
+            cp_node: ClusterNode = available_nodes_map[node_id]
+            cp_node.role = ClusterNodeRole.CONTROL_PLANE
+            final_cp_nodes.append(cp_node)
+
+        cluster: Cluster = self._clusters_repository.get(cluster_id=deployed_cluster_id)
+        cluster_with_nodes: Cluster = Cluster(
             id=cluster.id,
             name=cluster.name,
             status=cluster.status,
@@ -378,134 +353,68 @@ class ClustersService:
                 f"Cluster {cluster.id} is in an unknown status: {cluster.status}"
             )
 
-    def _load_cluster_node_by_refs(
-        self, cluster_node_refs: List[NodeRef]
-    ) -> Tuple[List[AssignedClusterNode], List[NodeLoadingIssue]]:
-        if not cluster_node_refs:
-            return [], []
-
-        all_nodes: List[ClusterNode] = self.nodes_provider.list_nodes()
-        all_nodes_map: Dict[str, ClusterNode] = {n.id: n for n in all_nodes}
-
-        loaded_nodes: List[AssignedClusterNode] = []
-        issues: List[NodeLoadingIssue] = []
-
-        for ref in cluster_node_refs:
-            if ref.id not in all_nodes_map:
-                issues.append(
-                    NodeLoadingIssue(
-                        node_id=ref.id,
-                        issue="Unexpected: Cluster node not found in nodes pool",
-                    )
-                )
-                continue
-
-            node = all_nodes_map[ref.id]
-            loaded_nodes.append(
-                AssignedClusterNode(
-                    id=node.id,
-                    hostname=node.hostname,
-                    endpoint=node.endpoint,
-                    username=node.username,
-                    ssh_key_id=node.ssh_key_id,
-                    status=node.status,
-                    role=ref.role,
-                )
-            )
-
-        return loaded_nodes, issues
-
-    @handle_service_layer_errors("getting cluster nodes")
-    def get_cluster_nodes(self, cluster_id: str) -> NodesLoadingResult:
+    @handle_service_layer_errors("scaling up cluster")
+    def scale_up_cluster(
+        self, cluster_id: str, node_ids: List[StrictStr]
+    ) -> ClusterScaleResult:
         cluster: Cluster = self.get_cluster(cluster_id=cluster_id)
         self._validate_cluster_status(cluster=cluster)
 
-        cluster_node_refs: List[NodeRef] = self.clusters_gateway.get_cluster_nodes(
-            cluster_id=cluster_id
-        )
-        loaded_nodes, loading_issues = self._load_cluster_node_by_refs(
-            cluster_node_refs=cluster_node_refs
-        )
-        return NodesLoadingResult(nodes=loaded_nodes, issues=loading_issues)
+        available_nodes: List[ClusterNode] = self._nodes_provider.list_available_nodes()
+        available_nodes_map: Dict[str, ClusterNode] = {
+            node.id: node for node in available_nodes
+        }
 
-    @handle_service_layer_errors("adding cluster nodes")
-    def add_nodes_to_cluster(
-        self, request: AddNodesRequest
-    ) -> List[AssignedClusterNode]:
-        cluster: Cluster = self.get_cluster(cluster_id=request.cluster_id)
-        self._validate_cluster_status(cluster=cluster)
+        nodes_to_add: List[ClusterNode] = []
+        issues: List[ClusterScaleIssue] = []
+        for node_id in node_ids:
+            if node_id not in available_nodes_map:
+                issues.append(
+                    ClusterScaleIssue(
+                        node=None,
+                        error_message=f"Node {node_id} not found in available nodes",
+                    )
+                )
+                continue
+            nodes_to_add.append(available_nodes_map[node_id])
 
-        added_node_refs: List[NodeRef] = self.clusters_gateway.add_nodes_to_cluster(
-            request=request
+        scale_result: ClusterScaleResult = self._clusters_operations.scale_up(
+            cluster_id=cluster_id, nodes_to_add=nodes_to_add
         )
-        # For now we don't care about loading issues, we just want to get the nodes
-        # TODO: Revisit this later
-        loaded_nodes, _ = self._load_cluster_node_by_refs(
-            cluster_node_refs=added_node_refs
+        return ClusterScaleResult(
+            nodes=scale_result.nodes, issues=issues + (scale_result.issues or [])
         )
-        return loaded_nodes
 
     @handle_service_layer_errors("removing nodes from cluster")
     def remove_nodes_from_cluster(
         self, cluster_id: str, node_ids: List[StrictStr]
-    ) -> List[str]:
-        self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
+    ) -> ClusterScaleResult:
+        cluster: Cluster = self.get_cluster(cluster_id=cluster_id)
+        self._validate_cluster_status(cluster=cluster)
 
-        removed_node_ids: List[StrictStr] = (
-            self.clusters_gateway.remove_nodes_from_cluster(
-                cluster_id=cluster_id, node_ids=node_ids
-            )
-        )
-        return removed_node_ids
-
-    @handle_service_layer_errors("getting cluster resources")
-    def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeResources]:
-        self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
-
-        cluster_node_ref_resources: List[ClusterNodeRefResources] = (
-            self.clusters_gateway.get_cluster_resources(cluster_id=cluster_id)
-        )
-        cluster_node_ref_resources_map: Dict[str, ClusterNodeRefResources] = {
-            resource.node_id: resource for resource in cluster_node_ref_resources
+        cluster_nodes_map: Dict[str, ClusterNode] = {
+            node.id: node for node in cluster.nodes
         }
 
-        cluster_node_refs: List[NodeRef] = self.clusters_gateway.get_cluster_nodes(
-            cluster_id=cluster_id
-        )
-
-        loaded_nodes, _ = self._load_cluster_node_by_refs(
-            cluster_node_refs=cluster_node_refs
-        )
-        loaded_nodes_map: Dict[str, AssignedClusterNode] = {
-            node.id: node for node in loaded_nodes
-        }
-
-        cluster_node_resources: List[ClusterNodeResources] = []
-        for node_id in cluster_node_ref_resources_map:
-            cluster_node_resource: ClusterNodeRefResources = (
-                cluster_node_ref_resources_map[node_id]
-            )
-
-            # This case should ideally never happen, but we handle it
-            # since there were some issues with node IDs in the past
-            # Nodes ids from loaded resources should always be in the node pool
-            cluster_node: Union[AssignedClusterNode, StrictStr] = node_id
-            if node_id in loaded_nodes_map:
-                cluster_node = loaded_nodes_map[node_id]
-            else:
-                cluster_node = node_id
-                logger.warning(
-                    f"Node ID '{node_id}' not found in node pool. Node name is set to Unknown."
+        nodes_to_remove: List[ClusterNode] = []
+        issues: List[ClusterScaleIssue] = []
+        for node_id in node_ids:
+            if node_id not in cluster_nodes_map:
+                issues.append(
+                    ClusterScaleIssue(
+                        node=None,
+                        error_message=f"Node {node_id} not part of the cluster {cluster.name} nodes",
+                    )
                 )
+                continue
+            nodes_to_remove.append(cluster_nodes_map[node_id])
 
-            cluster_node_resources.append(
-                ClusterNodeResources(
-                    cluster_node=cluster_node,
-                    free_resources=cluster_node_resource.free_resources,
-                    occupied_resources=cluster_node_resource.occupied_resources,
-                )
-            )
-        return cluster_node_resources
+        scale_result: ClusterScaleResult = self._clusters_operations.scale_down(
+            cluster_id=cluster_id, nodes_to_remove=nodes_to_remove
+        )
+        return ClusterScaleResult(
+            nodes=scale_result.nodes, issues=issues + (scale_result.issues or [])
+        )
 
     @handle_service_layer_errors("importing kubeconfig")
     def import_kubeconfig(
@@ -513,24 +422,22 @@ class ClustersService:
         cluster_id: str,
         kubeconfig_file_path: str = Path.home().joinpath(".kube", "config").as_posix(),
     ) -> None:
-        # self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
+        cluster: Cluster = self.get_cluster(cluster_id=cluster_id)
+        self._validate_cluster_status(cluster=cluster)
 
-        kubeconfig_content: str = self.clusters_gateway.get_kubeconfig(
+        kubeconfig_content: str = self._clusters_operations.load_kubeconfig(
             cluster_id=cluster_id
         )
-        self.file_write_gateway.write_file(
+        self._file_write_gateway.write_file(
             file_path=Path(kubeconfig_file_path), content=kubeconfig_content
         )
 
     @handle_service_layer_errors("getting dashboard url")
     def get_dashboard_url(self, cluster_id: str) -> str:
-        self._validate_cluster_status(cluster=self.get_cluster(cluster_id=cluster_id))
+        cluster: Cluster = self.get_cluster(cluster_id=cluster_id)
+        self._validate_cluster_status(cluster=cluster)
 
-        return self.clusters_gateway.get_dashboard_url(cluster_id=cluster_id)
+        return self._clusters_operations.get_dashboard_url(cluster_id=cluster_id)
 
-    @handle_service_layer_errors("getting deployable nodes")
-    def get_deployable_nodes(self) -> List[UnassignedClusterNode]:
-        deployable_nodes: List[UnassignedClusterNode] = (
-            self._get_unassigned_valid_nodes()
-        )
-        return deployable_nodes
+    def list_available_nodes(self) -> List[ClusterNode]:
+        return self._nodes_provider.list_available_nodes()

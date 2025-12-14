@@ -6,7 +6,7 @@ from exls.clusters.adapters.ui.dtos import (
     DeployClusterRequestFromFlowDTO,
     UnassignedClusterNodeDTO,
 )
-from exls.clusters.core.domain import UnassignedClusterNode
+from exls.clusters.core.domain import ClusterNode
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.flow.flow import (
@@ -35,9 +35,11 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
     def _get_worker_node_choices(
         self, model: DeployClusterRequestFromFlowDTO, context: FlowContext
     ) -> ChoicesSpec[UnassignedClusterNodeDTO]:
-        deployable_nodes: List[UnassignedClusterNode] = (
-            self._service.get_deployable_nodes()
-        )
+        deployable_nodes: List[ClusterNode] = self._service.list_available_nodes()
+        if len(deployable_nodes) == 0:
+            raise InvalidFlowStateError(
+                "No deployable nodes in your node pool found. You need to import nodes first and they need to be in status 'AVAILABLE'."
+            )
         return ChoicesSpec[UnassignedClusterNodeDTO](
             choices=[
                 DisplayChoice[UnassignedClusterNodeDTO](
@@ -110,15 +112,11 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:
-        deployable_nodes: List[UnassignedClusterNode] = (
-            self._service.get_deployable_nodes()
-        )
-        # TODO: We can check and ask to initiate a node import flow if no deployable nodes are found
+        deployable_nodes: List[ClusterNode] = self._service.list_available_nodes()
         if len(deployable_nodes) == 0:
             raise InvalidFlowStateError(
                 "No deployable nodes in your node pool found. You need to import nodes first and they need to be in status 'AVAILABLE'."
             )
-
         io_facade.display_info_message(
             message="🚀 Deploying a new cluster - Interactive Mode: This will guide you through the process of deploying a new cluster",
             output_format=OutputFormat.TEXT,

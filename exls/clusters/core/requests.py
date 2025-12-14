@@ -6,6 +6,10 @@ from pydantic import BaseModel, Field, StrictStr
 
 from exls.clusters.core.domain import ClusterNodeRole, ClusterType
 
+########################################################
+# Cluster Deploy Request
+########################################################
+
 
 class SshKeySpecification(BaseModel):
     name: StrictStr = Field(..., description="The name of the SSH key")
@@ -42,22 +46,3 @@ class ClusterDeployRequest(BaseModel):
     )
     enable_telemetry: bool = Field(..., description="Enable telemetry for the cluster")
     enable_vpn: bool = Field(..., description="Enable VPN for the cluster")
-
-
-class NodeRef(BaseModel):
-    id: StrictStr = Field(..., description="The ID of the node")
-    role: ClusterNodeRole = Field(..., description="The role of the node")
-
-
-class AddNodesRequest(BaseModel):
-    cluster_id: StrictStr = Field(..., description="The ID of the cluster")
-    nodes_to_add: List[NodeRef] = Field(
-        ..., description="The nodes to add to the cluster"
-    )
-
-
-class RemoveNodesRequest(BaseModel):
-    cluster_id: StrictStr = Field(..., description="The ID of the cluster")
-    nodes_to_remove: List[NodeRef] = Field(
-        ..., description="The nodes to remove from the cluster"
-    )

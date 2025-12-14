@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Optional
 
-from pydantic import BaseModel, Field, StrictStr
+from pydantic import BaseModel, Field, PositiveInt, StrictStr
 
 
 class NodeStatus(StrEnum):
@@ -23,6 +23,15 @@ class NodeStatus(StrEnum):
             return cls.UNKNOWN
 
 
+class NodeResources(BaseModel):
+    gpu_type: StrictStr = Field(..., description="The type of the GPU")
+    gpu_vendor: StrictStr = Field(..., description="The vendor of the GPU")
+    gpu_count: PositiveInt = Field(..., description="The count of the GPU")
+    cpu_cores: PositiveInt = Field(..., description="The count of the CPU cores")
+    memory_gb: PositiveInt = Field(..., description="The amount of memory in GB")
+    storage_gb: PositiveInt = Field(..., description="The amount of storage in GB")
+
+
 class BaseNode(BaseModel):
     """Domain object representing a node."""
 
@@ -32,6 +41,7 @@ class BaseNode(BaseModel):
         ..., description="The time the node was imported"
     )
     status: NodeStatus = Field(..., description="The status of the node")
+    resources: NodeResources = Field(..., description="The resources of the node")
 
 
 class CloudNode(BaseNode):

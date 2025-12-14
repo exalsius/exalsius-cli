@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import StrictStr
 
-from exls.clusters.adapters.dtos import (
+from exls.clusters.adapters.ui.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
@@ -11,14 +11,11 @@ from exls.clusters.adapters.dtos import (
     ResourcesDTO,
 )
 from exls.clusters.core.domain import (
-    AssignedClusterNode,
     Cluster,
-    ClusterNodeResources,
+    ClusterNode,
     ClusterNodeRole,
-    ClusterNodeStatus,
-    ClusterWithNodes,
-    NodeValidationIssue,
 )
+from exls.clusters.core.results import ClusterNodeIssue
 
 
 def cluster_dto_from_domain(domain: Cluster) -> ClusterDTO:
@@ -33,7 +30,7 @@ def cluster_dto_from_domain(domain: Cluster) -> ClusterDTO:
     )
 
 
-def cluster_with_nodes_dto_from_domain(domain: ClusterWithNodes) -> ClusterWithNodesDTO:
+def cluster_with_nodes_dto_from_domain(domain: Cluster) -> ClusterWithNodesDTO:
     worker_nodes: List[ClusterNodeDTO] = [
         cluster_node_dto_from_domain(node, domain.name)
         for node in domain.nodes
@@ -57,17 +54,17 @@ def cluster_with_nodes_dto_from_domain(domain: ClusterWithNodes) -> ClusterWithN
 
 
 def node_validation_issue_dto_from_domain(
-    domain: NodeValidationIssue,
+    domain: ClusterNodeIssue,
 ) -> NodeValidationIssueDTO:
     return NodeValidationIssueDTO(
-        node_id=domain.node_id,
-        node_spec_repr=domain.node_spec_repr,
-        reason=domain.reason,
+        node_id=domain.node.id if domain.node else None,
+        node_name=domain.node.hostname if domain.node else None,
+        error_message=domain.error_message,
     )
 
 
 def cluster_node_dto_from_domain(
-    domain: AssignedClusterNode, cluster_name: StrictStr
+    domain: ClusterNode, cluster_name: StrictStr
 ) -> ClusterNodeDTO:
     return ClusterNodeDTO(
         id=domain.id,
@@ -79,7 +76,7 @@ def cluster_node_dto_from_domain(
 
 
 def cluster_node_resources_dto_from_domain(
-    domain: ClusterNodeResources, cluster_name: StrictStr
+    domain: ClusterNode, cluster_name: StrictStr
 ) -> ClusterNodeResourcesDTO:
     free_resources: ResourcesDTO = ResourcesDTO(
         gpu_type=domain.free_resources.gpu_type,
@@ -97,23 +94,13 @@ def cluster_node_resources_dto_from_domain(
         memory_gb=domain.occupied_resources.memory_gb,
         storage_gb=domain.occupied_resources.storage_gb,
     )
-    cluster_node: ClusterNodeDTO
-    if isinstance(domain.cluster_node, AssignedClusterNode):
-        cluster_node = ClusterNodeDTO(
-            id=domain.cluster_node.id,
-            role=domain.cluster_node.role.value,
-            hostname=domain.cluster_node.hostname,
-            status=domain.cluster_node.status.value,
-            cluster_name=cluster_name,
-        )
-    else:
-        cluster_node = ClusterNodeDTO(
-            id=domain.cluster_node,
-            role=ClusterNodeRole.WORKER.value,
-            hostname="Unknown",
-            status=ClusterNodeStatus.UNKNOWN.value,
-            cluster_name=cluster_name,
-        )
+    cluster_node: ClusterNodeDTO = ClusterNodeDTO(
+        id=domain.id,
+        role=domain.role.value,
+        hostname=domain.hostname,
+        status=domain.status.value,
+        cluster_name=cluster_name,
+    )
     return ClusterNodeResourcesDTO(
         cluster_node=cluster_node,
         free_resources=free_resources,

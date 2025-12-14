@@ -5,30 +5,44 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
-from exls.clusters.core.domain import (
-    AssignedClusterNode,
-    ClusterNode,
-)
+from exls.clusters.core.domain import ClusterNode, ClusterNodeResources
 from exls.clusters.core.requests import NodeSpecification
 
 
+class ClusterNodeData(BaseModel):
+    id: StrictStr = Field(..., description="The ID of the node")
+    hostname: StrictStr = Field(..., description="The hostname of the node")
+    username: StrictStr = Field(..., description="The username of the node")
+    ssh_key_id: StrictStr = Field(..., description="The SSH key of the node")
+    status: StrictStr = Field(..., description="The status of the node")
+    endpoint: Optional[StrictStr] = Field(
+        default=None, description="The endpoint of the node"
+    )
+    resources: ClusterNodeResources = Field(
+        ..., description="The resources of the node"
+    )
+
+
 class ClusterNodeImportIssue(BaseModel):
-    node_spec_repr: Optional[StrictStr] = Field(
-        ..., description="The representation of the node specification"
+    node_specification: NodeSpecification = Field(
+        ..., description="The node specification"
     )
     error_message: StrictStr = Field(..., description="The error message that occurred")
 
 
 class ClusterNodesImportResult(BaseModel):
-    nodes: List[AssignedClusterNode] = Field(..., description="The imported nodes")
+    nodes: List[ClusterNode] = Field(..., description="The imported nodes")
     issues: List[ClusterNodeImportIssue] = Field(
         ..., description="The issues with the imported nodes"
     )
 
 
-class INodesProvider(ABC):
+class NodesProvider(ABC):
     @abstractmethod
-    def list_nodes(self) -> List[ClusterNode]: ...
+    def list_nodes(self) -> List[ClusterNodeData]: ...
+
+    @abstractmethod
+    def list_available_nodes(self) -> List[ClusterNode]: ...
 
     @abstractmethod
     def import_nodes(

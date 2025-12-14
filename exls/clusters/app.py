@@ -5,14 +5,14 @@ import typer
 from pydantic import StrictStr
 
 from exls.clusters.adapters.bundle import ClustersBundle
-from exls.clusters.adapters.dtos import (
+from exls.clusters.adapters.ui.display.display import IOClustersFacade
+from exls.clusters.adapters.ui.dtos import (
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
     DashboardUrlResponseDTO,
+    DeployClusterRequestFromFlowDTO,
 )
-from exls.clusters.adapters.ui.display.display import IOClustersFacade
-from exls.clusters.adapters.ui.dtos import DeployClusterRequestFromFlowDTO
 from exls.clusters.adapters.ui.flows.cluster_deploy import DeployClusterFlow
 from exls.clusters.adapters.ui.mapper import (
     cluster_dto_from_domain,
@@ -22,16 +22,12 @@ from exls.clusters.adapters.ui.mapper import (
     node_validation_issue_dto_from_domain,
 )
 from exls.clusters.core.domain import (
-    AssignedClusterNode,
     Cluster,
-    ClusterNodeResources,
     ClusterStatus,
     ClusterType,
-    ClusterWithNodes,
-    DeployClusterResult,
-    NodesLoadingResult,
 )
 from exls.clusters.core.requests import ClusterDeployRequest
+from exls.clusters.core.results import DeployClusterResult
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.flow.flow import FlowContext
@@ -95,10 +91,10 @@ def get_cluster(
     io_facade: IOClustersFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    cluster_domain: ClusterWithNodes = service.get_cluster(cluster_id)
+    cluster_domain: Cluster = service.get_cluster(cluster_id)
 
     io_facade.display_data(
-        cluster_with_nodes_dto_from_domain(domain=cluster_domain),
+        cluster_dto_from_domain(domain=cluster_domain),
         bundle.object_output_format,
     )
 
@@ -275,11 +271,6 @@ def deploy_cluster(
 def list_nodes(
     ctx: typer.Context,
     cluster_id: str = typer.Argument("", help="The ID of the cluster to list nodes of"),
-    interactive: bool = typer.Option(
-        False,
-        "--interactive",
-        help="Enable interactive mode to list nodes of the cluster",
-    ),
 ):
     """
     List all nodes of a cluster.
@@ -290,21 +281,9 @@ def list_nodes(
 
     cluster: Cluster = service.get_cluster(cluster_id)
 
-    nodes_loading_result: NodesLoadingResult = service.get_cluster_nodes(cluster_id)
-    if not nodes_loading_result.is_success:
-        io_facade.display_error_message(
-            message=(
-                f"Failed to load nodes of cluster '{cluster.name}': "
-                f"{'\n'.join([issue.issue for issue in nodes_loading_result.issues or []])}"
-            ),
-            output_format=bundle.message_output_format,
-        )
-        raise typer.Exit(1)
-
-    cluster_nodes: List[AssignedClusterNode] = nodes_loading_result.nodes
     cluster_nodes_dto: List[ClusterNodeDTO] = [
         cluster_node_dto_from_domain(domain=node, cluster_name=cluster.name)
-        for node in cluster_nodes
+        for node in cluster.nodes
     ]
     io_facade.display_info_message(
         message=f"Nodes of cluster '{cluster.name}':",
@@ -481,12 +460,9 @@ def get_cluster_resources(
     service: ClustersService = bundle.get_clusters_service()
 
     cluster: Cluster = service.get_cluster(cluster_id=cluster_id)
-    cluster_node_resources: List[ClusterNodeResources] = service.get_cluster_resources(
-        cluster_id
-    )
     cluster_node_resources_dto: List[ClusterNodeResourcesDTO] = [
         cluster_node_resources_dto_from_domain(domain=res, cluster_name=cluster.name)
-        for res in cluster_node_resources
+        for res in cluster.nodes
     ]
 
     io_facade.display_info_message(

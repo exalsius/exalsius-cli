@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from exls.clusters.core.domain import AssignedClusterNode, Cluster, ClusterNodeResources
+from exls.clusters.core.domain import Cluster
 from exls.clusters.core.service import ClustersService
 from exls.workspaces.core.domain import (
     AvailableClusterResources,
@@ -35,27 +35,12 @@ class ClustersDomainProvider(IClustersProvider):
         )
 
     def get_cluster_resources(self, cluster_id: str) -> List[AvailableClusterResources]:
-        cluster_node_resources: List[ClusterNodeResources] = (
-            self.clusters_service.get_cluster_resources(cluster_id=cluster_id)
-        )
-
+        cluster: Cluster = self.clusters_service.get_cluster(cluster_id=cluster_id)
         available_cluster_resources: List[AvailableClusterResources] = []
-        for resource in cluster_node_resources:
-            node_name: str = (
-                resource.cluster_node.hostname
-                if isinstance(resource.cluster_node, AssignedClusterNode)
-                else "Unknown"
-            )
-            node_id: str = (
-                resource.cluster_node.id
-                if isinstance(resource.cluster_node, AssignedClusterNode)
-                else resource.cluster_node
-            )
-            node_endpoint: Optional[str] = (
-                resource.cluster_node.endpoint
-                if isinstance(resource.cluster_node, AssignedClusterNode)
-                else None
-            )
+        for resource in cluster.nodes:
+            node_name: str = resource.hostname
+            node_id: str = resource.id
+            node_endpoint: Optional[str] = resource.endpoint
             available_cluster_resources.append(
                 AvailableClusterResources(
                     node_id=node_id,

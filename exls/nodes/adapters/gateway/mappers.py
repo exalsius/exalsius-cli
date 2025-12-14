@@ -6,7 +6,38 @@ from exalsius_api_client.models.self_managed_node import (
     SelfManagedNode as SdkSelfManagedNode,
 )
 
-from exls.nodes.core.domain import BaseNode, CloudNode, NodeStatus, SelfManagedNode
+from exls.nodes.core.domain import (
+    BaseNode,
+    CloudNode,
+    NodeResources,
+    NodeStatus,
+    SelfManagedNode,
+)
+
+
+def _map_node_resources_from_sdk_model(
+    sdk_model: Union[SdkCloudNode, SdkSelfManagedNode],
+) -> NodeResources:
+    node_resources: NodeResources
+    if sdk_model.hardware:
+        node_resources = NodeResources(
+            gpu_type=sdk_model.hardware.gpu_type or "unknown",
+            gpu_vendor=sdk_model.hardware.gpu_vendor or "unknown",
+            gpu_count=sdk_model.hardware.gpu_count or 0,
+            cpu_cores=sdk_model.hardware.cpu_cores or 0,
+            memory_gb=sdk_model.hardware.memory_gb or 0,
+            storage_gb=sdk_model.hardware.storage_gb or 0,
+        )
+    else:
+        node_resources = NodeResources(
+            gpu_type="unknown",
+            gpu_vendor="unknown",
+            gpu_count=0,
+            cpu_cores=0,
+            memory_gb=0,
+            storage_gb=0,
+        )
+    return node_resources
 
 
 # singledispatch transforms a regular function into a generic function
@@ -31,6 +62,7 @@ def _(sdk_model: SdkCloudNode) -> CloudNode:
         provider=sdk_model.provider,
         instance_type=sdk_model.instance_type,
         price_per_hour=f"{float(sdk_model.price_per_hour):.2f}",
+        resources=_map_node_resources_from_sdk_model(sdk_model),
     )
 
 
@@ -45,4 +77,5 @@ def _(sdk_model: SdkSelfManagedNode) -> SelfManagedNode:
         endpoint=sdk_model.endpoint,
         ssh_key_id=sdk_model.ssh_key_id,
         username=sdk_model.username,
+        resources=_map_node_resources_from_sdk_model(sdk_model),
     )

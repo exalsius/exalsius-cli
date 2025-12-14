@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+import logging
 from typing import List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
+from exalsius_api_client.models.cluster import Cluster
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import (
     ClusterCreateRequest as SdkClusterCreateRequest,
@@ -22,10 +26,22 @@ from exalsius_api_client.models.cluster_nodes_response import ClusterNodesRespon
 from exalsius_api_client.models.cluster_resources_list_response import (
     ClusterResourcesListResponse,
 )
+from exalsius_api_client.models.cluster_resources_list_response_resources_inner import (
+    ClusterResourcesListResponseResourcesInner,
+)
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 
-from exls.clusters.adapters.gateway.commands import (
+from exls.clusters.adapters.gateway.gateway import (
+    ClusterCreateParameters,
+    ClusterData,
+    ClusterNodeRefData,
+    ClusterNodeRefResourcesData,
+    ClustersGateway,
+    ResourcesData,
+    get_cluster_labels,
+)
+from exls.clusters.adapters.gateway.sdk.commands import (
     AddNodesSdkCommand,
     CreateClusterSdkCommand,
     DeleteClusterSdkCommand,
@@ -38,46 +54,97 @@ from exls.clusters.adapters.gateway.commands import (
     ListClustersSdkCommand,
     RemoveNodeSdkCommand,
 )
-from exls.clusters.adapters.gateway.mappers import (
-    cluster_from_sdk_model,
-    cluster_node_ref_from_node_ids,
-    resources_from_sdk_model,
-)
 from exls.clusters.core.domain import (
-    Cluster,
     ClusterStatus,
 )
-from exls.clusters.core.ports.gateway import (
-    ClusterCreateParameters,
-    ClusterNodeRefResources,
-    IClustersGateway,
-)
-from exls.clusters.core.requests import AddNodesRequest, NodeRef
-from exls.shared.adapters.gateway.sdk.service import create_api_client
+
+logger = logging.getLogger(__name__)
 
 
-class ClustersGatewaySdk(IClustersGateway):
+def cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
+    return ClusterData(
+        id=sdk_model.id or "",
+        name=sdk_model.name,
+        status=sdk_model.cluster_status or "",
+        type=sdk_model.cluster_type or "",
+        created_at=sdk_model.created_at,
+        updated_at=sdk_model.updated_at,
+    )
+
+
+def cluster_node_ref_from_node_ids(
+    control_plane_node_ids: List[str], worker_node_ids: List[str]
+) -> List[ClusterNodeRefData]:
+    return [
+        ClusterNodeRefData(id=node_id, role="CONTROL_PLANE")
+        for node_id in control_plane_node_ids
+    ] + [ClusterNodeRefData(id=node_id, role="WORKER") for node_id in worker_node_ids]
+
+
+def cluster_node_ref_resources_data_from_sdk_model(
+    sdk_model: ClusterResourcesListResponseResourcesInner,
+) -> Optional[ClusterNodeRefResourcesData]:
+    if sdk_model.node_id is None:
+        logger.warning("Node ID is None for cluster node resources")
+        return None
+    if sdk_model.available is None:
+        logger.warning(
+            f"Available resources are None for cluster node {sdk_model.node_id}"
+        )
+        return None
+    if sdk_model.occupied is None:
+        logger.warning(
+            f"Occupied resources are None for cluster node {sdk_model.node_id}"
+        )
+        return None
+
+    available_resources: ResourcesData = ResourcesData(
+        gpu_type=sdk_model.available.gpu_type or "",
+        gpu_vendor=sdk_model.available.gpu_vendor or "",
+        gpu_count=sdk_model.available.gpu_count or 0,
+        cpu_cores=sdk_model.available.cpu_cores or 0,
+        memory_gb=sdk_model.available.memory_gb or 0,
+        storage_gb=sdk_model.available.storage_gb or 0,
+    )
+    occupied_resources: ResourcesData = ResourcesData(
+        gpu_type=sdk_model.occupied.gpu_type or "",
+        gpu_vendor=sdk_model.occupied.gpu_vendor or "",
+        gpu_count=sdk_model.occupied.gpu_count or 0,
+        cpu_cores=sdk_model.occupied.cpu_cores or 0,
+        memory_gb=sdk_model.occupied.memory_gb or 0,
+        storage_gb=sdk_model.occupied.storage_gb or 0,
+    )
+    return ClusterNodeRefResourcesData(
+        node_id=sdk_model.node_id,
+        node_name=sdk_model.node_name or "Unknown",
+        free_resources=available_resources,
+        occupied_resources=occupied_resources,
+    )
+
+
+class SdkClustersGateway(ClustersGateway):
     def __init__(self, clusters_api: ClustersApi):
         self._clusters_api = clusters_api
 
-    def list(self, status: Optional[ClusterStatus]) -> List[Cluster]:
+    def list(self, status: Optional[ClusterStatus]) -> List[ClusterData]:
         command: ListClustersSdkCommand = ListClustersSdkCommand(
             self._clusters_api,
             status=status.value if status and status != ClusterStatus.UNKNOWN else None,
         )
         response: ClustersListResponse = command.execute()
-        clusters: List[Cluster] = [
-            cluster_from_sdk_model(sdk_model=cluster) for cluster in response.clusters
+        clusters: List[ClusterData] = [
+            cluster_data_from_sdk_model(sdk_model=cluster)
+            for cluster in response.clusters
         ]
         return clusters
 
-    def get(self, cluster_id: str) -> Cluster:
+    def get(self, cluster_id: str) -> ClusterData:
         command: GetClusterSdkCommand = GetClusterSdkCommand(
             self._clusters_api, cluster_id=cluster_id
         )
         response: ClusterResponse = command.execute()
 
-        return cluster_from_sdk_model(sdk_model=response.cluster)
+        return cluster_data_from_sdk_model(sdk_model=response.cluster)
 
     def delete(self, cluster_id: str) -> str:
         command: DeleteClusterSdkCommand = DeleteClusterSdkCommand(
@@ -90,9 +157,9 @@ class ClustersGatewaySdk(IClustersGateway):
         sdk_request: SdkClusterCreateRequest = SdkClusterCreateRequest(
             name=parameters.name,
             cluster_type=parameters.type,
-            cluster_labels=parameters.labels,
-            vpn_cluster=parameters.vpn_cluster,
-            telemetry_enabled=parameters.telemetry_enabled,
+            cluster_labels=get_cluster_labels(parameters=parameters),
+            vpn_cluster=parameters.enable_vpn,
+            telemetry_enabled=parameters.enable_telemetry,
             colony_id=parameters.colony_id,
             to_be_deleted_at=parameters.to_be_deleted_at,
             control_plane_node_ids=parameters.control_plane_node_ids,
@@ -112,7 +179,7 @@ class ClustersGatewaySdk(IClustersGateway):
         response: ClusterDeployResponse = command.execute()
         return response.cluster_id
 
-    def get_cluster_nodes(self, cluster_id: str) -> List[NodeRef]:
+    def get_cluster_nodes(self, cluster_id: str) -> List[ClusterNodeRefData]:
         command: GetClusterNodesSdkCommand = GetClusterNodesSdkCommand(
             self._clusters_api, cluster_id=cluster_id
         )
@@ -122,16 +189,20 @@ class ClustersGatewaySdk(IClustersGateway):
             worker_node_ids=response.worker_node_ids,
         )
 
-    def add_nodes_to_cluster(self, request: AddNodesRequest) -> List[NodeRef]:
+    def add_nodes_to_cluster(
+        self, cluster_id: str, nodes_to_add: List[ClusterNodeRefData]
+    ) -> List[ClusterNodeRefData]:
+        # TODO: Sync with Dominik; nameing convention; why we can add multiple nodes at once
+        #       but remove only one at a time?
         sdk_request: ClusterAddNodeRequest = ClusterAddNodeRequest(
             nodes_to_add=[
-                ClusterNodeToAdd(node_id=n.id, node_role=n.role.value)
-                for n in request.nodes_to_add
+                ClusterNodeToAdd(node_id=node.id, node_role=node.role)
+                for node in nodes_to_add
             ],
         )
         command: AddNodesSdkCommand = AddNodesSdkCommand(
             self._clusters_api,
-            cluster_id=request.cluster_id,
+            cluster_id=cluster_id,
             request=sdk_request,
         )
         response: ClusterNodesResponse = command.execute()
@@ -141,39 +212,31 @@ class ClustersGatewaySdk(IClustersGateway):
             worker_node_ids=response.worker_node_ids,
         )
 
-    # TODO: Move this to the core service layer to run in parallel
-    def remove_nodes_from_cluster(
-        self, cluster_id: str, node_ids: List[str]
-    ) -> List[str]:
-        commands: List[RemoveNodeSdkCommand] = [
-            RemoveNodeSdkCommand(
-                self._clusters_api,
-                cluster_id=cluster_id,
-                node_id=node_id,
-            )
-            for node_id in node_ids
-        ]
-        responses: List[ClusterNodeRemoveResponse] = [
-            command.execute() for command in commands
-        ]
-        return [response.node_id for response in responses]
+    def remove_node_from_cluster(self, cluster_id: str, node_id: str) -> str:
+        command: RemoveNodeSdkCommand = RemoveNodeSdkCommand(
+            self._clusters_api, cluster_id=cluster_id, node_id=node_id
+        )
+        response: ClusterNodeRemoveResponse = command.execute()
+        return response.node_id
 
-    def get_cluster_resources(self, cluster_id: str) -> List[ClusterNodeRefResources]:
+    def get_cluster_resources(
+        self, cluster_id: str
+    ) -> List[ClusterNodeRefResourcesData]:
         command: GetClusterResourcesSdkCommand = GetClusterResourcesSdkCommand(
             self._clusters_api, cluster_id=cluster_id
         )
         response: ClusterResourcesListResponse = command.execute()
 
-        cluster_node_resources: List[ClusterNodeRefResources] = []
+        cluster_node_resources: List[ClusterNodeRefResourcesData] = []
         for resource in response.resources:
-            resource_model: Optional[ClusterNodeRefResources] = (
-                resources_from_sdk_model(sdk_model=resource)
+            resource_model: Optional[ClusterNodeRefResourcesData] = (
+                cluster_node_ref_resources_data_from_sdk_model(sdk_model=resource)
             )
             if resource_model:
                 cluster_node_resources.append(resource_model)
         return cluster_node_resources
 
-    def get_kubeconfig(self, cluster_id: str) -> str:
+    def load_kubeconfig(self, cluster_id: str) -> str:
         command: GetKubeconfigSdkCommand = GetKubeconfigSdkCommand(
             self._clusters_api, cluster_id
         )
@@ -186,10 +249,3 @@ class ClustersGatewaySdk(IClustersGateway):
         )
         response: ClusterDashboardUrlResponse = command.execute()
         return response.url
-
-
-def create_clusters_gateway(backend_host: str, access_token: str) -> IClustersGateway:
-    clusters_api: ClustersApi = ClustersApi(
-        create_api_client(backend_host=backend_host, access_token=access_token)
-    )
-    return ClustersGatewaySdk(clusters_api=clusters_api)
