@@ -2,16 +2,14 @@ from typing import Any, Dict, Optional, Type, cast
 
 from pydantic import BaseModel
 
-from exls.clusters.adapters.dtos import (
+from exls.clusters.adapters.ui.dtos import (
     AddNodesRequestDTO,
     ClusterDTO,
     ClusterNodeDTO,
     ClusterNodeResourcesDTO,
     ClusterWithNodesDTO,
-    NodeValidationIssueDTO,
-)
-from exls.clusters.adapters.ui.dtos import (
     DeployClusterRequestFromFlowDTO,
+    NodeValidationIssueDTO,
     UnassignedClusterNodeDTO,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
