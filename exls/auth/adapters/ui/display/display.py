@@ -2,15 +2,12 @@ import logging
 import subprocess
 import sys
 import webbrowser
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 import qrcode
-from pydantic import BaseModel
 
 from exls.auth.adapters.dtos import DeviceCodeAuthenticationDTO
-from exls.auth.adapters.ui.display.render import get_columns_rendering_map
 from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
-from exls.shared.adapters.ui.output.render.table import Column
 from exls.shared.adapters.ui.output.values import OutputFormat
 
 logger = logging.getLogger(__name__)
@@ -78,11 +75,6 @@ def _open_browser_for_device_code_authentication(uri: str) -> bool:
 
 
 class IOAuthFacade(IOBaseModelFacade):
-    def get_columns_rendering_map(
-        self, data_type: Type[BaseModel], list_data: bool = False
-    ) -> Optional[Dict[str, Column]]:
-        return get_columns_rendering_map(data_type)
-
     @staticmethod
     def _generate_qr_code(uri: str) -> qrcode.QRCode[Any]:
         qr: qrcode.QRCode[Any] = qrcode.QRCode(

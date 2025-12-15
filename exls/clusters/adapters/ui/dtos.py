@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import datetime
 from enum import StrEnum
-from typing import List, Optional, cast
+from typing import List, Optional
 
-from pydantic import BaseModel, Field, StrictInt, StrictStr
+from pydantic import BaseModel, Field, StrictStr
 
 
 class AllowedClusterStatusDTO(StrEnum):
@@ -39,34 +38,6 @@ class AllowedClusterTypesDTO(StrEnum):
         return list(cls.__members__.values())
 
 
-class UnassignedClusterNodeDTO(BaseModel):
-    id: StrictStr = Field(..., description="The ID of the node")
-    name: StrictStr = Field(..., description="The name of the node")
-
-
-class DeployClusterRequestFromFlowDTO(BaseModel):
-    name: StrictStr = Field(default="", description="The name of the cluster")
-    cluster_type: AllowedClusterTypesDTO = Field(
-        default=AllowedClusterTypesDTO.REMOTE, description="The type of the cluster"
-    )
-    worker_node_ids: List[UnassignedClusterNodeDTO] = Field(
-        default_factory=lambda: cast(List[UnassignedClusterNodeDTO], []),
-        description="The worker nodes",
-    )
-    control_plane_node_ids: Optional[List[UnassignedClusterNodeDTO]] = Field(
-        default_factory=lambda: cast(Optional[List[UnassignedClusterNodeDTO]], []),
-        description="The control plane nodes",
-    )
-    enable_multinode_training: bool = Field(
-        default=False,
-        description="Enable multinode AI model training for the cluster",
-    )
-    enable_telemetry: bool = Field(
-        default=False, description="Enable telemetry for the cluster"
-    )
-    enable_vpn: bool = Field(default=False, description="Enable VPN for the cluster")
-
-
 class AddNodesRequestDTO(BaseModel):
     cluster_id: StrictStr = Field(
         ..., description="The ID of the cluster to add nodes to"
@@ -82,55 +53,6 @@ class RemoveNodeRequestDTO(BaseModel):
         ..., description="The ID of the cluster to remove a node from"
     )
     node_id: StrictStr = Field(..., description="The ID of the node to remove")
-
-
-class ClusterDTO(BaseModel):
-    id: StrictStr = Field(..., description="The ID of the cluster")
-    name: StrictStr = Field(..., description="The name of the cluster")
-    status: StrictStr = Field(..., description="The status of the cluster")
-    type: StrictStr = Field(..., description="The type of the cluster")
-    created_at: datetime.datetime = Field(
-        ..., description="The creation date of the cluster"
-    )
-    updated_at: Optional[datetime.datetime] = Field(
-        default=None, description="The last update date of the cluster"
-    )
-
-
-class ClusterWithNodesDTO(ClusterDTO):
-    worker_nodes: List[ClusterNodeDTO] = Field(
-        ..., description="The worker nodes of the cluster"
-    )
-    control_plane_nodes: List[ClusterNodeDTO] = Field(
-        ..., description="The control plane nodes of the cluster"
-    )
-
-
-class ClusterNodeDTO(BaseModel):
-    id: StrictStr = Field(..., description="The ID of the node")
-    role: StrictStr = Field(..., description="The role of the nodes")
-    hostname: StrictStr = Field(..., description="The hostname of the node")
-    status: StrictStr = Field(..., description="The status of the node")
-    cluster_name: StrictStr = Field(..., description="The name of the cluster")
-
-
-class ResourcesDTO(BaseModel):
-    gpu_type: StrictStr = Field(..., description="The type of the GPU")
-    gpu_vendor: StrictStr = Field(..., description="The vendor of the GPU")
-    gpu_count: StrictInt = Field(..., description="The count of the GPU")
-    cpu_cores: StrictInt = Field(..., description="The CPU of the resources")
-    memory_gb: StrictInt = Field(..., description="The memory of the resources")
-    storage_gb: StrictInt = Field(..., description="The storage of the resources")
-
-
-class ClusterNodeResourcesDTO(BaseModel):
-    cluster_node: ClusterNodeDTO = Field(..., description="The cluster node")
-    free_resources: ResourcesDTO = Field(
-        ..., description="The free resources of the node"
-    )
-    occupied_resources: ResourcesDTO = Field(
-        ..., description="The occupied resources of the node"
-    )
 
 
 class DashboardUrlResponseDTO(BaseModel):

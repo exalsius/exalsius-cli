@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import typer
-from pydantic import BaseModel
 
 from exls.config import AppConfig
 from exls.shared.adapters.gateway.file.gateways import StringFileIOGateway
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.factory import IOFactory
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (
     get_access_token_from_ctx,
@@ -42,9 +42,13 @@ class BaseBundle(ABC):
             or self.config.default_object_output_format
         )
 
-    @abstractmethod
-    def get_io_facade(self) -> IIOFacade[BaseModel]: ...
-
     def get_crypto_service(self) -> CryptoService:
         gateway = StringFileIOGateway()
         return CryptoService(file_reader=gateway, file_writer=gateway)
+
+    def get_io_facade(self) -> IOBaseModelFacade:
+        io_facade_factory: IOFactory = IOFactory()
+        return IOBaseModelFacade(
+            input_manager=io_facade_factory.get_input_manager(),
+            output_manager=io_facade_factory.get_output_manager(),
+        )

@@ -4,7 +4,6 @@ from exalsius_api_client.api.clusters_api import ClustersApi
 from exls.clusters.adapters.adapter import ClusterAdapter
 from exls.clusters.adapters.gateway.sdk.sdk import SdkClustersGateway
 from exls.clusters.adapters.provider.nodes import NodesDomainProvider
-from exls.clusters.adapters.ui.display.display import IOClustersFacade
 from exls.clusters.adapters.ui.flows.cluster_deploy import DeployClusterFlow
 from exls.clusters.core.ports.provider import NodesProvider
 from exls.clusters.core.service import ClustersService
@@ -15,7 +14,6 @@ from exls.shared.adapters.gateway.file.gateways import (
     YamlFileWriteGateway,
 )
 from exls.shared.adapters.gateway.sdk.service import create_api_client
-from exls.shared.adapters.ui.factory import IOFactory
 
 
 class ClustersBundle(BaseBundle):
@@ -48,10 +46,3 @@ class ClustersBundle(BaseBundle):
 
     def get_deploy_cluster_flow(self) -> DeployClusterFlow:
         return DeployClusterFlow(service=self.get_clusters_service())
-
-    def get_io_facade(self) -> IOClustersFacade:
-        io_facade_factory: IOFactory = IOFactory()
-        return IOClustersFacade(
-            input_manager=io_facade_factory.get_input_manager(),
-            output_manager=io_facade_factory.get_output_manager(),
-        )
