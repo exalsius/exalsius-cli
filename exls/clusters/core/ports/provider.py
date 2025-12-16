@@ -6,7 +6,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, StrictStr
 
 from exls.clusters.core.domain import ClusterNode, ClusterNodeResources
-from exls.clusters.core.requests import NodeSpecification
+from exls.clusters.core.requests import ClusterNodeSpecification
 
 
 class ClusterNodeData(BaseModel):
@@ -24,7 +24,7 @@ class ClusterNodeData(BaseModel):
 
 
 class ClusterNodeImportIssue(BaseModel):
-    node_specification: NodeSpecification = Field(
+    node_specification: ClusterNodeSpecification = Field(
         ..., description="The node specification"
     )
     error_message: StrictStr = Field(..., description="The error message that occurred")
@@ -46,5 +46,7 @@ class NodesProvider(ABC):
 
     @abstractmethod
     def import_nodes(
-        self, nodes_specs: List[NodeSpecification], wait_for_available: bool = False
+        self,
+        nodes_specs: List[ClusterNodeSpecification],
+        wait_for_available: bool = False,
     ) -> ClusterNodesImportResult: ...

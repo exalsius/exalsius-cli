@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StrictStr
 
-from exls.nodes.adapters.ui.dtos import (
-    ImportSelfmanagedNodeRequestDTO,
-    ImportSelfmanagedNodeRequestListDTO,
-    NodesSshKeyDTO,
-    NodesSshKeySpecificationDTO,
+from exls.nodes.adapters.ui.flows.ports import (
+    FlowNodesSshKeySpecification,
+    IImportSshKeyFlow,
 )
-from exls.nodes.adapters.ui.flows.ports import IImportSshKeyFlow
+from exls.nodes.core.ports.provider import NodeSshKey
+from exls.nodes.core.requests import (
+    ImportSelfmanagedNodeRequest,
+    NodesSshKeySpecification,
+)
 from exls.nodes.core.service import NodesService
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialFlow
@@ -37,10 +39,45 @@ from exls.shared.core.domain import generate_random_name
 
 ADD_NEW_KEY_SENTINEL: object = object()
 
-_SSH_KEY_CHOICE = Union[NodesSshKeyDTO, NodesSshKeySpecificationDTO, object]
+
+class FlowSelfmanagedNodeSpecificationDTO(BaseModel):
+    hostname: StrictStr = Field(default="", description="The hostname of the node")
+    endpoint: StrictStr = Field(default="", description="The endpoint of the node")
+    username: StrictStr = Field(default="", description="The username of the node")
+    ssh_key: Optional[Union[NodeSshKey, FlowNodesSshKeySpecification]] = Field(
+        default=None, description="The SSH key to use"
+    )
+
+    def to_domain(self) -> ImportSelfmanagedNodeRequest:
+        ssh_key_val: Union[str, NodesSshKeySpecification]
+        if isinstance(self.ssh_key, NodeSshKey):
+            ssh_key_val = self.ssh_key.id
+        elif isinstance(self.ssh_key, FlowNodesSshKeySpecification):
+            ssh_key_val = NodesSshKeySpecification(
+                name=self.ssh_key.name, key_path=self.ssh_key.key_path
+            )
+        else:
+            # Should not happen if validation passes, but for safety:
+            raise ValueError("SSH Key not selected")
+
+        return ImportSelfmanagedNodeRequest(
+            hostname=self.hostname,
+            endpoint=self.endpoint,
+            username=self.username,
+            ssh_key=ssh_key_val,
+        )
 
 
-class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
+class FlowImportSelfmanagedNodesRequestListDTO(BaseModel):
+    nodes: Sequence[FlowSelfmanagedNodeSpecificationDTO] = Field(
+        default=[], description="The list of nodes to import"
+    )
+
+
+_SSH_KEY_CHOICE = Union[NodeSshKey, FlowNodesSshKeySpecification, object]
+
+
+class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
     """Flow for self-managed node import configuration."""
 
     def __init__(
@@ -51,21 +88,18 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
     ):
         self._service: NodesService = service
         self._import_ssh_key_flow: IImportSshKeyFlow = import_ssh_key_flow
-        self._cached_ssh_keys: Optional[Sequence[NodesSshKeyDTO]] = None
+        self._cached_ssh_keys: Sequence[NodeSshKey] = []
         self._ask_confirmation: bool = ask_confirmation
 
-    def _get_available_ssh_keys(self) -> Sequence[NodesSshKeyDTO]:
-        if self._cached_ssh_keys is None:
-            self._cached_ssh_keys = [
-                NodesSshKeyDTO(id=key.id, name=key.name)
-                for key in self._service.list_ssh_keys()
-            ]
+    def _get_available_ssh_keys(self) -> Sequence[NodeSshKey]:
+        if not self._cached_ssh_keys:
+            self._cached_ssh_keys = self._service.list_ssh_keys()
         return self._cached_ssh_keys
 
     def _get_ssh_key_choices(
-        self, model: ImportSelfmanagedNodeRequestDTO, context: FlowContext
+        self, model: FlowSelfmanagedNodeSpecificationDTO, context: FlowContext
     ) -> ChoicesSpec[_SSH_KEY_CHOICE]:
-        available_ssh_keys: Sequence[NodesSshKeyDTO] = self._get_available_ssh_keys()
+        available_ssh_keys: Sequence[NodeSshKey] = self._get_available_ssh_keys()
 
         choices: List[DisplayChoice[_SSH_KEY_CHOICE]] = [
             DisplayChoice[_SSH_KEY_CHOICE](title=ssh_key.name, value=ssh_key)
@@ -74,9 +108,9 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
         added_choices: Dict[str, _SSH_KEY_CHOICE] = {c.title: c.value for c in choices}
 
         for sibling in context.siblings:
-            if isinstance(sibling, ImportSelfmanagedNodeRequestDTO):
-                if isinstance(sibling.ssh_key, NodesSshKeySpecificationDTO):
-                    new_key_spec: NodesSshKeySpecificationDTO = sibling.ssh_key
+            if isinstance(sibling, FlowSelfmanagedNodeSpecificationDTO):
+                if isinstance(sibling.ssh_key, FlowNodesSshKeySpecification):
+                    new_key_spec: FlowNodesSshKeySpecification = sibling.ssh_key
                     if new_key_spec.name not in added_choices:
                         choices.append(
                             DisplayChoice[_SSH_KEY_CHOICE](
@@ -96,7 +130,7 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
 
     def execute(
         self,
-        model: ImportSelfmanagedNodeRequestDTO,
+        model: FlowSelfmanagedNodeSpecificationDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:
@@ -107,46 +141,47 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
             A list of NodesImportSSHRequestDTO objects.
         """
 
-        flow: SequentialFlow[ImportSelfmanagedNodeRequestDTO] = SequentialFlow[
-            ImportSelfmanagedNodeRequestDTO
+        flow: SequentialFlow[FlowSelfmanagedNodeSpecificationDTO] = SequentialFlow[
+            FlowSelfmanagedNodeSpecificationDTO
         ](
             steps=[
-                TextInputStep[ImportSelfmanagedNodeRequestDTO](
+                TextInputStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="hostname",
                     message="Hostname:",
                     default=generate_random_name(prefix="n"),
                     validator=kubernetes_name_validator,
                 ),
-                TextInputStep[ImportSelfmanagedNodeRequestDTO](
+                TextInputStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="endpoint",
                     message="Endpoint (IP address or hostname and port, e.g. 192.168.1.1:22):",
                     validator=ipv4_address_validator,
                 ),
-                TextInputStep[ImportSelfmanagedNodeRequestDTO](
+                TextInputStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="username",
                     message="Node's SSH username:",
                     default="",
                     validator=non_empty_string_validator,
                 ),
                 SelectRequiredStep[
-                    ImportSelfmanagedNodeRequestDTO,
+                    FlowSelfmanagedNodeSpecificationDTO,
                     _SSH_KEY_CHOICE,
                 ](
                     key="ssh_key",
                     message="Select SSH key:",
                     choices_spec=self._get_ssh_key_choices,
                 ),
-                ConditionalStep[ImportSelfmanagedNodeRequestDTO](
+                ConditionalStep[FlowSelfmanagedNodeSpecificationDTO](
                     condition=lambda model: model.ssh_key is ADD_NEW_KEY_SENTINEL,
                     true_step=SubModelStep[
-                        ImportSelfmanagedNodeRequestDTO, NodesSshKeySpecificationDTO
+                        FlowSelfmanagedNodeSpecificationDTO,
+                        FlowNodesSshKeySpecification,
                     ](
                         field_name="ssh_key",
                         child_step=self._import_ssh_key_flow,
-                        child_model_class=NodesSshKeySpecificationDTO,
+                        child_model_class=FlowNodesSshKeySpecification,
                     ),
                 ),
-                UpdateLastChoiceStep[ImportSelfmanagedNodeRequestDTO](
+                UpdateLastChoiceStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="ssh_key",
                 ),
                 # We could allow to cancel the subflow of ssh key import but we would need
@@ -178,7 +213,7 @@ class ImportSelfmanagedNodeFlow(FlowStep[ImportSelfmanagedNodeRequestDTO]):
 
 
 class ImportSelfmanagedNodeRequestListFlow(
-    FlowStep[ImportSelfmanagedNodeRequestListDTO]
+    FlowStep[FlowImportSelfmanagedNodesRequestListDTO]
 ):
     """Flow for self-managed node import list configuration."""
 
@@ -192,7 +227,7 @@ class ImportSelfmanagedNodeRequestListFlow(
 
     def execute(
         self,
-        model: ImportSelfmanagedNodeRequestListDTO,
+        model: FlowImportSelfmanagedNodesRequestListDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:
@@ -204,16 +239,17 @@ class ImportSelfmanagedNodeRequestListFlow(
             output_format=OutputFormat.TEXT,
         )
 
-        flow: SequentialFlow[ImportSelfmanagedNodeRequestListDTO] = SequentialFlow[
-            ImportSelfmanagedNodeRequestListDTO
+        flow: SequentialFlow[FlowImportSelfmanagedNodesRequestListDTO] = SequentialFlow[
+            FlowImportSelfmanagedNodesRequestListDTO
         ](
             steps=[
                 ListBuilderStep[
-                    ImportSelfmanagedNodeRequestListDTO, ImportSelfmanagedNodeRequestDTO
+                    FlowImportSelfmanagedNodesRequestListDTO,
+                    FlowSelfmanagedNodeSpecificationDTO,
                 ](
                     key="nodes",
                     item_step=self._import_selfmanaged_node_flow,
-                    item_model_class=ImportSelfmanagedNodeRequestDTO,
+                    item_model_class=FlowSelfmanagedNodeSpecificationDTO,
                     prompt_message="Do you want to add another node?",
                     min_items=1,
                 ),

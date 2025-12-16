@@ -11,16 +11,16 @@ from exls.clusters.core.domain import ClusterNodeRole, ClusterType
 ########################################################
 
 
-class SshKeySpecification(BaseModel):
+class ClusterSshKeySpecification(BaseModel):
     name: StrictStr = Field(..., description="The name of the SSH key")
     key_path: Path = Field(..., description="The path to the SSH key file")
 
 
-class NodeSpecification(BaseModel):
+class ClusterNodeSpecification(BaseModel):
     hostname: StrictStr = Field(..., description="The hostname of the node")
     endpoint: StrictStr = Field(..., description="The endpoint of the node")
     username: StrictStr = Field(..., description="The username of the node")
-    ssh_key: Union[StrictStr, SshKeySpecification] = Field(
+    ssh_key: Union[StrictStr, ClusterSshKeySpecification] = Field(
         ..., description="The SSH key to use"
     )
     role: ClusterNodeRole = Field(..., description="The role of the node")
@@ -35,11 +35,11 @@ class ClusterDeployRequest(BaseModel):
     to_be_deleted_at: Optional[datetime] = Field(
         default=None, description="The date and time the cluster will be deleted"
     )
-    worker_nodes: List[Union[StrictStr, NodeSpecification]] = Field(
+    worker_nodes: List[Union[StrictStr, ClusterNodeSpecification]] = Field(
         ..., description="The IDs of the worker nodes"
     )
-    control_plane_nodes: Optional[List[Union[StrictStr, NodeSpecification]]] = Field(
-        default=None, description="The IDs of the control plane nodes"
+    control_plane_nodes: Optional[List[Union[StrictStr, ClusterNodeSpecification]]] = (
+        Field(default=None, description="The IDs of the control plane nodes")
     )
     enable_multinode_training: bool = Field(
         ..., description="Enable multinode AI model training for the cluster"

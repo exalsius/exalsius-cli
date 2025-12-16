@@ -221,26 +221,26 @@ def deploy_cluster(
     # Handle success and error cases
     # Case success: all nodes were added to the cluster, cluster deployment started
     if result.is_success:
-        assert result.cluster is not None
+        assert result.deployed_cluster is not None
         io_facade.display_success_message(
-            message=f"Started deploying cluster {result.cluster.name}.",
+            message=f"Started deploying cluster {result.deployed_cluster.name}.",
             output_format=bundle.message_output_format,
         )
         io_facade.display_data(
-            data=result.cluster,
+            data=result.deployed_cluster,
             output_format=bundle.object_output_format,
             view_context=CLUSTER_WITH_NODES_VIEW,
         )
     # Case partially successful: not all nodes were added to the cluster
     # cluster deployment started with nodes that were successfully added
     elif result.is_partially_successful:
-        assert result.cluster is not None
+        assert result.deployed_cluster is not None
         io_facade.display_info_message(
-            message=f"Started deploying cluster {result.cluster.name} with some issues.",
+            message=f"Started deploying cluster {result.deployed_cluster.name} with some issues.",
             output_format=bundle.message_output_format,
         )
         io_facade.display_data(
-            data=result.cluster,
+            data=result.deployed_cluster,
             output_format=bundle.object_output_format,
             view_context=CLUSTER_LIST_VIEW,
         )

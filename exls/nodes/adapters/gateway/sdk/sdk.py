@@ -9,31 +9,29 @@ from exalsius_api_client.models.node_import_ssh_request import (
 from exalsius_api_client.models.node_response import NodeResponse
 from exalsius_api_client.models.nodes_list_response import NodesListResponse
 
-from exls.nodes.adapters.gateway.commands import (
+from exls.nodes.adapters.gateway.gateway import NodesGateway
+from exls.nodes.adapters.gateway.sdk.commands import (
     DeleteNodeSdkCommand,
     GetNodeSdkCommand,
     ImportCloudNodeSdkCommand,
     ImportSSHNodeSdkCommand,
     ListNodesSdkCommand,
 )
-from exls.nodes.adapters.gateway.mappers import node_domain_from_sdk_model
+from exls.nodes.adapters.gateway.sdk.mappers import node_domain_from_sdk_model
 from exls.nodes.core.domain import (
     BaseNode,
 )
-from exls.nodes.core.ports.gateway import (
-    ImportCloudNodeParameters,
+from exls.nodes.core.ports.operations import (
     ImportSelfmanagedNodeParameters,
-    INodesGateway,
 )
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
     NodesFilterCriteria,
 )
 from exls.shared.adapters.gateway.sdk.command import UnexpectedSdkCommandResponseError
-from exls.shared.adapters.gateway.sdk.service import create_api_client
 
 
-class NodesGatewaySdk(INodesGateway):
+class SdkNodesGateway(NodesGateway):
     def __init__(self, nodes_api: NodesApi):
         self._nodes_api = nodes_api
 
@@ -86,7 +84,7 @@ class NodesGatewaySdk(INodesGateway):
         node_id: str = cmd_node_import_ssh.execute()
         return node_id
 
-    def import_cloud_nodes(self, parameters: ImportCloudNodeParameters) -> List[str]:
+    def import_cloud_nodes(self, parameters: ImportCloudNodeRequest) -> List[str]:
         cmd_cloud_node_import: ImportCloudNodeSdkCommand = ImportCloudNodeSdkCommand(
             self._nodes_api,
             request=ImportCloudNodeRequest(
@@ -98,10 +96,3 @@ class NodesGatewaySdk(INodesGateway):
         response: NodeImportResponse = cmd_cloud_node_import.execute()
         node_ids: List[str] = [node_id for node_id in response.node_ids]
         return node_ids
-
-
-def create_nodes_gateway(backend_host: str, access_token: str) -> INodesGateway:
-    nodes_api: NodesApi = NodesApi(
-        create_api_client(backend_host=backend_host, access_token=access_token)
-    )
-    return NodesGatewaySdk(nodes_api=nodes_api)
