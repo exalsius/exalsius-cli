@@ -11,9 +11,6 @@ from exls.clusters.adapters.ui.display.render import (
     CLUSTER_NODE_RESOURCES_VIEW,
     CLUSTER_WITH_NODES_VIEW,
 )
-from exls.clusters.adapters.ui.dtos import (
-    DashboardUrlResponseDTO,
-)
 from exls.clusters.adapters.ui.flows.cluster_deploy import (
     DeployClusterFlow,
     FlowDeployClusterRequestDTO,
@@ -400,10 +397,9 @@ def get_dashboard_url(
     service: ClustersService = bundle.get_clusters_service()
 
     dashboard_url_str: str = service.get_dashboard_url(cluster_id)
-    dashboard_url = DashboardUrlResponseDTO(url=dashboard_url_str)
 
     if open_browser:
-        if open_url_in_browser(dashboard_url.url):
+        if open_url_in_browser(dashboard_url_str):
             io_facade.display_success_message(
                 "Opening dashboard in browser...", bundle.message_output_format
             )
@@ -414,7 +410,7 @@ def get_dashboard_url(
             )
 
     io_facade.display_success_message(
-        f"Monitoring Dashboard URL: {dashboard_url.url}", bundle.message_output_format
+        f"Monitoring Dashboard URL: {dashboard_url_str}", bundle.message_output_format
     )
 
 

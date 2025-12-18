@@ -1,21 +1,36 @@
+import logging
 from typing import List, Optional
 
 from exalsius_api_client.api.management_api import ManagementApi
+from exalsius_api_client.models.cluster_template import (
+    ClusterTemplate as SdkClusterTemplate,
+)
 from exalsius_api_client.models.cluster_template_list_response import (
     ClusterTemplateListResponse,
 )
+from exalsius_api_client.models.credentials import Credentials as SdkCredentials
 from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
+from exalsius_api_client.models.service_template import (
+    ServiceTemplate as SdkServiceTemplate,
+)
 from exalsius_api_client.models.service_template_list_response import (
     ServiceTemplateListResponse,
 )
 from exalsius_api_client.models.ssh_key_create_request import SshKeyCreateRequest
 from exalsius_api_client.models.ssh_key_create_response import SshKeyCreateResponse
 from exalsius_api_client.models.ssh_keys_list_response import SshKeysListResponse
+from exalsius_api_client.models.ssh_keys_list_response_ssh_keys_inner import (
+    SshKeysListResponseSshKeysInner,
+)
+from exalsius_api_client.models.workspace_template import (
+    WorkspaceTemplate as SdkWorkspaceTemplate,
+)
 from exalsius_api_client.models.workspace_template_list_response import (
     WorkspaceTemplateListResponse,
 )
 
-from exls.management.adapters.gateway.commands import (
+from exls.management.adapters.gateway.gateway import ManagementGateway
+from exls.management.adapters.gateway.sdk.commands import (
     AddSshKeySdkCommand,
     DeleteSshKeySdkCommand,
     ListClusterTemplatesSdkCommand,
@@ -24,13 +39,6 @@ from exls.management.adapters.gateway.commands import (
     ListSshKeysSdkCommand,
     ListWorkspaceTemplatesSdkCommand,
 )
-from exls.management.adapters.gateway.mappers import (
-    cluster_template_from_sdk_model,
-    credentials_from_sdk_model,
-    service_template_from_sdk_model,
-    ssh_key_from_sdk_model,
-    workspace_template_from_sdk_model,
-)
 from exls.management.core.domain import (
     ClusterTemplate,
     Credentials,
@@ -38,11 +46,59 @@ from exls.management.core.domain import (
     SshKey,
     WorkspaceTemplate,
 )
-from exls.management.core.ports import IManagementGateway
-from exls.shared.adapters.gateway.sdk.service import create_api_client
+
+logger = logging.getLogger(__name__)
 
 
-class ManagementGatewaySdk(IManagementGateway):
+def _ssh_key_from_sdk_model(
+    sdk_model: SshKeysListResponseSshKeysInner,
+) -> Optional[SshKey]:
+    if sdk_model.id is None or sdk_model.name is None:
+        logger.warning(f"Unexpected SSH key response: {sdk_model}")
+        return None
+    return SshKey(id=sdk_model.id, name=sdk_model.name)
+
+
+def _cluster_template_from_sdk_model(
+    sdk_model: SdkClusterTemplate,
+) -> ClusterTemplate:
+    return ClusterTemplate(
+        name=sdk_model.name,
+        description=sdk_model.description,
+        k8s_version=sdk_model.k8s_version,
+    )
+
+
+def _credentials_from_sdk_model(
+    sdk_model: SdkCredentials,
+) -> Credentials:
+    return Credentials(
+        name=sdk_model.name,
+        description=sdk_model.description,
+    )
+
+
+def _service_template_from_sdk_model(
+    sdk_model: SdkServiceTemplate,
+) -> ServiceTemplate:
+    return ServiceTemplate(
+        name=sdk_model.name,
+        description=sdk_model.description if sdk_model.description else "",
+        variables=sdk_model.variables,
+    )
+
+
+def _workspace_template_from_sdk_model(
+    sdk_model: SdkWorkspaceTemplate,
+) -> WorkspaceTemplate:
+    return WorkspaceTemplate(
+        name=sdk_model.name,
+        description=sdk_model.description if sdk_model.description else "",
+        variables=sdk_model.variables,
+    )
+
+
+class ManagementGatewaySdk(ManagementGateway):
     def __init__(self, management_api: ManagementApi):
         self._management_api = management_api
 
@@ -52,7 +108,7 @@ class ManagementGatewaySdk(IManagementGateway):
         ssh_keys: List[SshKey] = []
         if response.ssh_keys:
             for ssh_key in response.ssh_keys:
-                ssh_key_domain: Optional[SshKey] = ssh_key_from_sdk_model(
+                ssh_key_domain: Optional[SshKey] = _ssh_key_from_sdk_model(
                     sdk_model=ssh_key
                 )
                 if ssh_key_domain is not None:
@@ -66,7 +122,7 @@ class ManagementGatewaySdk(IManagementGateway):
         command.execute()
         return ssh_key_id
 
-    def import_ssh_key(self, name: str, base64_key_content: str) -> str:
+    def create_ssh_key(self, name: str, base64_key_content: str) -> str:
         existing_ssh_keys: List[SshKey] = self.list_ssh_keys()
         if any(ssh_key.name == name for ssh_key in existing_ssh_keys):
             raise ValueError(f"SSH key with name {name} already exists")
@@ -86,7 +142,7 @@ class ManagementGatewaySdk(IManagementGateway):
         )
         response: ClusterTemplateListResponse = command.execute()
         return [
-            cluster_template_from_sdk_model(sdk_model=ct)
+            _cluster_template_from_sdk_model(sdk_model=ct)
             for ct in response.cluster_templates
         ]
 
@@ -95,7 +151,7 @@ class ManagementGatewaySdk(IManagementGateway):
             self._management_api
         )
         response: CredentialsListResponse = command.execute()
-        return [credentials_from_sdk_model(sdk_model=c) for c in response.credentials]
+        return [_credentials_from_sdk_model(sdk_model=c) for c in response.credentials]
 
     def list_service_templates(self) -> List[ServiceTemplate]:
         command: ListServiceTemplatesSdkCommand = ListServiceTemplatesSdkCommand(
@@ -103,7 +159,7 @@ class ManagementGatewaySdk(IManagementGateway):
         )
         response: ServiceTemplateListResponse = command.execute()
         return [
-            service_template_from_sdk_model(sdk_model=st)
+            _service_template_from_sdk_model(sdk_model=st)
             for st in response.service_templates
         ]
 
@@ -113,16 +169,6 @@ class ManagementGatewaySdk(IManagementGateway):
         )
         response: WorkspaceTemplateListResponse = command.execute()
         return [
-            workspace_template_from_sdk_model(sdk_model=wt)
+            _workspace_template_from_sdk_model(sdk_model=wt)
             for wt in response.workspace_templates
         ]
-
-
-def create_management_gateway(
-    backend_host: str,
-    access_token: str,
-) -> ManagementGatewaySdk:
-    management_api: ManagementApi = ManagementApi(
-        create_api_client(backend_host=backend_host, access_token=access_token)
-    )
-    return ManagementGatewaySdk(management_api=management_api)

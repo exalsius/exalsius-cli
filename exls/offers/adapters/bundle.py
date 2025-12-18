@@ -1,11 +1,11 @@
 import typer
+from exalsius_api_client.api.offers_api import OffersApi
 
-from exls.offers.adapters.gateway.sdk import create_offers_gateway
-from exls.offers.adapters.ui.display.display import IOOffersFacade
-from exls.offers.core.ports import IOffersGateway
+from exls.offers.adapters.gateway.gateway import OffersGateway
+from exls.offers.adapters.gateway.sdk.sdk import OffersGatewaySdk
 from exls.offers.core.service import OffersService
 from exls.shared.adapters.bundle import BaseBundle
-from exls.shared.adapters.ui.factory import IOFactory
+from exls.shared.adapters.gateway.sdk.service import create_api_client
 
 
 class OffersBundle(BaseBundle):
@@ -13,14 +13,10 @@ class OffersBundle(BaseBundle):
         super().__init__(ctx)
 
     def get_offers_service(self) -> OffersService:
-        offers_gateway: IOffersGateway = create_offers_gateway(
-            backend_host=self.config.backend_host, access_token=self.access_token
+        offers_api: OffersApi = OffersApi(
+            api_client=create_api_client(
+                backend_host=self.config.backend_host, access_token=self.access_token
+            )
         )
-        return OffersService(offers_gateway)
-
-    def get_io_facade(self) -> IOOffersFacade:
-        io_facade_factory: IOFactory = IOFactory()
-        return IOOffersFacade(
-            input_manager=io_facade_factory.get_input_manager(),
-            output_manager=io_facade_factory.get_output_manager(),
-        )
+        offers_gateway: OffersGateway = OffersGatewaySdk(offers_api=offers_api)
+        return OffersService(offers_repository=offers_gateway)

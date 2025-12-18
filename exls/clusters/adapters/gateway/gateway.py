@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from enum import StrEnum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, StrictStr
+from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from exls.clusters.core.domain import (
     ClusterStatus,
@@ -35,10 +35,10 @@ class ClusterNodeRefData(BaseModel):
 class ResourcesData(BaseModel):
     gpu_type: StrictStr = Field(..., description="The type of the GPU")
     gpu_vendor: StrictStr = Field(..., description="The vendor of the GPU")
-    gpu_count: int = Field(..., description="The count of the GPU")
-    cpu_cores: int = Field(..., description="The number of CPU cores")
-    memory_gb: int = Field(..., description="The amount of memory in GB")
-    storage_gb: int = Field(..., description="The amount of storage in GB")
+    gpu_count: StrictInt = Field(..., description="The count of the GPU")
+    cpu_cores: StrictInt = Field(..., description="The number of CPU cores")
+    memory_gb: StrictInt = Field(..., description="The amount of memory in GB")
+    storage_gb: StrictInt = Field(..., description="The amount of storage in GB")
 
 
 class ClusterNodeRefResourcesData(BaseModel):

@@ -5,6 +5,6 @@ from exls.offers.core.domain import Offer
 from exls.offers.core.requests import OffersFilterCriteria
 
 
-class IOffersGateway(ABC):
+class OffersRepository(ABC):
     @abstractmethod
     def list(self, request: OffersFilterCriteria) -> List[Offer]: ...

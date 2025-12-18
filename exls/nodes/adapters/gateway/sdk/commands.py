@@ -11,7 +11,7 @@ from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
     NodesFilterCriteria,
 )
-from exls.shared.adapters.gateway.sdk.command import (
+from exls.shared.adapters.sdk.command import (
     ExalsiusSdkCommand,
     UnexpectedSdkCommandResponseError,
 )

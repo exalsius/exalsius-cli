@@ -3,13 +3,12 @@ from typing import List, Optional
 import typer
 
 from exls.offers.adapters.bundle import OffersBundle
-from exls.offers.adapters.dtos import OfferDTO
-from exls.offers.adapters.ui.display.display import IOOffersFacade
-from exls.offers.adapters.ui.mappers import offer_dto_from_domain
+from exls.offers.adapters.ui.display.render import OFFER_LIST_VIEW
 from exls.offers.core.domain import Offer
 from exls.offers.core.requests import OffersFilterCriteria
 from exls.offers.core.service import OffersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 
 offers_app = typer.Typer()
@@ -50,9 +49,9 @@ def list_offers(
     """
     bundle: OffersBundle = OffersBundle(ctx)
     service: OffersService = bundle.get_offers_service()
-    io_facade: IOOffersFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
-    domain_offers: List[Offer] = service.list_offers(
+    offers: List[Offer] = service.list_offers(
         OffersFilterCriteria(
             gpu_type=gpu_type,
             gpu_vendor=gpu_vendor,
@@ -61,6 +60,9 @@ def list_offers(
             price_max=price_max,
         )
     )
-    offers: List[OfferDTO] = [offer_dto_from_domain(offer) for offer in domain_offers]
 
-    io_facade.display_data(offers, output_format=bundle.object_output_format)
+    io_facade.display_data(
+        data=offers,
+        output_format=bundle.object_output_format,
+        view_context=OFFER_LIST_VIEW,
+    )

@@ -22,7 +22,7 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 
-from exls.shared.adapters.gateway.sdk.command import (
+from exls.shared.adapters.sdk.command import (
     ExalsiusSdkCommand,
     UnexpectedSdkCommandResponseError,
 )

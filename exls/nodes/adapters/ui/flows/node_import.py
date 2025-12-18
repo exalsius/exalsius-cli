@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, StrictStr
 
 from exls.nodes.adapters.ui.flows.ports import (
     FlowNodesSshKeySpecification,
-    IImportSshKeyFlow,
+    ImportSshKeyFlowPort,
 )
 from exls.nodes.core.ports.provider import NodeSshKey
 from exls.nodes.core.requests import (
@@ -83,11 +83,11 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
     def __init__(
         self,
         service: NodesService,
-        import_ssh_key_flow: IImportSshKeyFlow,
+        import_ssh_key_flow: ImportSshKeyFlowPort,
         ask_confirmation: bool = True,
     ):
         self._service: NodesService = service
-        self._import_ssh_key_flow: IImportSshKeyFlow = import_ssh_key_flow
+        self._import_ssh_key_flow: ImportSshKeyFlowPort = import_ssh_key_flow
         self._cached_ssh_keys: Sequence[NodeSshKey] = []
         self._ask_confirmation: bool = ask_confirmation
 

@@ -31,8 +31,8 @@ from exls.clusters.core.results import (
     DeployClusterResult,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
-from exls.shared.adapters.gateway.file.gateways import IFileWriteGateway
 from exls.shared.core.polling import PollingTimeoutError, poll_until
+from exls.shared.core.ports.file import FileWritePort
 from exls.shared.core.service import ServiceError
 
 logger = logging.getLogger(__name__)
@@ -44,12 +44,12 @@ class ClustersService:
         clusters_operations: ClusterOperations,
         clusters_repository: ClusterRepository,
         nodes_provider: NodesProvider,
-        file_write_gateway: IFileWriteGateway[str],
+        file_write_adapter: FileWritePort[str],
     ):
         self._clusters_operations: ClusterOperations = clusters_operations
         self._clusters_repository: ClusterRepository = clusters_repository
         self._nodes_provider: NodesProvider = nodes_provider
-        self._file_write_gateway: IFileWriteGateway[str] = file_write_gateway
+        self._file_write_adapter: FileWritePort[str] = file_write_adapter
 
     @handle_service_layer_errors("listing clusters")
     def list_clusters(self, status: Optional[ClusterStatus] = None) -> List[Cluster]:
@@ -432,7 +432,7 @@ class ClustersService:
         kubeconfig_content: str = self._clusters_operations.load_kubeconfig(
             cluster_id=cluster_id
         )
-        self._file_write_gateway.write_file(
+        self._file_write_adapter.write_file(
             file_path=Path(kubeconfig_file_path), content=kubeconfig_content
         )
 

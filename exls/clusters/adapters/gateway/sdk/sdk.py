@@ -61,7 +61,7 @@ from exls.clusters.core.domain import (
 logger = logging.getLogger(__name__)
 
 
-def cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
+def _cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
     return ClusterData(
         id=sdk_model.id or "",
         name=sdk_model.name,
@@ -72,7 +72,7 @@ def cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
     )
 
 
-def cluster_node_ref_from_node_ids(
+def _cluster_node_ref_from_node_ids(
     control_plane_node_ids: List[str], worker_node_ids: List[str]
 ) -> List[ClusterNodeRefData]:
     return [
@@ -81,7 +81,7 @@ def cluster_node_ref_from_node_ids(
     ] + [ClusterNodeRefData(id=node_id, role="WORKER") for node_id in worker_node_ids]
 
 
-def cluster_node_ref_resources_data_from_sdk_model(
+def _cluster_node_ref_resources_data_from_sdk_model(
     sdk_model: ClusterResourcesListResponseResourcesInner,
 ) -> Optional[ClusterNodeRefResourcesData]:
     if sdk_model.node_id is None:
@@ -133,7 +133,7 @@ class SdkClustersGateway(ClustersGateway):
         )
         response: ClustersListResponse = command.execute()
         clusters: List[ClusterData] = [
-            cluster_data_from_sdk_model(sdk_model=cluster)
+            _cluster_data_from_sdk_model(sdk_model=cluster)
             for cluster in response.clusters
         ]
         return clusters
@@ -144,7 +144,7 @@ class SdkClustersGateway(ClustersGateway):
         )
         response: ClusterResponse = command.execute()
 
-        return cluster_data_from_sdk_model(sdk_model=response.cluster)
+        return _cluster_data_from_sdk_model(sdk_model=response.cluster)
 
     def delete(self, cluster_id: str) -> str:
         command: DeleteClusterSdkCommand = DeleteClusterSdkCommand(
@@ -184,7 +184,7 @@ class SdkClustersGateway(ClustersGateway):
             self._clusters_api, cluster_id=cluster_id
         )
         response: ClusterNodesResponse = command.execute()
-        return cluster_node_ref_from_node_ids(
+        return _cluster_node_ref_from_node_ids(
             control_plane_node_ids=response.control_plane_node_ids,
             worker_node_ids=response.worker_node_ids,
         )
@@ -207,7 +207,7 @@ class SdkClustersGateway(ClustersGateway):
         )
         response: ClusterNodesResponse = command.execute()
 
-        return cluster_node_ref_from_node_ids(
+        return _cluster_node_ref_from_node_ids(
             control_plane_node_ids=response.control_plane_node_ids,
             worker_node_ids=response.worker_node_ids,
         )
@@ -230,7 +230,7 @@ class SdkClustersGateway(ClustersGateway):
         cluster_node_resources: List[ClusterNodeRefResourcesData] = []
         for resource in response.resources:
             resource_model: Optional[ClusterNodeRefResourcesData] = (
-                cluster_node_ref_resources_data_from_sdk_model(sdk_model=resource)
+                _cluster_node_ref_resources_data_from_sdk_model(sdk_model=resource)
             )
             if resource_model:
                 cluster_node_resources.append(resource_model)

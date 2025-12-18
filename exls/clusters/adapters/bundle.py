@@ -9,11 +9,8 @@ from exls.clusters.core.ports.provider import NodesProvider
 from exls.clusters.core.service import ClustersService
 from exls.nodes.adapters.bundle import NodesBundle
 from exls.shared.adapters.bundle import BaseBundle
-from exls.shared.adapters.gateway.file.gateways import (
-    IFileWriteGateway,
-    YamlFileWriteGateway,
-)
-from exls.shared.adapters.gateway.sdk.service import create_api_client
+from exls.shared.adapters.file.adapters import YamlFileWriteAdapter
+from exls.shared.core.ports.file import FileWritePort
 
 
 class ClustersBundle(BaseBundle):
@@ -22,11 +19,7 @@ class ClustersBundle(BaseBundle):
         self._nodes_bundle: NodesBundle = NodesBundle(ctx)
 
     def get_clusters_service(self) -> ClustersService:
-        clusters_api: ClustersApi = ClustersApi(
-            api_client=create_api_client(
-                backend_host=self.config.backend_host, access_token=self.access_token
-            )
-        )
+        clusters_api: ClustersApi = ClustersApi(api_client=self.create_api_client())
         clusters_gateway: SdkClustersGateway = SdkClustersGateway(
             clusters_api=clusters_api
         )
@@ -36,12 +29,12 @@ class ClustersBundle(BaseBundle):
         cluster_adapter: ClusterAdapter = ClusterAdapter(
             cluster_gateway=clusters_gateway, nodes_provider=nodes_provider
         )
-        file_write_gateway: IFileWriteGateway[str] = YamlFileWriteGateway()
+        file_write_adapter: FileWritePort[str] = YamlFileWriteAdapter()
         return ClustersService(
             clusters_operations=cluster_adapter,
             clusters_repository=cluster_adapter,
             nodes_provider=nodes_provider,
-            file_write_gateway=file_write_gateway,
+            file_write_adapter=file_write_adapter,
         )
 
     def get_deploy_cluster_flow(self) -> DeployClusterFlow:

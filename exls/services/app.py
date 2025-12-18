@@ -3,12 +3,11 @@ from typing import List
 import typer
 
 from exls.services.adapters.bundle import ServicesBundle
-from exls.services.adapters.dtos import ServiceDTO
-from exls.services.adapters.ui.display.display import IOServicesFacade
-from exls.services.adapters.ui.mappers import service_dto_from_domain
+from exls.services.adapters.ui.display.render import SERVICE_VIEW
 from exls.services.core.domain import Service
 from exls.services.core.service import ServicesService
 from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 
 services_app = typer.Typer()
@@ -34,15 +33,16 @@ def list_services(
     List all services of a cluster.
     """
     bundle: ServicesBundle = ServicesBundle(ctx)
-    io_facade: IOServicesFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ServicesService = bundle.get_services_service()
 
-    domain_services: List[Service] = service.list_services(cluster_id=cluster_id)
-    dto_services: List[ServiceDTO] = [
-        service_dto_from_domain(domain=s) for s in domain_services
-    ]
+    services: List[Service] = service.list_services(cluster_id=cluster_id)
 
-    io_facade.display_data(dto_services, output_format=bundle.object_output_format)
+    io_facade.display_data(
+        services,
+        output_format=bundle.object_output_format,
+        view_context=SERVICE_VIEW,
+    )
 
 
 @services_app.command("get", help="Get a service of a cluster")
@@ -55,13 +55,16 @@ def get_service(
     Get a service of a cluster.
     """
     bundle: ServicesBundle = ServicesBundle(ctx)
-    io_facade: IOServicesFacade = bundle.get_io_facade()
-    service: ServicesService = bundle.get_services_service()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
+    services_service: ServicesService = bundle.get_services_service()
 
-    domain_service: Service = service.get_service(service_id)
-    dto_service: ServiceDTO = service_dto_from_domain(domain=domain_service)
+    service: Service = services_service.get_service(service_id)
 
-    io_facade.display_data(dto_service, output_format=bundle.object_output_format)
+    io_facade.display_data(
+        service,
+        output_format=bundle.object_output_format,
+        view_context=SERVICE_VIEW,
+    )
 
 
 @services_app.command("delete", help="Delete a service of a cluster")
@@ -74,7 +77,7 @@ def delete_service(
     Delete a service of a cluster.
     """
     bundle: ServicesBundle = ServicesBundle(ctx)
-    io_facade: IOServicesFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ServicesService = bundle.get_services_service()
 
     deleted_service_id: str = service.delete_service(service_id)

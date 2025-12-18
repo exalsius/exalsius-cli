@@ -12,7 +12,7 @@ class FlowNodesSshKeySpecification(BaseModel):
     key_path: Path = Field(default=Path(""), description="The path to the SSH key file")
 
 
-class IImportSshKeyFlow(FlowStep[FlowNodesSshKeySpecification], ABC):
+class ImportSshKeyFlowPort(FlowStep[FlowNodesSshKeySpecification], ABC):
     @abstractmethod
     def execute(
         self,

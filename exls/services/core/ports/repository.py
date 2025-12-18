@@ -4,7 +4,7 @@ from typing import List
 from exls.services.core.domain import Service
 
 
-class IServicesGateway(ABC):
+class ServiceRepository(ABC):
     @abstractmethod
     def list(self, cluster_id: str) -> List[Service]: ...
 
@@ -13,6 +13,3 @@ class IServicesGateway(ABC):
 
     @abstractmethod
     def delete(self, service_id: str) -> str: ...
-
-    @abstractmethod
-    def deploy(self) -> str: ...

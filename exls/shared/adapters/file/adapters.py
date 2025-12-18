@@ -1,12 +1,11 @@
 import base64
-from abc import ABC, abstractmethod
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, TypeVar, Union, cast
+from typing import Any, Callable, Dict, TypeVar, Union, cast
 
 import yaml
 
-from exls.shared.adapters.gateway.file.commands import (
+from exls.shared.adapters.file.commands import (
     ReadBinaryFileCommand,
     ReadStringFileCommand,
     ReadYamlFileCommand,
@@ -14,8 +13,8 @@ from exls.shared.adapters.gateway.file.commands import (
     WriteYamlFileCommand,
 )
 from exls.shared.core.ports.command import CommandError
+from exls.shared.core.ports.file import FileReadPort, FileWritePort
 
-T_FileContent = TypeVar("T_FileContent")
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -32,17 +31,7 @@ def _resolve_path(func: F) -> F:
     return cast(F, wrapper)
 
 
-class IFileReadGateway(Generic[T_FileContent], ABC):
-    @abstractmethod
-    def read_file(self, file_path: Path) -> T_FileContent: ...
-
-
-class IFileWriteGateway(Generic[T_FileContent], ABC):
-    @abstractmethod
-    def write_file(self, file_path: Path, content: T_FileContent) -> None: ...
-
-
-class StringBase64FileReadGateway(IFileReadGateway[str]):
+class StringBase64FileReadAdapter(FileReadPort[str]):
     @_resolve_path
     def read_file(self, file_path: Path) -> str:
         try:
@@ -56,7 +45,7 @@ class StringBase64FileReadGateway(IFileReadGateway[str]):
         return content_base64
 
 
-class YamlFileWriteGateway(IFileWriteGateway[str]):
+class YamlFileWriteAdapter(FileWritePort[str]):
     @_resolve_path
     def write_file(self, file_path: Path, content: str) -> None:
         try:
@@ -75,9 +64,7 @@ class YamlFileWriteGateway(IFileWriteGateway[str]):
             )
 
 
-class YamlFileIOGateway(
-    IFileReadGateway[Dict[str, Any]], IFileWriteGateway[Dict[str, Any]]
-):
+class YamlFileIOAdapter(FileReadPort[Dict[str, Any]], FileWritePort[Dict[str, Any]]):
     @_resolve_path
     def read_file(self, file_path: Path) -> Dict[str, Any]:
         command: ReadYamlFileCommand = ReadYamlFileCommand(file_path=file_path)
@@ -91,7 +78,7 @@ class YamlFileIOGateway(
         command.execute()
 
 
-class StringFileIOGateway(IFileReadGateway[str], IFileWriteGateway[str]):
+class StringFileIOAdapter(FileReadPort[str], FileWritePort[str]):
     @_resolve_path
     def read_file(self, file_path: Path) -> str:
         command: ReadStringFileCommand = ReadStringFileCommand(file_path=file_path)

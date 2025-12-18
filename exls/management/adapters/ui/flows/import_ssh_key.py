@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from enum import StrEnum
+from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StrictStr
 
-from exls.management.adapters.dtos import ImportSshKeyRequestDTO
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.flow.flow import (
     FlowCancelationByUserException,
@@ -20,12 +19,12 @@ from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.domain import generate_random_name
 
 
-class ImportSshKeyChoices(StrEnum):
-    EXISTING = "existing"
-    NEW = "new"
+class FlowImportSshKeyRequestDTO(BaseModel):
+    name: StrictStr = Field(default="", description="The name of the SSH key")
+    key_path: Path = Field(default=Path(""), description="The path to the SSH key file")
 
 
-class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
+class ImportSshKeyFlow(FlowStep[FlowImportSshKeyRequestDTO]):
     """Flow for importing a new SSH key."""
 
     def __init__(self, ask_confirm: bool = True):
@@ -33,17 +32,17 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
 
     def _run(
         self,
-        model: ImportSshKeyRequestDTO,
+        model: FlowImportSshKeyRequestDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:
-        flow = SequentialFlow[ImportSshKeyRequestDTO](
+        flow = SequentialFlow[FlowImportSshKeyRequestDTO](
             steps=[
-                PathInputStep[ImportSshKeyRequestDTO](
+                PathInputStep[FlowImportSshKeyRequestDTO](
                     key="key_path",
                     message="Path to SSH key file:",
                 ),
-                TextInputStep[ImportSshKeyRequestDTO](
+                TextInputStep[FlowImportSshKeyRequestDTO](
                     key="name",
                     message="Name of the SSH key:",
                     default=generate_random_name(prefix="ssh-key"),
@@ -56,7 +55,7 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
 
     def _confirm_import(
         self,
-        add_ssh_key_request: ImportSshKeyRequestDTO,
+        add_ssh_key_request: FlowImportSshKeyRequestDTO,
         io_facade: IIOFacade[BaseModel],
     ) -> bool:
         io_facade.display_info_message(
@@ -72,7 +71,7 @@ class ImportSshKeyFlow(FlowStep[ImportSshKeyRequestDTO]):
 
     def execute(
         self,
-        model: ImportSshKeyRequestDTO,
+        model: FlowImportSshKeyRequestDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:

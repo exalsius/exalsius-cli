@@ -1,12 +1,10 @@
-from typing import Any, Dict, Optional, Type
+from typing import Dict
 
-from pydantic import BaseModel
-
-from exls.offers.adapters.dtos import OfferDTO
 from exls.shared.adapters.ui.output.render.service import format_float
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.view import ViewContext
 
-DEFAULT_OFFER_COLUMNS_RENDERING_MAP = {
+_OFFERS_LIST_VIEW_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "gpu_type": TableRenderContext.get_column("GPU"),
     "gpu_count": TableRenderContext.get_column("Qty"),
@@ -21,10 +19,4 @@ DEFAULT_OFFER_COLUMNS_RENDERING_MAP = {
     "region": TableRenderContext.get_column("Region"),
 }
 
-DTO_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
-    OfferDTO: DEFAULT_OFFER_COLUMNS_RENDERING_MAP,
-}
-
-
-def get_columns_rendering_map(dto_type: Type[BaseModel]) -> Optional[Dict[str, Column]]:
-    return DTO_DISPLAY_CONFIG_MAP.get(dto_type, None)
+OFFER_LIST_VIEW = ViewContext.from_table_columns(_OFFERS_LIST_VIEW_COLUMNS)

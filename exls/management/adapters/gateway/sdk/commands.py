@@ -13,7 +13,7 @@ from exalsius_api_client.models.workspace_template_list_response import (
     WorkspaceTemplateListResponse,
 )
 
-from exls.shared.adapters.gateway.sdk.command import ExalsiusSdkCommand
+from exls.shared.adapters.sdk.command import ExalsiusSdkCommand
 
 
 class BaseManagementSdkCommand[T_Cmd_Return](

@@ -1,22 +1,31 @@
 from typing import List
 
 from exalsius_api_client.api.services_api import ServicesApi
+from exalsius_api_client.models.service import Service as SdkService
 from exalsius_api_client.models.service_delete_response import ServiceDeleteResponse
 from exalsius_api_client.models.service_response import ServiceResponse
 from exalsius_api_client.models.services_list_response import ServicesListResponse
 
-from exls.services.adapters.gateway.commands import (
+from exls.services.adapters.gateway.gateway import ServicesGateway
+from exls.services.adapters.gateway.sdk.commands import (
     DeleteServiceSdkCommand,
     GetServiceSdkCommand,
     ListServicesSdkCommand,
 )
-from exls.services.adapters.gateway.mappers import service_from_sdk
 from exls.services.core.domain import Service
-from exls.services.core.ports import IServicesGateway
-from exls.shared.adapters.gateway.sdk.service import create_api_client
 
 
-class ServicesGatewaySdk(IServicesGateway):
+def _service_from_sdk(sdk_model: SdkService) -> Service:
+    return Service(
+        id=sdk_model.id or "",
+        name=sdk_model.name,
+        cluster_id=sdk_model.cluster_id,
+        service_template=sdk_model.template.name,
+        created_at=sdk_model.created_at,
+    )
+
+
+class ServicesGatewaySdk(ServicesGateway):
     def __init__(self, services_api: ServicesApi):
         self._services_api = services_api
 
@@ -25,14 +34,14 @@ class ServicesGatewaySdk(IServicesGateway):
             self._services_api, cluster_id=cluster_id
         )
         response: ServicesListResponse = command.execute()
-        return [service_from_sdk(sdk_model=service) for service in response.services]
+        return [_service_from_sdk(sdk_model=service) for service in response.services]
 
     def get(self, service_id: str) -> Service:
         command: GetServiceSdkCommand = GetServiceSdkCommand(
             self._services_api, service_id=service_id
         )
         response: ServiceResponse = command.execute()
-        return service_from_sdk(sdk_model=response.service_deployment)
+        return _service_from_sdk(sdk_model=response.service_deployment)
 
     def delete(self, service_id: str) -> str:
         command: DeleteServiceSdkCommand = DeleteServiceSdkCommand(
@@ -43,13 +52,3 @@ class ServicesGatewaySdk(IServicesGateway):
 
     def deploy(self) -> str:
         raise NotImplementedError("Deploying services is not implemented")
-
-
-def create_services_gateway(
-    backend_host: str,
-    access_token: str,
-) -> ServicesGatewaySdk:
-    services_api: ServicesApi = ServicesApi(
-        create_api_client(backend_host=backend_host, access_token=access_token)
-    )
-    return ServicesGatewaySdk(services_api=services_api)

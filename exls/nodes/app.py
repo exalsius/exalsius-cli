@@ -1,3 +1,4 @@
+from enum import StrEnum
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -12,7 +13,6 @@ from exls.nodes.adapters.ui.flows.node_import import (
     FlowSelfmanagedNodeSpecificationDTO,
     ImportSelfmanagedNodeFlow,
 )
-from exls.nodes.adapters.values import AllowedNodeTypes
 from exls.nodes.core.domain import BaseNode
 from exls.nodes.core.requests import (
     ImportSelfmanagedNodeRequest,
@@ -30,6 +30,11 @@ from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.domain import generate_random_name
 
 nodes_app = typer.Typer()
+
+
+class AllowedNodeTypes(StrEnum):
+    CLOUD = "cloud"
+    SELF_MANAGED = "self_managed"
 
 
 @nodes_app.callback(invoke_without_command=True)
