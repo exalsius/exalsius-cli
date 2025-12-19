@@ -65,6 +65,12 @@ class WorkspaceAccessType(StrEnum):
             return cls.UNKNOWN
 
 
+class GPUVendorPreference(StrEnum):
+    AUTO = "auto"
+    AMD = "amd"
+    NVIDIA = "nvidia"
+
+
 class WorkspaceTemplate(BaseModel):
     id_name: StrictStr = Field(..., description="The name of the workspace template")
     variables: Dict[str, Any] = Field(
@@ -79,6 +85,16 @@ class WorkspaceAccessInformation(BaseModel):
         default_factory=list, description="The external IPs"
     )
     port_number: int = Field(..., description="The port number")
+
+    @property
+    def formatted_access_information(self) -> str:
+        if not self.external_ips:
+            return "<pending>"
+        if self.access_protocol == "ssh":
+            if self.port_number != 22:
+                return f"ssh -p {self.port_number} {self.external_ips[0]}"
+            return f"ssh {self.external_ips[0]}"
+        return f"{self.access_protocol}://{self.external_ips[0]}:{self.port_number}"
 
 
 class Workspace(BaseModel):
@@ -101,7 +117,7 @@ class Workspace(BaseModel):
 class WorkerResources(BaseModel):
     gpu_count: int = Field(..., description="The number of GPUs")
     gpu_type: Optional[str] = Field(default=None, description="The type of the GPUs")
-    gpu_vendors: Optional[StrictStr] = Field(
+    gpu_vendor: Optional[WorkspaceGPUVendor] = Field(
         default=None, description="The vendor of the GPUs"
     )
     cpu_cores: int = Field(..., description="The number of CPU cores")
@@ -200,9 +216,20 @@ class WorkspaceCluster(BaseModel):
         return True
 
     def get_resource_partition_for_single_worker(
-        self, num_requested_gpus: int, resource_split_tolerance: StrictFloat = 0.1
+        self,
+        num_requested_gpus: int,
+        gpu_vendor_preference: GPUVendorPreference,
+        resource_split_tolerance: StrictFloat = 0.1,
     ) -> Optional[WorkerResources]:
-        for resource in self.available_resources:
+        available_resources: List[AvailableClusterNodeResources]
+        if gpu_vendor_preference == GPUVendorPreference.AUTO:
+            available_resources = self.available_resources
+        elif gpu_vendor_preference == GPUVendorPreference.AMD:
+            available_resources = self.available_amd_resources
+        elif gpu_vendor_preference == GPUVendorPreference.NVIDIA:
+            available_resources = self.available_nvidia_resources
+
+        for resource in available_resources:
             if resource.gpu_count >= num_requested_gpus:
                 # These are the minimum requirements for a single node workspace
                 # TODO: This is a temporary solution. We should move this to a config
@@ -245,7 +272,7 @@ class WorkspaceCluster(BaseModel):
                 return WorkerResources(
                     gpu_count=num_requested_gpus,
                     gpu_type=resource.gpu_type,
-                    gpu_vendors=resource.gpu_vendor.value,
+                    gpu_vendor=resource.gpu_vendor,
                     cpu_cores=requested_cpu_cores,
                     memory_gb=requested_memory_gb,
                     storage_gb=requested_storage_gb,
@@ -255,9 +282,10 @@ class WorkspaceCluster(BaseModel):
     def _get_resource_partition_for_worker_group(
         self,
         num_workers: int,
-        gpu_vendor: str,
+        gpu_vendor: WorkspaceGPUVendor,
         resources: List[AvailableClusterNodeResources],
         resource_split_tolerance: StrictFloat,
+        gpus_per_worker: int = 1,
     ) -> WorkerGroupResources:
         cpu_split: int = min(
             [
@@ -298,11 +326,11 @@ class WorkspaceCluster(BaseModel):
         return WorkerGroupResources(
             num_workers=num_workers,
             worker_resources=WorkerResources(
-                gpu_count=1,
-                gpu_vendors=gpu_vendor,
-                cpu_cores=cpu_split,
-                memory_gb=memory_split,
-                storage_gb=storage_split,
+                gpu_count=gpus_per_worker,
+                gpu_vendor=gpu_vendor,
+                cpu_cores=cpu_split * gpus_per_worker,
+                memory_gb=memory_split * gpus_per_worker,
+                storage_gb=storage_split * gpus_per_worker,
             ),
         )
 
@@ -310,43 +338,46 @@ class WorkspaceCluster(BaseModel):
         self,
         num_workers: PositiveInt,
         gpu_vendor: Literal["auto", "amd", "nvidia"],
+        gpus_per_worker: PositiveInt,
         resource_split_tolerance: StrictFloat = 0.1,
     ) -> List[WorkerGroupResources]:
         worker_group_resources_amd: WorkerGroupResources
         worker_group_resources_nvidia: WorkerGroupResources
         if gpu_vendor == "amd":
-            if num_workers > self.total_amd_gpus:
+            if (num_workers * gpus_per_worker) > self.total_amd_gpus:
                 raise ValueError(
                     f"Cluster {self.name} ({self.id}) does not have enough AMD GPUs available. "
-                    f"Needs at least {num_workers} GPUs. Has {self.total_amd_gpus} GPUs."
+                    f"Needs at least {num_workers * gpus_per_worker} GPUs. Has {self.total_amd_gpus} GPUs."
                 )
             worker_group_resources_amd = self._get_resource_partition_for_worker_group(
                 num_workers=num_workers,
-                gpu_vendor="amd",
+                gpu_vendor=WorkspaceGPUVendor.AMD,
                 resources=self.available_amd_resources,
                 resource_split_tolerance=resource_split_tolerance,
+                gpus_per_worker=gpus_per_worker,
             )
             return [worker_group_resources_amd]
         elif gpu_vendor == "nvidia":
-            if num_workers > self.total_nvidia_gpus:
+            if (num_workers * gpus_per_worker) > self.total_nvidia_gpus:
                 raise ValueError(
                     f"Cluster {self.name} ({self.id}) does not have enough NVIDIA GPUs available. "
-                    f"Needs at least {num_workers} GPUs. Has {self.total_nvidia_gpus} GPUs."
+                    f"Needs at least {num_workers * gpus_per_worker} GPUs. Has {self.total_nvidia_gpus} GPUs."
                 )
             worker_group_resources_nvidia = (
                 self._get_resource_partition_for_worker_group(
                     num_workers=num_workers,
-                    gpu_vendor="nvidia",
+                    gpu_vendor=WorkspaceGPUVendor.NVIDIA,
                     resources=self.available_nvidia_resources,
                     resource_split_tolerance=resource_split_tolerance,
+                    gpus_per_worker=gpus_per_worker,
                 )
             )
             return [worker_group_resources_nvidia]
         else:
-            if num_workers > self.total_gpus:
+            if (num_workers * gpus_per_worker) > self.total_gpus:
                 raise ValueError(
                     f"Cluster {self.name} ({self.id}) does not have enough GPUs available to deploy a distributed training workspace. "
-                    f"Needs at least {num_workers} GPUs. Has {self.total_gpus} GPUs."
+                    f"Needs at least {num_workers * gpus_per_worker} GPUs. Has {self.total_gpus} GPUs."
                 )
 
             # Evenly split (proportional to availability)
@@ -354,21 +385,22 @@ class WorkspaceCluster(BaseModel):
             nvidia_workers = num_workers - amd_workers
 
             # Adjust if split exceeds capacity for a specific vendor
-            if amd_workers > self.total_amd_gpus:
-                nvidia_workers += amd_workers - self.total_amd_gpus
-                amd_workers = self.total_amd_gpus
-            elif nvidia_workers > self.total_nvidia_gpus:
-                amd_workers += nvidia_workers - self.total_nvidia_gpus
-                nvidia_workers = self.total_nvidia_gpus
+            if (amd_workers * gpus_per_worker) > self.total_amd_gpus:
+                amd_workers = self.total_amd_gpus // gpus_per_worker
+                nvidia_workers = num_workers - amd_workers
+            elif (nvidia_workers * gpus_per_worker) > self.total_nvidia_gpus:
+                nvidia_workers = self.total_nvidia_gpus // gpus_per_worker
+                amd_workers = num_workers - nvidia_workers
 
             result: List[WorkerGroupResources] = []
             if amd_workers > 0:
                 result.append(
                     self._get_resource_partition_for_worker_group(
                         num_workers=amd_workers,
-                        gpu_vendor="amd",
+                        gpu_vendor=WorkspaceGPUVendor.AMD,
                         resources=self.available_amd_resources,
                         resource_split_tolerance=resource_split_tolerance,
+                        gpus_per_worker=gpus_per_worker,
                     )
                 )
 
@@ -376,9 +408,10 @@ class WorkspaceCluster(BaseModel):
                 result.append(
                     self._get_resource_partition_for_worker_group(
                         num_workers=nvidia_workers,
-                        gpu_vendor="nvidia",
+                        gpu_vendor=WorkspaceGPUVendor.NVIDIA,
                         resources=self.available_nvidia_resources,
                         resource_split_tolerance=resource_split_tolerance,
+                        gpus_per_worker=gpus_per_worker,
                     )
                 )
 

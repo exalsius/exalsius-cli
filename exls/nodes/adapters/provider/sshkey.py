@@ -5,10 +5,10 @@ from typing_extensions import Optional
 
 from exls.management.core.domain import SshKey
 from exls.management.core.service import ManagementService
-from exls.nodes.core.ports.provider import ISshKeyProvider, NodeSshKey
+from exls.nodes.core.ports.provider import NodeSshKey, SshKeyProvider
 
 
-class ManagementDomainSshProvider(ISshKeyProvider):
+class ManagementDomainSshProvider(SshKeyProvider):
     def __init__(self, management_service: ManagementService):
         self.management_service: ManagementService = management_service
 

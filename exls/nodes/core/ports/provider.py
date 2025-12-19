@@ -10,7 +10,7 @@ class NodeSshKey(BaseModel):
     name: StrictStr = Field(..., description="The name of the SSH key")
 
 
-class ISshKeyProvider(ABC):
+class SshKeyProvider(ABC):
     @abstractmethod
     def list_keys(self) -> List[NodeSshKey]: ...
 

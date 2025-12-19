@@ -11,7 +11,7 @@ from exls.nodes.core.ports.operations import (
     ImportSelfmanagedNodeParameters,
     NodesOperations,
 )
-from exls.nodes.core.ports.provider import ISshKeyProvider, NodeSshKey
+from exls.nodes.core.ports.provider import NodeSshKey, SshKeyProvider
 from exls.nodes.core.ports.repository import NodesRepository
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,
@@ -36,11 +36,11 @@ class NodesService:
         self,
         nodes_repository: NodesRepository,
         nodes_operations: NodesOperations,
-        ssh_key_provider: ISshKeyProvider,
+        ssh_key_provider: SshKeyProvider,
     ):
         self._nodes_repository: NodesRepository = nodes_repository
         self._nodes_operations: NodesOperations = nodes_operations
-        self._ssh_key_provider: ISshKeyProvider = ssh_key_provider
+        self._ssh_key_provider: SshKeyProvider = ssh_key_provider
 
     # This should be rather done by an adapter layer but since it's
     # rather simple logic, we keep it here for now.

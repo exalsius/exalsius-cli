@@ -6,20 +6,35 @@ from typing import Any, Dict, List, Protocol, cast, runtime_checkable
 
 from typing_extensions import Optional
 
+from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
 from exls.shared.adapters.ui.input.interfaces import EditDictionaryError
 from exls.shared.adapters.ui.input.values import UserCancellationException
 from exls.shared.adapters.ui.shared.render.render import YamlRenderContext
 from exls.shared.core.dictionaries import deep_merge
 from exls.shared.core.domain import ExalsiusError, generate_random_name
 from exls.workspaces.adapters.bundle import WorkspacesBundle
-from exls.workspaces.adapters.ui.display.display import IOWorkspacesFacade
-from exls.workspaces.adapters.ui.dtos import IntegratedWorkspaceTemplates
+from exls.workspaces.core.domain import WorkerGroupResources, WorkspaceGPUVendor
 
 
 class InvalidWorkspaceConfiguration(ExalsiusError):
     """Exception raised when the workspace configuration is invalid."""
 
     pass
+
+
+class IntegratedWorkspaceTemplates(StrEnum):
+    JUPYTER = "jupyter-notebook-template"
+    MARIMO = "marimo-workspace-template"
+    VSCODE_DEV_POD = "vscode-devcontainer-template"
+    DIST_TRAINING = "diloco-training-template"
+    OTHER = "other"
+
+    @classmethod
+    def from_str(cls, value: str) -> IntegratedWorkspaceTemplates:
+        try:
+            return cls(value)
+        except ValueError:
+            return cls.OTHER
 
 
 @runtime_checkable
@@ -29,7 +44,7 @@ class WorkspaceConfigurator(Protocol):
         """The ID of the template this configurator supports."""
         ...
 
-    def configure(self, io_facade: IOWorkspacesFacade) -> Dict[str, Any]:
+    def configure(self, io_facade: IOBaseModelFacade) -> Dict[str, Any]:
         """
         Full workflow: collect inputs -> optional advanced edit -> validate.
         Returns the final valid dictionary of variables.
@@ -73,7 +88,7 @@ class BaseWorkspaceConfigurator(ABC):
                 )
 
     def _configure(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         # We do not want to show this to the user
         global_variables: Optional[Dict[str, Any]] = None
@@ -100,7 +115,7 @@ class BaseWorkspaceConfigurator(ABC):
         return edited_variables
 
     def configure_and_validate(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         edited_variables: Dict[str, Any] = self._configure(variables.copy(), io_facade)
         # Final Validation
@@ -108,7 +123,7 @@ class BaseWorkspaceConfigurator(ABC):
         return edited_variables
 
     def _run_editor_loop(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         editor_render_context: YamlRenderContext = (
             self._bundle.get_editor_render_context(integrated_template=self.template_id)
@@ -167,7 +182,7 @@ class JupyterConfigurator(BaseWorkspaceConfigurator):
             )
 
     def configure_and_validate(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         variables["notebookPassword"] = self._password
         return super().configure_and_validate(variables, io_facade)
@@ -195,7 +210,7 @@ class MarimoConfigurator(BaseWorkspaceConfigurator):
             )
 
     def configure_and_validate(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         variables["tokenPassword"] = self._password
         return super().configure_and_validate(variables, io_facade)
@@ -231,7 +246,7 @@ class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
             )
 
     def configure_and_validate(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         variables["sshPassword"] = self._ssh_password or ""
         variables["sshPublicKey"] = self._ssh_public_key or ""
@@ -291,26 +306,61 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         gradient_compression: GradientCompression,
         wandb_token: str,
         hf_token: str,
-        node_count: int,
-        num_amd_nodes: int,
-        num_nvidia_nodes: int,
-        storage_gb: int,
-        memory_gb: int,
+        worker_groups: List[WorkerGroupResources],
     ):
         super().__init__(bundle)
         self._model: DistributedTrainingModels = model
         self._gradient_compression: GradientCompression = gradient_compression
         self._wandb_token: str = wandb_token
         self._hf_token: str = hf_token
-        self._node_count: int = node_count
-        self._num_amd_nodes: int = num_amd_nodes
-        self._num_nvidia_nodes: int = num_nvidia_nodes
-        self._storage_gb: int = storage_gb
-        self._memory_gb: int = memory_gb
+        self._worker_groups: List[WorkerGroupResources] = worker_groups
 
     @property
     def _heterogenous(self) -> bool:
-        return self._num_amd_nodes > 0 and self._num_nvidia_nodes > 0
+        return (
+            len(
+                set(
+                    [
+                        wg.worker_resources.gpu_vendor
+                        for wg in self._worker_groups
+                        if wg.worker_resources.gpu_vendor
+                    ]
+                )
+            )
+            > 1
+        )
+
+    @property
+    def min_storage_gb(self) -> int:
+        return min([wg.worker_resources.storage_gb for wg in self._worker_groups])
+
+    @property
+    def min_memory_gb(self) -> int:
+        return min([wg.worker_resources.memory_gb for wg in self._worker_groups])
+
+    @property
+    def num_nodes(self) -> int:
+        return sum([wg.num_workers for wg in self._worker_groups])
+
+    @property
+    def num_amd_nodes(self) -> int:
+        return sum(
+            [
+                wg.num_workers
+                for wg in self._worker_groups
+                if wg.worker_resources.gpu_vendor == WorkspaceGPUVendor.AMD
+            ]
+        )
+
+    @property
+    def num_nvidia_nodes(self) -> int:
+        return sum(
+            [
+                wg.num_workers
+                for wg in self._worker_groups
+                if wg.worker_resources.gpu_vendor == WorkspaceGPUVendor.NVIDIA
+            ]
+        )
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -324,19 +374,19 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
                 DistributedTrainingModels.RESNET50,
                 DistributedTrainingModels.RESNET101,
             ]
-            and self._storage_gb < 250
+            and self.min_storage_gb < 250
         ):
             raise InvalidWorkspaceConfiguration(
                 f"{self._model.value} model requires at least 250GB of storage."
             )
-        if self._model == DistributedTrainingModels.GCN and self._memory_gb < 32:
+        if self._model == DistributedTrainingModels.GCN and self.min_memory_gb < 32:
             raise InvalidWorkspaceConfiguration(
                 "GCN model requires at least 32GB of memory."
             )
 
     def _get_torch_elastic_config(self) -> Dict[str, Any]:
-        min_nodes: int = 2
-        max_nodes: int = self._node_count * 2
+        min_nodes: int = self.num_nodes
+        max_nodes: int = self.num_nodes
         return {
             "minNodes": min_nodes,
             "maxNodes": max_nodes,
@@ -348,12 +398,10 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         else:
             return "gloo"
 
-    def _get_gpu_variables(
-        self, num_amd_nodes: int, num_nvidia_nodes: int
-    ) -> Dict[str, Any]:
+    def _get_gpu_variables(self) -> Dict[str, Any]:
         return {
-            "nvidia": {"enabled": num_nvidia_nodes > 0},
-            "amd": {"enabled": num_amd_nodes > 0},
+            "nvidia": {"enabled": self.num_nvidia_nodes > 0},
+            "amd": {"enabled": self.num_amd_nodes > 0},
         }
 
     def _translate_compression_config_for_gradient_compression(
@@ -452,7 +500,7 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
         }
 
     def configure_and_validate(
-        self, variables: Dict[str, Any], io_facade: IOWorkspacesFacade
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
         if "diloco" not in variables:
             raise InvalidWorkspaceConfiguration(
@@ -494,7 +542,7 @@ class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
             )
         variables["gpu"] = deep_merge(
             variables["gpu"],
-            self._get_gpu_variables(self._num_amd_nodes, self._num_nvidia_nodes),
+            self._get_gpu_variables(),
         )
 
         return super().configure_and_validate(variables, io_facade)

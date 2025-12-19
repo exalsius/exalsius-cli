@@ -25,7 +25,7 @@ from exls.shared.adapters.ui.output.values import OutputFormat
 logger = logging.getLogger("cli.config")
 
 
-class Auth0Config(BaseSettings):
+class AuthConfig(BaseSettings):
     domain: str = Field(
         default="exalsius.eu.auth0.com",
         description="The Auth0 domain",
@@ -104,8 +104,8 @@ class AppConfig(BaseSettings):
         default="https://api.exalsius.ai",
         description="The backend host",
     )
-    auth0: Auth0Config = Field(
-        default=Auth0Config(), description="The Auth0 configuration"
+    auth0: AuthConfig = Field(
+        default=AuthConfig(), description="The Auth0 configuration"
     )
     auth0_node_agent: Auth0NodeAgentConfig = Field(
         default=Auth0NodeAgentConfig(),

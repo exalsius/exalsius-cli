@@ -1,7 +1,5 @@
 from typing import List, Optional
 
-from exls.workspaces.core.ports.provider import IClustersProvider
-
 from exls.clusters.core.domain import Cluster
 from exls.clusters.core.service import ClustersService
 from exls.workspaces.core.domain import (
@@ -10,9 +8,10 @@ from exls.workspaces.core.domain import (
     WorkspaceClusterStatus,
     WorkspaceGPUVendor,
 )
+from exls.workspaces.core.ports.providers import ClustersProvider
 
 
-class ClustersDomainProvider(IClustersProvider):
+class ClustersDomainProvider(ClustersProvider):
     def __init__(self, clusters_service: ClustersService):
         self.clusters_service: ClustersService = clusters_service
 

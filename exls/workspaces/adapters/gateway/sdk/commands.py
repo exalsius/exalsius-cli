@@ -7,7 +7,7 @@ from exalsius_api_client.models.workspace_delete_response import WorkspaceDelete
 from exalsius_api_client.models.workspace_response import WorkspaceResponse
 from exalsius_api_client.models.workspaces_list_response import WorkspacesListResponse
 
-from exls.shared.adapters.gateway.sdk.command import ExalsiusSdkCommand
+from exls.shared.adapters.sdk.command import ExalsiusSdkCommand
 
 
 class BaseWorkspacesSdkCommand[T_Cmd_Return](

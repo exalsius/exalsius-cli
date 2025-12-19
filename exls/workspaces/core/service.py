@@ -1,7 +1,5 @@
 from typing import Dict, List, Optional
 
-from pydantic.types import StrictFloat
-
 from exls.config import ConfigWorkspaceCreationPolling
 from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.core.polling import poll_until
@@ -22,6 +20,9 @@ from exls.workspaces.core.ports.providers import (
 from exls.workspaces.core.ports.repository import WorkspaceRepository
 from exls.workspaces.core.requests import (
     DeployWorkspaceRequest,
+    GPUVendorPreference,
+    SingleNodeWorkerResourcesRequest,
+    WorkerGroupResourcesRequest,
     WorkerResources,
 )
 
@@ -124,55 +125,54 @@ class WorkspacesService:
         return self._clusters_provider.list_clusters()
 
     @handle_service_layer_errors("getting resources for workspace")
-    def get_resources_for_single_node_workspace(
+    def get_resources_for_single_node_worker(
         self,
-        cluster_id: str,
-        num_gpus: int,
-        resource_split_tolerance: StrictFloat = 0.1,
+        request: SingleNodeWorkerResourcesRequest,
     ) -> WorkerResources:
         cluster: WorkspaceCluster = self._get_and_validate_cluster(
-            cluster_id=cluster_id
+            cluster_id=request.cluster_id
         )
 
         # TODO: improve error message to show which resources are missing
         resource_partition: Optional[WorkerResources] = (
             cluster.get_resource_partition_for_single_worker(
-                num_requested_gpus=num_gpus,
-                resource_split_tolerance=resource_split_tolerance,
+                num_requested_gpus=request.num_gpus,
+                gpu_vendor_preference=request.gpu_vendor_preference,
+                resource_split_tolerance=request.resource_split_tolerance,
             )
         )
         if resource_partition is None:
             raise ServiceError(
-                f"Cluster {cluster.name} ({cluster_id}) does not have a node with at least {num_gpus} requested "
-                f"GPU{'' if num_gpus == 1 else 's'}."
+                f"Cluster {cluster.name} ({request.cluster_id}) does not have a "
+                f"node with at least {request.num_gpus} "
+                f"GPU{'' if request.num_gpus == 1 else 's'} requested."
             )
         return resource_partition
 
-    @handle_service_layer_errors("getting resources for distributed training workspace")
-    def get_resources_for_multi_node_workspace(
-        self, cluster_id: str, resource_split_tolerance: StrictFloat = 0.1
+    @handle_service_layer_errors("getting resources for distributed training workers")
+    def get_resources_for_worker_groups(
+        self,
+        request: WorkerGroupResourcesRequest,
     ) -> List[WorkerGroupResources]:
         cluster: WorkspaceCluster = self._get_and_validate_cluster(
-            cluster_id=cluster_id
+            cluster_id=request.cluster_id
         )
-        total_gpus: int = sum(
-            [resource.gpu_count for resource in cluster.available_resources]
-        )
-        if total_gpus < 2:
-            raise ServiceError(
-                (
-                    f"Cluster {cluster.name} ({cluster_id}) does not have enough "
-                    "available GPUs to deploy a distributed training workspace. "
-                    f"Needs at least 2 GPUs. Has {total_gpus} GPUs."
-                )
-            )
 
-        num_workers: int = total_gpus
+        num_workers: int = request.num_workers
+        if num_workers == -1:
+            if request.gpu_vendor_preference == GPUVendorPreference.AUTO:
+                num_workers = cluster.total_gpus // request.num_gpus_per_worker
+            elif request.gpu_vendor_preference == GPUVendorPreference.AMD:
+                num_workers = cluster.total_amd_gpus // request.num_gpus_per_worker
+            elif request.gpu_vendor_preference == GPUVendorPreference.NVIDIA:
+                num_workers = cluster.total_nvidia_gpus // request.num_gpus_per_worker
+
         resource_partitions: List[WorkerGroupResources] = (
             cluster.get_resource_partition_for_worker_groups(
                 num_workers=num_workers,
-                gpu_vendor="auto",
-                resource_split_tolerance=resource_split_tolerance,
+                gpu_vendor=request.gpu_vendor_preference.value,
+                gpus_per_worker=request.num_gpus_per_worker,
+                resource_split_tolerance=request.resource_split_tolerance,
             )
         )
         return resource_partitions

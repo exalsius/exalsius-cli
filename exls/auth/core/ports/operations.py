@@ -4,10 +4,8 @@ from exls.auth.core.domain import (
     AuthenticationRequest,
     DeviceCode,
     FetchDeviceCodeRequest,
-    LoadedToken,
     RefreshTokenRequest,
     RevokeTokenRequest,
-    StoreTokenRequest,
     Token,
     TokenExpiryMetadata,
     User,
@@ -16,15 +14,11 @@ from exls.auth.core.domain import (
 from exls.shared.core.domain import ExalsiusError
 
 
-class AuthGatewayError(ExalsiusError):
+class AuthError(ExalsiusError):
     pass
 
 
-class TokenStorageError(ExalsiusError):
-    pass
-
-
-class IAuthGateway(ABC):
+class AuthOperations(ABC):
     @abstractmethod
     def fetch_device_code(self, request: FetchDeviceCodeRequest) -> DeviceCode: ...
 
@@ -45,14 +39,3 @@ class IAuthGateway(ABC):
 
     @abstractmethod
     def revoke_token(self, request: RevokeTokenRequest) -> None: ...
-
-
-class ITokenStorageGateway(ABC):
-    @abstractmethod
-    def store_token(self, request: StoreTokenRequest) -> None: ...
-
-    @abstractmethod
-    def load_token(self, client_id: str) -> LoadedToken: ...
-
-    @abstractmethod
-    def clear_token(self, client_id: str) -> None: ...

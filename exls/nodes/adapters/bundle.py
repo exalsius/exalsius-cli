@@ -11,7 +11,7 @@ from exls.nodes.adapters.ui.flows.node_import import (
     ImportSelfmanagedNodeRequestListFlow,
 )
 from exls.nodes.adapters.ui.flows.ports import ImportSshKeyFlowPort
-from exls.nodes.core.ports.provider import ISshKeyProvider
+from exls.nodes.core.ports.provider import SshKeyProvider
 from exls.nodes.core.service import NodesService
 from exls.shared.adapters.bundle import BaseBundle
 
@@ -24,7 +24,7 @@ class NodesBundle(BaseBundle):
     def get_nodes_service(self) -> NodesService:
         nodes_api: NodesApi = NodesApi(api_client=self.create_api_client())
         nodes_gateway: NodesGateway = SdkNodesGateway(nodes_api=nodes_api)
-        ssh_key_provider: ISshKeyProvider = ManagementDomainSshProvider(
+        ssh_key_provider: SshKeyProvider = ManagementDomainSshProvider(
             management_service=self._management_bundle.get_management_service()
         )
         return NodesService(

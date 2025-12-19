@@ -1,5 +1,3 @@
-import logging
-
 from exls.auth.core.domain import (
     AuthenticationRequest,
     AuthSession,
@@ -14,17 +12,15 @@ from exls.auth.core.domain import (
     User,
     ValidateTokenRequest,
 )
-from exls.auth.core.ports import (
-    AuthGatewayError,
-    IAuthGateway,
-    ITokenStorageGateway,
-    TokenStorageError,
-)
-from exls.config import AppConfig, Auth0Config
+from exls.auth.core.ports.operations import AuthError, AuthOperations
+from exls.auth.core.ports.repository import TokenRepository, TokenRepositoryError
+from exls.config import AuthConfig
 from exls.shared.adapters.decorators import handle_service_layer_errors
 from exls.shared.core.service import ServiceError, ServiceWarning
 
-logger = logging.getLogger(__name__)
+# TODO: We have a tight coupling between auth0 and the auth domain service logic
+#       This should be decoupled by moving the auth0 specific logic to the auth0 adapter;
+#       including the configuration.
 
 
 class NotLoggedInWarning(ServiceWarning):
@@ -36,42 +32,42 @@ class NotLoggedInWarning(ServiceWarning):
 class AuthService:
     def __init__(
         self,
-        config: AppConfig,
-        auth_gateway: IAuthGateway,
-        token_storage_gateway: ITokenStorageGateway,
+        auth_config: AuthConfig,
+        auth_operations: AuthOperations,
+        token_repository: TokenRepository,
     ):
-        self.auth_gateway: IAuthGateway = auth_gateway
-        self.token_storage_gateway: ITokenStorageGateway = token_storage_gateway
-        self.auth0_config: Auth0Config = config.auth0
+        self._auth_operations: AuthOperations = auth_operations
+        self._token_repository: TokenRepository = token_repository
+        self._auth_config: AuthConfig = auth_config
 
     def _create_fetch_device_code_request(self) -> FetchDeviceCodeRequest:
         return FetchDeviceCodeRequest(
-            client_id=self.auth0_config.client_id,
-            domain=self.auth0_config.domain,
-            audience=self.auth0_config.audience,
-            scope=self.auth0_config.scope,
-            algorithms=self.auth0_config.algorithms,
+            client_id=self._auth_config.client_id,
+            domain=self._auth_config.domain,
+            audience=self._auth_config.audience,
+            scope=self._auth_config.scope,
+            algorithms=self._auth_config.algorithms,
         )
 
     def _create_authentication_request(
         self, device_code: DeviceCode
     ) -> AuthenticationRequest:
         return AuthenticationRequest(
-            client_id=self.auth0_config.client_id,
-            domain=self.auth0_config.domain,
+            client_id=self._auth_config.client_id,
+            domain=self._auth_config.domain,
             device_code=device_code.device_code,
-            grant_type=self.auth0_config.device_code_grant_type,
-            poll_interval_seconds=self.auth0_config.device_code_poll_interval_seconds,
-            poll_timeout_seconds=self.auth0_config.device_code_poll_timeout_seconds,
-            retry_limit=self.auth0_config.device_code_retry_limit,
+            grant_type=self._auth_config.device_code_grant_type,
+            poll_interval_seconds=self._auth_config.device_code_poll_interval_seconds,
+            poll_timeout_seconds=self._auth_config.device_code_poll_timeout_seconds,
+            retry_limit=self._auth_config.device_code_retry_limit,
         )
 
     def _create_validate_token_request(self, id_token: str) -> ValidateTokenRequest:
         return ValidateTokenRequest(
-            client_id=self.auth0_config.client_id,
-            domain=self.auth0_config.domain,
+            client_id=self._auth_config.client_id,
+            domain=self._auth_config.domain,
             id_token=id_token,
-            leeway=self.auth0_config.leeway,
+            leeway=self._auth_config.leeway,
         )
 
     def _create_refresh_token_request(
@@ -79,25 +75,25 @@ class AuthService:
     ) -> RefreshTokenRequest:
         assert loaded_token.refresh_token is not None
         return RefreshTokenRequest(
-            client_id=self.auth0_config.client_id,
-            domain=self.auth0_config.domain,
+            client_id=self._auth_config.client_id,
+            domain=self._auth_config.domain,
             refresh_token=loaded_token.refresh_token,
-            scope=" ".join(self.auth0_config.scope) if self.auth0_config.scope else "",
+            scope=" ".join(self._auth_config.scope) if self._auth_config.scope else "",
         )
 
     def _create_revoke_token_request(
         self, loaded_token: LoadedToken
     ) -> RevokeTokenRequest:
         return RevokeTokenRequest(
-            client_id=self.auth0_config.client_id,
-            domain=self.auth0_config.domain,
+            client_id=self._auth_config.client_id,
+            domain=self._auth_config.domain,
             token=loaded_token.access_token,
         )
 
     def _create_store_token_request(self, token: Token) -> StoreTokenRequest:
         return StoreTokenRequest(
-            client_id=self.auth0_config.client_id,
-            domain=self.auth0_config.domain,
+            client_id=self._auth_config.client_id,
+            domain=self._auth_config.domain,
             access_token=token.access_token,
             id_token=token.id_token,
             expires_in=token.expires_in,
@@ -107,17 +103,19 @@ class AuthService:
 
     def _fetch_device_code(self) -> DeviceCode:
         request = self._create_fetch_device_code_request()
-        device_code: DeviceCode = self.auth_gateway.fetch_device_code(request=request)
+        device_code: DeviceCode = self._auth_operations.fetch_device_code(
+            request=request
+        )
         return device_code
 
     def _poll_for_authentication(self, device_code: DeviceCode) -> Token:
         request = self._create_authentication_request(device_code)
-        token: Token = self.auth_gateway.poll_for_authentication(request=request)
+        token: Token = self._auth_operations.poll_for_authentication(request=request)
         return token
 
     def _validate_token(self, id_token: str) -> User:
         request = self._create_validate_token_request(id_token)
-        user: User = self.auth_gateway.validate_token(request=request)
+        user: User = self._auth_operations.validate_token(request=request)
         return user
 
     @handle_service_layer_errors("logging in")
@@ -134,17 +132,17 @@ class AuthService:
                 user_code=device_code_input.user_code,
                 device_code=device_code_input.device_code,
                 expires_in=device_code_input.expires_in,
-                interval=self.auth0_config.device_code_poll_interval_seconds,
+                interval=self._auth_config.device_code_poll_interval_seconds,
             )
             token: Token = self._poll_for_authentication(device_code)
             user: User = self._validate_token(token.id_token)
             token_expiry_metadata: TokenExpiryMetadata = (
-                self.auth_gateway.load_token_expiry_metadata(token=token.id_token)
+                self._auth_operations.load_token_expiry_metadata(token=token.id_token)
             )
             token.expires_in = token_expiry_metadata.expires_in
 
             store_request = self._create_store_token_request(token)
-            self.token_storage_gateway.store_token(request=store_request)
+            self._token_repository.store(request=store_request)
 
             # Construct LoadedToken for the session return (as it was just stored/validated)
             loaded_token = LoadedToken(
@@ -160,18 +158,20 @@ class AuthService:
             raise ServiceWarning("User cancelled authentication polling.")
 
     def _load_token_from_keyring(self) -> LoadedToken:
-        loaded_token: LoadedToken = self.token_storage_gateway.load_token(
-            self.auth0_config.client_id
+        loaded_token: LoadedToken = self._token_repository.load(
+            self._auth_config.client_id
         )
         return loaded_token
 
     def _refresh_access_token(self, loaded_token: LoadedToken) -> AuthSession:
         request = self._create_refresh_token_request(loaded_token)
-        refreshed_token: Token = self.auth_gateway.refresh_access_token(request=request)
+        refreshed_token: Token = self._auth_operations.refresh_access_token(
+            request=request
+        )
         user: User = self._validate_token(refreshed_token.id_token)
 
         store_request = self._create_store_token_request(refreshed_token)
-        self.token_storage_gateway.store_token(request=store_request)
+        self._token_repository.store(request=store_request)
 
         new_loaded_token = LoadedToken(
             client_id=refreshed_token.client_id,
@@ -186,7 +186,7 @@ class AuthService:
     def acquire_access_token(self) -> AuthSession:
         try:
             loaded_token: LoadedToken = self._load_token_from_keyring()
-        except TokenStorageError as e:
+        except TokenRepositoryError as e:
             raise NotLoggedInWarning(f"You are not logged in: {str(e)}") from e
 
         if loaded_token.is_expired:
@@ -195,7 +195,7 @@ class AuthService:
 
             try:
                 return self._refresh_access_token(loaded_token=loaded_token)
-            except AuthGatewayError as e:
+            except AuthError as e:
                 raise ServiceError(
                     f"failed to refresh access token. Please log in again. Error: {str(e)}"
                 ) from e
@@ -207,13 +207,13 @@ class AuthService:
     def logout(self) -> None:
         try:
             loaded_token: LoadedToken = self._load_token_from_keyring()
-        except TokenStorageError as e:
+        except TokenRepositoryError as e:
             raise NotLoggedInWarning(f"You are not logged in: {str(e)}") from e
 
         try:
             request = self._create_revoke_token_request(loaded_token)
-            self.auth_gateway.revoke_token(request=request)
+            self._auth_operations.revoke_token(request=request)
         except Exception as e:
             raise ServiceError(f"failed to revoke token: {e}") from e
         finally:
-            self.token_storage_gateway.clear_token(client_id=loaded_token.client_id)
+            self._token_repository.delete(client_id=loaded_token.client_id)
