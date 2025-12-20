@@ -3,15 +3,15 @@ from typing import List, Optional
 from exls.clusters.core.domain import Cluster
 from exls.clusters.core.service import ClustersService
 from exls.workspaces.core.domain import (
-    AvailableClusterResources,
+    AvailableClusterNodeResources,
     WorkspaceCluster,
     WorkspaceClusterStatus,
     WorkspaceGPUVendor,
 )
-from exls.workspaces.core.ports.provider import IClustersProvider
+from exls.workspaces.core.ports.providers import ClustersProvider
 
 
-class ClustersDomainProvider(IClustersProvider):
+class ClustersDomainProvider(ClustersProvider):
     def __init__(self, clusters_service: ClustersService):
         self.clusters_service: ClustersService = clusters_service
 
@@ -34,15 +34,17 @@ class ClustersDomainProvider(IClustersProvider):
             status=WorkspaceClusterStatus.from_str(cluster.status.value),
         )
 
-    def get_cluster_resources(self, cluster_id: str) -> List[AvailableClusterResources]:
+    def get_cluster_resources(
+        self, cluster_id: str
+    ) -> List[AvailableClusterNodeResources]:
         cluster: Cluster = self.clusters_service.get_cluster(cluster_id=cluster_id)
-        available_cluster_resources: List[AvailableClusterResources] = []
+        available_cluster_resources: List[AvailableClusterNodeResources] = []
         for resource in cluster.nodes:
             node_name: str = resource.hostname
             node_id: str = resource.id
             node_endpoint: Optional[str] = resource.endpoint
             available_cluster_resources.append(
-                AvailableClusterResources(
+                AvailableClusterNodeResources(
                     node_id=node_id,
                     node_name=node_name,
                     node_endpoint=node_endpoint,

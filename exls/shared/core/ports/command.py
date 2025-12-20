@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 
 T = TypeVar("T")
 

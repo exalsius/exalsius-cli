@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import yaml
 from filelock import FileLock
@@ -25,69 +25,6 @@ from exls.shared.adapters.ui.output.values import OutputFormat
 logger = logging.getLogger("cli.config")
 
 
-class Auth0Config(BaseSettings):
-    domain: str = Field(
-        default="exalsius.eu.auth0.com",
-        description="The Auth0 domain",
-    )
-    client_id: str = Field(
-        default="kSbRc9MOnuMKMVLzhZYBo3xkTtk2KK7B", description="The Auth0 client ID"
-    )
-    audience: str = Field(
-        default="https://api.exalsius.ai", description="The Auth0 audience"
-    )
-    scope: List[str] = Field(
-        default=[
-            "openid",
-            "audience",
-            "profile",
-            "email",
-            "offline_access",
-            "userview",
-            "nodeagent",
-        ],
-        description="The Auth0 scope",
-    )
-    algorithms: List[str] = Field(
-        default=["RS256"], description="The algorithms to use for authentication"
-    )
-    device_code_grant_type: str = Field(
-        default="urn:ietf:params:oauth:grant-type:device_code",
-        description="The grant type to use for device code authentication",
-    )
-    token_expiry_buffer_minutes: int = Field(
-        default=7,
-        description="The buffer in minutes before the token expires. Default is 7 minutes.",
-    )
-    device_code_poll_interval_seconds: int = Field(
-        default=5,
-        description="The interval in seconds to poll for authentication",
-    )
-    device_code_poll_timeout_seconds: int = Field(
-        default=300,
-        description="The timeout in seconds to poll for authentication",
-    )
-    device_code_retry_limit: int = Field(
-        default=3,
-        description="The number of times to retry polling for authentication",
-    )
-    leeway: int = Field(
-        default=3600,
-        description="The leeway in seconds to validate the token",
-    )
-
-
-class Auth0NodeAgentConfig(BaseSettings):
-    client_id: str = Field(
-        default="faXh6VlIgMpS3HwowrxrksooFiNHBvQg",
-        description="The Auth0 client ID for the node agent",
-    )
-    scope: List[str] = Field(
-        default=["openid", "offline_access", "nodeagent"],
-        description="The Auth0 scope for the node agent",
-    )
-
-
 class ConfigWorkspaceCreationPolling(BaseSettings):
     timeout_seconds: int = Field(
         default=120,
@@ -103,13 +40,6 @@ class AppConfig(BaseSettings):
     backend_host: str = Field(
         default="https://api.exalsius.ai",
         description="The backend host",
-    )
-    auth0: Auth0Config = Field(
-        default=Auth0Config(), description="The Auth0 configuration"
-    )
-    auth0_node_agent: Auth0NodeAgentConfig = Field(
-        default=Auth0NodeAgentConfig(),
-        description="The Auth0 configuration for the node agent (includes client ID and scope)",
     )
     workspace_creation_polling: ConfigWorkspaceCreationPolling = Field(
         default=ConfigWorkspaceCreationPolling(),

@@ -3,10 +3,10 @@ from typing import List
 from exls.management.core.domain import WorkspaceTemplate as ManagementWorkspaceTemplate
 from exls.management.core.service import ManagementService
 from exls.workspaces.core.domain import WorkspaceTemplate
-from exls.workspaces.core.ports.provider import IWorkspaceTemplatesProvider
+from exls.workspaces.core.ports.providers import WorkspaceTemplatesProvider
 
 
-class WorkspaceTemplatesProvider(IWorkspaceTemplatesProvider):
+class WorkspaceTemplatesDomainProvider(WorkspaceTemplatesProvider):
     def __init__(self, management_service: ManagementService):
         self._management_service: ManagementService = management_service
 

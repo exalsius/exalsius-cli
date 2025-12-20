@@ -4,22 +4,9 @@ from typing import List, Optional
 import typer
 
 from exls.management.adapters.bundel import ManagementBundle
-from exls.management.adapters.dtos import (
-    ClusterTemplateDTO,
-    CredentialsDTO,
-    ImportSshKeyRequestDTO,
-    ServiceTemplateDTO,
-    SshKeyDTO,
-    WorkspaceTemplateDTO,
-)
-from exls.management.adapters.ui.display.display import IOManagementFacade
-from exls.management.adapters.ui.flows.import_ssh_key import ImportSshKeyFlow
-from exls.management.adapters.ui.mapper import (
-    cluster_template_dto_from_domain,
-    credentials_dto_from_domain,
-    service_template_dto_from_domain,
-    ssh_key_dto_from_domain,
-    workspace_template_dto_from_domain,
+from exls.management.adapters.ui.flows.import_ssh_key import (
+    FlowImportSshKeyRequestDTO,
+    ImportSshKeyFlow,
 )
 from exls.management.core.domain import (
     ClusterTemplate,
@@ -30,12 +17,13 @@ from exls.management.core.domain import (
 )
 from exls.management.core.service import ManagementService
 from exls.shared.adapters.decorators import handle_application_layer_errors
+from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
     help_if_no_subcommand,
 )
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 management_app = typer.Typer()
 
@@ -69,16 +57,12 @@ def list_cluster_templates(
 ):
     """List all cluster templates."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
     domain_cluster_templates: List[ClusterTemplate] = service.list_cluster_templates()
-    dto_cluster_templates: List[ClusterTemplateDTO] = [
-        cluster_template_dto_from_domain(domain=cluster_template)
-        for cluster_template in domain_cluster_templates
-    ]
 
     io_facade.display_data(
-        dto_cluster_templates, output_format=bundle.object_output_format
+        domain_cluster_templates, output_format=bundle.object_output_format
     )
 
 
@@ -87,16 +71,14 @@ def list_cluster_templates(
 def list_credentials(ctx: typer.Context):
     """List all available credentials."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
     domain_credentials: List[Credentials] = service.list_credentials()
-    dto_credentials: List[CredentialsDTO] = [
-        credentials_dto_from_domain(domain=credential)
-        for credential in domain_credentials
-    ]
 
-    io_facade.display_data(dto_credentials, output_format=bundle.object_output_format)
+    io_facade.display_data(
+        domain_credentials, output_format=bundle.object_output_format
+    )
 
 
 @service_templates_app.command("list", help="List all available service templates")
@@ -106,17 +88,13 @@ def list_service_templates(
 ):
     """List all available service templates."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
     domain_service_templates: List[ServiceTemplate] = service.list_service_templates()
-    dto_service_templates: List[ServiceTemplateDTO] = [
-        service_template_dto_from_domain(domain=service_template)
-        for service_template in domain_service_templates
-    ]
 
     io_facade.display_data(
-        dto_service_templates, output_format=bundle.object_output_format
+        domain_service_templates, output_format=bundle.object_output_format
     )
 
 
@@ -127,19 +105,15 @@ def list_workspace_templates(
 ):
     """List all available workspace templates."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
     domain_workspace_templates: List[WorkspaceTemplate] = (
         service.list_workspace_templates()
     )
-    dto_workspace_templates: List[WorkspaceTemplateDTO] = [
-        workspace_template_dto_from_domain(domain=workspace_template)
-        for workspace_template in domain_workspace_templates
-    ]
 
     io_facade.display_data(
-        dto_workspace_templates, output_format=bundle.object_output_format
+        domain_workspace_templates, output_format=bundle.object_output_format
     )
 
 
@@ -150,15 +124,12 @@ def list_ssh_keys(
 ):
     """List all available SSH keys."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
     domain_ssh_keys: List[SshKey] = service.list_ssh_keys()
-    dto_ssh_keys: List[SshKeyDTO] = [
-        ssh_key_dto_from_domain(domain=ssh_key) for ssh_key in domain_ssh_keys
-    ]
 
-    io_facade.display_data(dto_ssh_keys, output_format=bundle.object_output_format)
+    io_facade.display_data(domain_ssh_keys, output_format=bundle.object_output_format)
 
 
 @ssh_keys_app.command("import", help="Import a new SSH key")
@@ -177,10 +148,10 @@ def import_ssh_key(
 ):
     """Import a new SSH key to the management cluster."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
-    add_ssh_key_request: ImportSshKeyRequestDTO = ImportSshKeyRequestDTO()
+    add_ssh_key_request: FlowImportSshKeyRequestDTO = FlowImportSshKeyRequestDTO()
     if not called_with_any_user_input(ctx):
         add_ssh_key_flow: ImportSshKeyFlow = bundle.get_import_ssh_key_flow()
         add_ssh_key_flow.execute(add_ssh_key_request, FlowContext(), io_facade)
@@ -198,9 +169,8 @@ def import_ssh_key(
     domain_ssh_key: SshKey = service.import_ssh_key(
         name=add_ssh_key_request.name, key_path=add_ssh_key_request.key_path
     )
-    dto_ssh_key: SshKeyDTO = ssh_key_dto_from_domain(domain=domain_ssh_key)
 
-    io_facade.display_data(dto_ssh_key, output_format=bundle.object_output_format)
+    io_facade.display_data(domain_ssh_key, output_format=bundle.object_output_format)
 
 
 @ssh_keys_app.command("delete", help="Delete an SSH key")
@@ -211,7 +181,7 @@ def delete_ssh_key(
 ):
     """Delete an SSH key from the management cluster."""
     bundle: ManagementBundle = ManagementBundle(ctx)
-    io_facade: IOManagementFacade = bundle.get_io_facade()
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
     deleted_ssh_key_id: str = service.delete_ssh_key(ssh_key_id)

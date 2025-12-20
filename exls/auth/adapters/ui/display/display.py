@@ -2,15 +2,12 @@ import logging
 import subprocess
 import sys
 import webbrowser
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 import qrcode
-from pydantic import BaseModel
 
-from exls.auth.adapters.dtos import DeviceCodeAuthenticationDTO
-from exls.auth.adapters.ui.display.render import get_columns_rendering_map
+from exls.auth.core.domain import DeviceCode
 from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
-from exls.shared.adapters.ui.output.render.table import Column
 from exls.shared.adapters.ui.output.values import OutputFormat
 
 logger = logging.getLogger(__name__)
@@ -78,11 +75,6 @@ def _open_browser_for_device_code_authentication(uri: str) -> bool:
 
 
 class IOAuthFacade(IOBaseModelFacade):
-    def get_columns_rendering_map(
-        self, data_type: Type[BaseModel], list_data: bool = False
-    ) -> Optional[Dict[str, Column]]:
-        return get_columns_rendering_map(data_type)
-
     @staticmethod
     def _generate_qr_code(uri: str) -> qrcode.QRCode[Any]:
         qr: qrcode.QRCode[Any] = qrcode.QRCode(
@@ -159,30 +151,30 @@ class IOAuthFacade(IOBaseModelFacade):
             "Press Ctrl+C to cancel", output_format=OutputFormat.TEXT
         )
 
-    def display_auth_poling(self, dto: DeviceCodeAuthenticationDTO):
+    def display_auth_poling(self, device_code: DeviceCode):
         # Display the device code to the user and wait for them to authenticate.
         # The CLI will poll for the authentication response.
         logger.debug("Device code received. Waiting for user authentication.")
         if _is_interactive():
             # In an interactive session, attempt to open the verification URL in the user's browser.
             if _open_browser_for_device_code_authentication(
-                uri=dto.verification_uri_complete
+                uri=device_code.verification_uri_complete
             ):
                 logger.debug("Opened browser for authentication.")
                 self._display_device_code_polling_started_via_browser(
-                    verification_uri_complete=dto.verification_uri_complete,
-                    user_code=dto.user_code,
+                    verification_uri_complete=device_code.verification_uri_complete,
+                    user_code=device_code.user_code,
                 )
             else:
                 logger.debug("Could not open browser. Displaying URL.")
                 self._display_device_code_polling_started(
-                    verification_uri_complete=dto.verification_uri_complete,
-                    user_code=dto.user_code,
+                    verification_uri_complete=device_code.verification_uri_complete,
+                    user_code=device_code.user_code,
                 )
         else:
             # In a non-interactive session, display the URL and code for the user to handle manually.
             logger.debug("Non-interactive session. Displaying URL.")
             self._display_device_code_polling_started(
-                verification_uri_complete=dto.verification_uri_complete,
-                user_code=dto.user_code,
+                verification_uri_complete=device_code.verification_uri_complete,
+                user_code=device_code.user_code,
             )

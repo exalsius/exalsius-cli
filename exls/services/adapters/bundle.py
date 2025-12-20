@@ -1,11 +1,10 @@
 import typer
+from exalsius_api_client.api.services_api import ServicesApi
 
-from exls.services.adapters.gateway.sdk import create_services_gateway
-from exls.services.adapters.ui.display.display import IOServicesFacade
-from exls.services.core.ports import IServicesGateway
+from exls.services.adapters.gateway.gateway import ServicesGateway
+from exls.services.adapters.gateway.sdk.sdk import ServicesGatewaySdk
 from exls.services.core.service import ServicesService
 from exls.shared.adapters.bundle import BaseBundle
-from exls.shared.adapters.ui.factory import IOFactory
 
 
 class ServicesBundle(BaseBundle):
@@ -13,14 +12,11 @@ class ServicesBundle(BaseBundle):
         super().__init__(ctx)
 
     def get_services_service(self) -> ServicesService:
-        services_gateway: IServicesGateway = create_services_gateway(
-            backend_host=self.config.backend_host, access_token=self.access_token
+        services_api: ServicesApi = ServicesApi(api_client=self.create_api_client())
+        services_gateway: ServicesGateway = ServicesGatewaySdk(
+            services_api=services_api
         )
-        return ServicesService(services_gateway=services_gateway)
-
-    def get_io_facade(self) -> IOServicesFacade:
-        io_facade_factory: IOFactory = IOFactory()
-        return IOServicesFacade(
-            input_manager=io_facade_factory.get_input_manager(),
-            output_manager=io_facade_factory.get_output_manager(),
+        return ServicesService(
+            services_repository=services_gateway,
+            services_operations=services_gateway,
         )

@@ -5,7 +5,6 @@ from typing import (
     Dict,
     Optional,
     Sequence,
-    Type,
     TypeVar,
     Union,
 )
@@ -19,8 +18,8 @@ from exls.shared.adapters.ui.input.values import DisplayChoice
 from exls.shared.adapters.ui.output.interfaces import (
     IOutputManager,
 )
-from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.values import OutputFormat
+from exls.shared.adapters.ui.output.view import ViewContext
 from exls.shared.adapters.ui.shared.render.render import (
     DictToYamlStringRenderer,
     YamlRenderContext,
@@ -40,48 +39,23 @@ class IOBaseModelFacade(IIOFacade[BaseModel]):
             output_manager
         )
 
-    def get_columns_rendering_map(
-        self, data_type: Type[BaseModel], list_data: bool = False
-    ) -> Optional[Dict[str, Column]]:
-        # Subclasses can override this method to e.g. return the columns rendering map
-        return None
-
-    def _get_render_context(
-        self, data: BaseModel, output_format: OutputFormat, list_data: bool = False
-    ) -> Optional[TableRenderContext]:
-        columns: Optional[Dict[str, Column]] = self.get_columns_rendering_map(
-            type(data), list_data
-        )
-        render_context: Optional[TableRenderContext] = None
-        if columns and output_format == OutputFormat.TABLE:
-            render_context = TableRenderContext.get_table_render_context(
-                columns=columns
-            )
-        return render_context
-
     def display_data(
         self,
         data: Union[BaseModel, Sequence[BaseModel]],
         output_format: OutputFormat,
+        view_context: Optional[ViewContext] = None,
     ):
-        render_context: Optional[TableRenderContext] = None
-        if output_format == OutputFormat.TABLE:
-            ref_data: Optional[BaseModel] = (
-                data[0]
-                if isinstance(data, Sequence) and len(data) > 0
-                else data if isinstance(data, BaseModel) else None
-            )
-            if ref_data:
-                render_context = self._get_render_context(
-                    ref_data, output_format, list_data=isinstance(data, Sequence)
-                )
-            self.output_manager.display(
-                data, output_format=output_format, render_context=render_context
-            )
-        else:
-            self.output_manager.display(
-                data, output_format=output_format, render_context=None
-            )
+        # We need to ignore the type errors because the output manager is generic is not
+        # able to infer the type of the render context, although we know it is valid.
+        self.output_manager.display(  # type: ignore
+            data,
+            output_format=output_format,  # type: ignore
+            render_context=(
+                view_context.get_context_for_format(output_format)
+                if view_context
+                else None
+            ),  # type: ignore
+        )
 
     def display_info_message(self, message: str, output_format: OutputFormat):
         self.output_manager.display_info_message(message, output_format)

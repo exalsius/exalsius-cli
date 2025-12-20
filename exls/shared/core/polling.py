@@ -1,7 +1,7 @@
 import time
 from typing import Callable, TypeVar
 
-from exls.shared.core.service import ServiceError
+from exls.shared.core.exceptions import ServiceError
 
 T = TypeVar("T")
 

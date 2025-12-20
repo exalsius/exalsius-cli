@@ -3,12 +3,13 @@ import logging
 import typer
 
 from exls.auth.adapters.bundle import AuthBundle
-from exls.auth.adapters.dtos import DeviceCodeAuthenticationDTO, UserInfoDTO
 from exls.auth.adapters.ui.display.display import IOAuthFacade
+from exls.auth.adapters.ui.display.render import USER_VIEW
 from exls.auth.core.domain import AuthSession, DeviceCode
-from exls.auth.core.ports import AuthGatewayError, TokenStorageError
+from exls.auth.core.ports.operations import AuthError
+from exls.auth.core.ports.repository import TokenRepositoryError
 from exls.auth.core.service import AuthService, NotLoggedInWarning
-from exls.shared.core.service import ServiceError, ServiceWarning
+from exls.shared.core.exceptions import ServiceError, ServiceWarning
 
 logger = logging.getLogger(__name__)
 
@@ -26,30 +27,31 @@ def login(
     """
     bundle = AuthBundle(ctx)
     io_facade: IOAuthFacade = bundle.get_io_facade()
-    auth_service: AuthService = bundle.get_auth_service(config=bundle.config)
+    auth_service: AuthService = bundle.get_auth_service()
 
     try:
         device_code: DeviceCode = auth_service.initiate_device_code_login()
-        device_code_dto = DeviceCodeAuthenticationDTO.from_domain(device_code)
 
-        io_facade.display_auth_poling(dto=device_code_dto)
+        io_facade.display_auth_poling(device_code=device_code)
 
         auth_session: AuthSession = auth_service.poll_for_authentication(
-            device_code_input=device_code
+            device_code=device_code
         )
-
-        user_info = UserInfoDTO.from_auth_session(auth_session)
 
         io_facade.display_success_message(
             "Logged in successfully!", output_format=bundle.message_output_format
         )
-        io_facade.display_data(user_info, output_format=bundle.object_output_format)
+        io_facade.display_data(
+            auth_session.user,
+            output_format=bundle.object_output_format,
+            view_context=USER_VIEW,
+        )
     except ServiceWarning as w:
         io_facade.display_info_message(
             str(w), output_format=bundle.message_output_format
         )
         raise typer.Exit(0)
-    except (ServiceError, AuthGatewayError, TokenStorageError) as e:
+    except (ServiceError, AuthError, TokenRepositoryError) as e:
         io_facade.display_error_message(
             str(e), output_format=bundle.message_output_format
         )
@@ -65,7 +67,7 @@ def logout(ctx: typer.Context):
     """
     bundle = AuthBundle(ctx)
     io_facade: IOAuthFacade = bundle.get_io_facade()
-    auth_service: AuthService = bundle.get_auth_service(config=bundle.config)
+    auth_service: AuthService = bundle.get_auth_service()
 
     try:
         auth_service.logout()
@@ -79,7 +81,7 @@ def logout(ctx: typer.Context):
             str(w), output_format=bundle.message_output_format
         )
         raise typer.Exit(0)
-    except (ServiceError, AuthGatewayError, TokenStorageError) as e:
+    except (ServiceError, AuthError, TokenRepositoryError) as e:
         io_facade.display_error_message(
             str(e), output_format=bundle.message_output_format
         )

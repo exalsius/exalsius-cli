@@ -22,7 +22,7 @@ from exls.clusters.core.ports.repository import (
 )
 from exls.clusters.core.requests import (
     ClusterDeployRequest,
-    NodeSpecification,
+    ClusterNodeSpecification,
 )
 from exls.clusters.core.results import (
     ClusterNodeIssue,
@@ -31,9 +31,9 @@ from exls.clusters.core.results import (
     DeployClusterResult,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
-from exls.shared.adapters.gateway.file.gateways import IFileWriteGateway
+from exls.shared.core.exceptions import ServiceError
 from exls.shared.core.polling import PollingTimeoutError, poll_until
-from exls.shared.core.service import ServiceError
+from exls.shared.core.ports.file import FileWritePort
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +44,12 @@ class ClustersService:
         clusters_operations: ClusterOperations,
         clusters_repository: ClusterRepository,
         nodes_provider: NodesProvider,
-        file_write_gateway: IFileWriteGateway[str],
+        file_write_adapter: FileWritePort[str],
     ):
         self._clusters_operations: ClusterOperations = clusters_operations
         self._clusters_repository: ClusterRepository = clusters_repository
         self._nodes_provider: NodesProvider = nodes_provider
-        self._file_write_gateway: IFileWriteGateway[str] = file_write_gateway
+        self._file_write_adapter: FileWritePort[str] = file_write_adapter
 
     @handle_service_layer_errors("listing clusters")
     def list_clusters(self, status: Optional[ClusterStatus] = None) -> List[Cluster]:
@@ -103,7 +103,7 @@ class ClustersService:
 
     def _import_nodes_bulk(
         self,
-        node_specs: List[NodeSpecification],
+        node_specs: List[ClusterNodeSpecification],
     ) -> Tuple[List[ClusterNode], List[ClusterNodeIssue]]:
         if not node_specs:
             return [], []
@@ -219,13 +219,15 @@ class ClustersService:
         worker_ids_to_check: List[str] = [
             n for n in create_params.worker_nodes if isinstance(n, str)
         ]
-        worker_specs_to_import: List[NodeSpecification] = [
-            n for n in create_params.worker_nodes if isinstance(n, NodeSpecification)
+        worker_specs_to_import: List[ClusterNodeSpecification] = [
+            n
+            for n in create_params.worker_nodes
+            if isinstance(n, ClusterNodeSpecification)
         ]
 
         # Separate IDs and Specs for Control Plane
         cp_ids_to_check: List[str] = []
-        cp_specs_to_import: List[NodeSpecification] = []
+        cp_specs_to_import: List[ClusterNodeSpecification] = []
         if create_params.control_plane_nodes:
             cp_ids_to_check = [
                 n for n in create_params.control_plane_nodes if isinstance(n, str)
@@ -233,7 +235,7 @@ class ClustersService:
             cp_specs_to_import = [
                 n
                 for n in create_params.control_plane_nodes
-                if isinstance(n, NodeSpecification)
+                if isinstance(n, ClusterNodeSpecification)
             ]
 
         # Validate Existing IDs and Check Status
@@ -285,7 +287,7 @@ class ClustersService:
         # Check if we have any valid nodes left to deploy
         if not final_worker_ids and not final_cp_ids:
             return DeployClusterResult(
-                cluster=None,
+                deployed_cluster=None,
                 issues=all_issues,
             )
 
@@ -339,7 +341,9 @@ class ClustersService:
         )
 
         # Return result with any issues encountered during the process
-        return DeployClusterResult(cluster=cluster_with_nodes, issues=all_issues)
+        return DeployClusterResult(
+            deployed_cluster=cluster_with_nodes, issues=all_issues
+        )
 
     def _validate_cluster_status(self, cluster: Cluster) -> None:
         if cluster.status == ClusterStatus.READY:
@@ -428,7 +432,7 @@ class ClustersService:
         kubeconfig_content: str = self._clusters_operations.load_kubeconfig(
             cluster_id=cluster_id
         )
-        self._file_write_gateway.write_file(
+        self._file_write_adapter.write_file(
             file_path=Path(kubeconfig_file_path), content=kubeconfig_content
         )
 

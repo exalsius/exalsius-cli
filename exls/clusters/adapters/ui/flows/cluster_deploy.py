@@ -1,12 +1,10 @@
-from typing import List
+from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import List, cast
 
-from exls.clusters.adapters.ui.dtos import (
-    DeployClusterRequestFromFlowDTO,
-    UnassignedClusterNodeDTO,
-)
-from exls.clusters.core.domain import ClusterNode
+from pydantic import BaseModel, Field, StrictStr
+
+from exls.clusters.core.domain import ClusterNode, ClusterType
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.flow.flow import (
@@ -25,26 +23,54 @@ from exls.shared.adapters.ui.flow.steps import (
 from exls.shared.adapters.ui.input.service import kubernetes_name_validator
 from exls.shared.adapters.ui.input.values import DisplayChoice
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 
-class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
+class FlowClusterNodeDTO(BaseModel):
+    id: StrictStr = Field(..., description="The ID of the cluster node")
+    name: StrictStr = Field(..., description="The name of the cluster node")
+
+
+class FlowDeployClusterRequestDTO(BaseModel):
+    name: StrictStr = Field(default="", description="The name of the cluster")
+    cluster_type: ClusterType = Field(
+        default=ClusterType.REMOTE, description="The type of the cluster"
+    )
+    worker_node_ids: List[FlowClusterNodeDTO] = Field(
+        default_factory=lambda: cast(List[FlowClusterNodeDTO], []),
+        description="The worker nodes",
+    )
+    control_plane_node_ids: List[FlowClusterNodeDTO] = Field(
+        default_factory=lambda: cast(List[FlowClusterNodeDTO], []),
+        description="The control plane nodes",
+    )
+    enable_multinode_training: bool = Field(
+        default=False,
+        description="Enable multinode AI model training for the cluster",
+    )
+    enable_telemetry: bool = Field(
+        default=False, description="Enable telemetry for the cluster"
+    )
+    enable_vpn: bool = Field(default=False, description="Enable VPN for the cluster")
+
+
+class DeployClusterFlow(FlowStep[FlowDeployClusterRequestDTO]):
     def __init__(self, service: ClustersService):
         self._service: ClustersService = service
 
     def _get_worker_node_choices(
-        self, model: DeployClusterRequestFromFlowDTO, context: FlowContext
-    ) -> ChoicesSpec[UnassignedClusterNodeDTO]:
+        self, model: FlowDeployClusterRequestDTO, context: FlowContext
+    ) -> ChoicesSpec[FlowClusterNodeDTO]:
         deployable_nodes: List[ClusterNode] = self._service.list_available_nodes()
         if len(deployable_nodes) == 0:
             raise InvalidFlowStateError(
                 "No deployable nodes in your node pool found. You need to import nodes first and they need to be in status 'AVAILABLE'."
             )
-        return ChoicesSpec[UnassignedClusterNodeDTO](
+        return ChoicesSpec[FlowClusterNodeDTO](
             choices=[
-                DisplayChoice[UnassignedClusterNodeDTO](
+                DisplayChoice[FlowClusterNodeDTO](
                     title=node.hostname,
-                    value=UnassignedClusterNodeDTO(id=node.id, name=node.hostname),
+                    value=FlowClusterNodeDTO(id=node.id, name=node.hostname),
                 )
                 for node in deployable_nodes
             ],
@@ -52,31 +78,31 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
 
     def _run(
         self,
-        model: DeployClusterRequestFromFlowDTO,
+        model: FlowDeployClusterRequestDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:
-        flow: SequentialFlow[DeployClusterRequestFromFlowDTO] = SequentialFlow[
-            DeployClusterRequestFromFlowDTO
+        flow: SequentialFlow[FlowDeployClusterRequestDTO] = SequentialFlow[
+            FlowDeployClusterRequestDTO
         ](
             steps=[
-                TextInputStep[DeployClusterRequestFromFlowDTO](
+                TextInputStep[FlowDeployClusterRequestDTO](
                     key="name",
                     message="Name:",
                     default=generate_random_name(prefix="exls-cluster"),
                     validator=kubernetes_name_validator,
                 ),
-                CheckboxStep[DeployClusterRequestFromFlowDTO, UnassignedClusterNodeDTO](
+                CheckboxStep[FlowDeployClusterRequestDTO, FlowClusterNodeDTO](
                     key="worker_node_ids",
                     message="Select worker nodes:",
                     choices_spec=self._get_worker_node_choices,
                 ),
-                ConfirmStep[DeployClusterRequestFromFlowDTO](
+                ConfirmStep[FlowDeployClusterRequestDTO](
                     key="enable_multinode_training",
                     message="Enable multinode AI model training for the cluster?",
                     default=False,
                 ),
-                ConfirmStep[DeployClusterRequestFromFlowDTO](
+                ConfirmStep[FlowDeployClusterRequestDTO](
                     key="enable_vpn",
                     message="Enable VPN for the cluster?",
                     default=False,
@@ -92,7 +118,7 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
 
     def _confirm_import(
         self,
-        deploy_cluster_request: DeployClusterRequestFromFlowDTO,
+        deploy_cluster_request: FlowDeployClusterRequestDTO,
         io_facade: IIOFacade[BaseModel],
     ) -> bool:
         io_facade.display_info_message(
@@ -108,7 +134,7 @@ class DeployClusterFlow(FlowStep[DeployClusterRequestFromFlowDTO]):
 
     def execute(
         self,
-        model: DeployClusterRequestFromFlowDTO,
+        model: FlowDeployClusterRequestDTO,
         context: FlowContext,
         io_facade: IIOFacade[BaseModel],
     ) -> None:

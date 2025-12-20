@@ -12,13 +12,13 @@ from exls.clusters.core.ports.provider import (
     ClusterNodesImportResult,
     NodesProvider,
 )
-from exls.clusters.core.requests import NodeSpecification
+from exls.clusters.core.requests import ClusterNodeSpecification
 from exls.nodes.core.domain import (
     BaseNode,
     NodeResources,
     SelfManagedNode,
 )
-from exls.nodes.core.requests import SelfManagedNodesImportResult
+from exls.nodes.core.results import ImportSelfmanagedNodesResult
 from exls.nodes.core.service import NodesService
 
 
@@ -84,17 +84,19 @@ class NodesDomainProvider(NodesProvider):
         ]
 
     def import_nodes(
-        self, nodes_specs: List[NodeSpecification], wait_for_available: bool = False
+        self,
+        nodes_specs: List[ClusterNodeSpecification],
+        wait_for_available: bool = False,
     ) -> ClusterNodesImportResult:
-        import_results: SelfManagedNodesImportResult = (
+        import_results: ImportSelfmanagedNodesResult = (
             self.nodes_service.import_selfmanaged_nodes(nodes_specs, wait_for_available)
         )
-        nodes_specs_map: Dict[str, NodeSpecification] = {
+        nodes_specs_map: Dict[str, ClusterNodeSpecification] = {
             node.hostname: node for node in nodes_specs
         }
 
         nodes: List[ClusterNode] = []
-        for node in import_results.nodes:
+        for node in import_results.imported_nodes:
             nodes.append(
                 ClusterNode(
                     id=node.id,
@@ -113,10 +115,10 @@ class NodesDomainProvider(NodesProvider):
 
         issues: List[ClusterNodeImportIssue] = [
             ClusterNodeImportIssue(
-                node_specification=nodes_specs_map[failure.node.hostname],
-                error_message=f"{failure.message}: {failure.error}",
+                node_specification=nodes_specs_map[issue.node_import_request.hostname],
+                error_message=f"{issue.error_message}",
             )
-            for failure in import_results.failures
+            for issue in import_results.issues
         ]
 
         return ClusterNodesImportResult(

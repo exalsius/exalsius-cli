@@ -1,11 +1,9 @@
-from typing import Any, Dict, Optional, Type
+from typing import Dict
 
-from pydantic import BaseModel
-
-from exls.services.adapters.dtos import ServiceDTO
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.view import ViewContext
 
-DEFAULT_SERVICES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
+_SERVICE_VIEW_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "cluster_id": TableRenderContext.get_column("Cluster ID"),
@@ -13,10 +11,4 @@ DEFAULT_SERVICES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "created_at": TableRenderContext.get_column("Created At"),
 }
 
-DTO_DISPLAY_CONFIG_MAP: Dict[Any, Dict[str, Column]] = {
-    ServiceDTO: DEFAULT_SERVICES_COLUMNS_RENDERING_MAP,
-}
-
-
-def get_columns_rendering_map(dto_type: Type[BaseModel]) -> Optional[Dict[str, Column]]:
-    return DTO_DISPLAY_CONFIG_MAP.get(dto_type, None)
+SERVICE_VIEW = ViewContext.from_table_columns(_SERVICE_VIEW_COLUMNS)

@@ -3,6 +3,7 @@ from typing import List, Optional, cast
 from pydantic import BaseModel, Field, StrictStr
 
 from exls.clusters.core.domain import Cluster, ClusterNode
+from exls.clusters.core.requests import ClusterDeployRequest
 
 
 class ClusterNodeIssue(BaseModel):
@@ -22,7 +23,9 @@ class ClusterNodesResult(BaseModel):
 
 
 class DeployClusterIssue(BaseModel):
-    cluster: Optional[Cluster] = Field(default=None, description="The created cluster")
+    cluster_deploy_request: Optional[ClusterDeployRequest] = Field(
+        default=None, description="The created cluster specification"
+    )
     cluster_nodes_result: Optional[ClusterNodesResult] = Field(
         default=None, description="The result of the cluster nodes"
     )
@@ -32,8 +35,8 @@ class DeployClusterIssue(BaseModel):
 
 
 class DeployClusterResult(BaseModel):
-    cluster: Optional[Cluster] = Field(
-        default=None, description="The created cluster with its nodes"
+    deployed_cluster: Optional[Cluster] = Field(
+        default=None, description="The deployed cluster with its nodes"
     )
     issues: List[ClusterNodeIssue] = Field(
         default_factory=lambda: cast(List[ClusterNodeIssue], []),
@@ -42,11 +45,11 @@ class DeployClusterResult(BaseModel):
 
     @property
     def is_success(self) -> bool:
-        return self.cluster is not None and len(self.issues) == 0
+        return self.deployed_cluster is not None and len(self.issues) == 0
 
     @property
     def is_partially_successful(self) -> bool:
-        return self.cluster is not None and len(self.issues) > 0
+        return self.deployed_cluster is not None and len(self.issues) > 0
 
 
 class ClusterScaleIssue(BaseModel):

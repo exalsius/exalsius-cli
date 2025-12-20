@@ -14,7 +14,7 @@ from exls.shared.adapters.ui.shared.render.render import (
     DictToYamlStringRenderer,
     YamlRenderContext,
 )
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 
 T = TypeVar("T")
 

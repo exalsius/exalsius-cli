@@ -2,7 +2,7 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
-from exls.shared.core.domain import ExalsiusWarning
+from exls.shared.core.exceptions import ExalsiusWarning
 
 T = TypeVar("T")
 

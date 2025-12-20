@@ -24,7 +24,7 @@ from exls.clusters.core.ports.repository import (
     ClusterRepository,
 )
 from exls.clusters.core.results import ClusterScaleIssue, ClusterScaleResult
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 from exls.shared.core.ports.command import CommandError
 
 logger = logging.getLogger(__name__)
