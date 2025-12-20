@@ -33,17 +33,6 @@ def _map_resources(resources: NodeResources) -> ClusterNodeResources:
     )
 
 
-def _get_empty_resources(resources: ClusterNodeResources) -> ClusterNodeResources:
-    return ClusterNodeResources(
-        gpu_type=resources.gpu_type,
-        gpu_vendor=resources.gpu_vendor,
-        gpu_count=0,
-        cpu_cores=0,
-        memory_gb=0,
-        storage_gb=0,
-    )
-
-
 class NodesDomainProvider(NodesProvider):
     def __init__(self, nodes_service: NodesService):
         self.nodes_service: NodesService = nodes_service
@@ -59,7 +48,7 @@ class NodesDomainProvider(NodesProvider):
                         hostname=node.hostname,
                         username=node.username,
                         ssh_key_id=node.ssh_key_id,
-                        status=node.status.value,
+                        status=ClusterNodeStatus.from_str(node.status.value),
                         endpoint=node.endpoint,
                         resources=_map_resources(node.resources),
                     )
@@ -74,11 +63,18 @@ class NodesDomainProvider(NodesProvider):
                 hostname=node.hostname,
                 username=node.username,
                 ssh_key_id=node.ssh_key_id,
-                status=ClusterNodeStatus.from_str(node.status),
+                status=ClusterNodeStatus.from_str(node.status.value),
                 endpoint=node.endpoint or "",
                 role=ClusterNodeRole.UNASSIGNED,
                 free_resources=node.resources,
-                occupied_resources=_get_empty_resources(node.resources),
+                occupied_resources=ClusterNodeResources(
+                    gpu_type=node.resources.gpu_type,
+                    gpu_vendor=node.resources.gpu_vendor,
+                    gpu_count=0,
+                    cpu_cores=0,
+                    memory_gb=0,
+                    storage_gb=0,
+                ),
             )
             for node in node_data_list
         ]
@@ -97,6 +93,7 @@ class NodesDomainProvider(NodesProvider):
 
         nodes: List[ClusterNode] = []
         for node in import_results.imported_nodes:
+            resources: ClusterNodeResources = _map_resources(node.resources)
             nodes.append(
                 ClusterNode(
                     id=node.id,
@@ -105,9 +102,14 @@ class NodesDomainProvider(NodesProvider):
                     ssh_key_id=node.ssh_key_id,
                     status=ClusterNodeStatus.from_str(node.status.value),
                     endpoint=node.endpoint or "",
-                    free_resources=_map_resources(node.resources),
-                    occupied_resources=_get_empty_resources(
-                        _map_resources(node.resources)
+                    free_resources=resources,
+                    occupied_resources=ClusterNodeResources(
+                        gpu_type=resources.gpu_type,
+                        gpu_vendor=resources.gpu_vendor,
+                        gpu_count=0,
+                        cpu_cores=0,
+                        memory_gb=0,
+                        storage_gb=0,
                     ),
                     role=ClusterNodeRole.UNASSIGNED,
                 )

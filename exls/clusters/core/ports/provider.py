@@ -5,7 +5,11 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
-from exls.clusters.core.domain import ClusterNode, ClusterNodeResources
+from exls.clusters.core.domain import (
+    ClusterNode,
+    ClusterNodeResources,
+    ClusterNodeStatus,
+)
 from exls.clusters.core.requests import ClusterNodeSpecification
 
 
@@ -14,7 +18,7 @@ class ClusterNodeData(BaseModel):
     hostname: StrictStr = Field(..., description="The hostname of the node")
     username: StrictStr = Field(..., description="The username of the node")
     ssh_key_id: StrictStr = Field(..., description="The SSH key of the node")
-    status: StrictStr = Field(..., description="The status of the node")
+    status: ClusterNodeStatus = Field(..., description="The status of the node")
     endpoint: Optional[StrictStr] = Field(
         default=None, description="The endpoint of the node"
     )

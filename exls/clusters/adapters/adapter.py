@@ -47,10 +47,10 @@ def _map_resources(resources: ResourcesData) -> ClusterNodeResources:
 
 def _map_cluster_node(
     cluster_node_ref: ClusterNodeRefData,
-    cluster_node_resource: ClusterNodeRefResourcesData,
-    cluster_node_data: Optional[ClusterNodeData],
+    cluster_node_data: ClusterNodeData,
+    cluster_node_resource: Optional[ClusterNodeRefResourcesData],
 ) -> ClusterNode:
-    if cluster_node_data:
+    if cluster_node_resource:
         return ClusterNode(
             id=cluster_node_ref.id,
             role=ClusterNodeRole.from_str(cluster_node_ref.role),
@@ -59,20 +59,29 @@ def _map_cluster_node(
             ssh_key_id=cluster_node_data.ssh_key_id,
             status=ClusterNodeStatus.from_str(cluster_node_data.status),
             endpoint=cluster_node_data.endpoint or "",
-            free_resources=_map_resources(cluster_node_resource.free_resources),
-            occupied_resources=_map_resources(cluster_node_resource.occupied_resources),
+            free_resources=(_map_resources(cluster_node_resource.free_resources)),
+            occupied_resources=(
+                _map_resources(cluster_node_resource.occupied_resources)
+            ),
         )
     else:
         return ClusterNode(
             id=cluster_node_ref.id,
             role=ClusterNodeRole.from_str(cluster_node_ref.role),
-            hostname=cluster_node_resource.node_name,
-            username="Unknown",
-            ssh_key_id="Unknown",
-            status=ClusterNodeStatus.UNKNOWN,
-            endpoint="",
-            free_resources=_map_resources(cluster_node_resource.free_resources),
-            occupied_resources=_map_resources(cluster_node_resource.occupied_resources),
+            hostname=cluster_node_data.hostname,
+            username=cluster_node_data.username,
+            ssh_key_id=cluster_node_data.ssh_key_id,
+            status=ClusterNodeStatus.from_str(cluster_node_data.status),
+            endpoint=cluster_node_data.endpoint or "",
+            free_resources=cluster_node_data.resources,
+            occupied_resources=ClusterNodeResources(
+                gpu_type=cluster_node_data.resources.gpu_type,
+                gpu_vendor=cluster_node_data.resources.gpu_vendor,
+                gpu_count=0,
+                cpu_cores=0,
+                memory_gb=0,
+                storage_gb=0,
+            ),
         )
 
 
@@ -81,42 +90,82 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
         self._cluster_gateway: ClustersGateway = cluster_gateway
         self._nodes_provider: NodesProvider = nodes_provider
 
-    def _load_cluster_nodes(self, cluster_id: str) -> List[ClusterNode]:
-        cluster_node_refs: List[ClusterNodeRefData] = (
-            self._cluster_gateway.get_cluster_nodes(cluster_id=cluster_id)
-        )
-        cluster_node_resources: List[ClusterNodeRefResourcesData] = (
-            self._cluster_gateway.get_cluster_resources(cluster_id=cluster_id)
-        )
-        nodes_data: List[ClusterNodeData] = self._nodes_provider.list_nodes()
+    def _load_cluster_nodes(
+        self,
+        cluster_data: ClusterData,
+    ) -> List[ClusterNode]:
+        valid_node_statuses: List[ClusterNodeStatus]
+        if cluster_data.status == ClusterStatus.READY:
+            valid_node_statuses = [ClusterNodeStatus.DEPLOYED]
+        elif (
+            cluster_data.status == ClusterStatus.PENDING
+            or cluster_data.status == ClusterStatus.DEPLOYING
+        ):
+            valid_node_statuses = [ClusterNodeStatus.DEPLOYED, ClusterNodeStatus.ADDED]
+        else:
+            return []
 
-        cluster_node_resource_map: Dict[str, ClusterNodeRefResourcesData] = {
-            resource.node_id: resource for resource in cluster_node_resources
+        cluster_node_refs: List[ClusterNodeRefData] = (
+            self._cluster_gateway.get_cluster_nodes(cluster_id=cluster_data.id)
+        )
+        cluster_node_ref_map: Dict[str, ClusterNodeRefData] = {
+            node.id: node for node in cluster_node_refs
         }
+        nodes_data: List[ClusterNodeData] = self._nodes_provider.list_nodes()
         nodes_data_map: Dict[str, ClusterNodeData] = {
             node.id: node for node in nodes_data
         }
-
-        nodes: List[ClusterNode] = []
-        for cluster_node_resource in cluster_node_refs:
-            if cluster_node_resource.id not in cluster_node_resource_map:
-                raise ClusterLoadingError(
-                    f"Resources cannot be loaded for cluster node {cluster_node_resource.id}"
-                )
-            if cluster_node_resource.id not in nodes_data_map:
+        invalid_node_ids: List[str] = []
+        for node_id in cluster_node_ref_map.keys():
+            if node_id not in nodes_data_map:
                 logger.warning(
-                    f"Node {cluster_node_resource.id} not found in cluster node resources or nodes data"
+                    f"Node {node_id} not found in node pool. This is not expected."
                 )
+            else:
+                node_data: ClusterNodeData = nodes_data_map[node_id]
+                if node_data.status not in valid_node_statuses:
+                    logger.warning(
+                        f"Cluster {cluster_data.name} ({cluster_data.id}) has a node with invalid status. "
+                        f"Node hostname: {node_data.hostname}, node ID: {node_id}. "
+                        f"Node is expected to be in one of the following statuses: "
+                        f"[{', '.join([valid_node_status.value for valid_node_status in valid_node_statuses])}], "
+                        f"but is in status {node_data.status.value}, "
+                    )
+                    invalid_node_ids.append(node_id)
 
-            cluster_node: ClusterNode = _map_cluster_node(
-                cluster_node_ref=cluster_node_resource,
-                cluster_node_resource=cluster_node_resource_map[
-                    cluster_node_resource.id
-                ],
-                cluster_node_data=nodes_data_map.get(cluster_node_resource.id, None),
-            )
-            nodes.append(cluster_node)
+        cluster_node_resources: List[ClusterNodeRefResourcesData] = (
+            self._cluster_gateway.get_cluster_resources(cluster_id=cluster_data.id)
+        )
+        cluster_node_resource_map: Dict[str, ClusterNodeRefResourcesData] = {
+            resource.node_id: resource for resource in cluster_node_resources
+        }
+        nodes: List[ClusterNode] = []
+        for node_id in cluster_node_ref_map.keys():
+            if node_id not in invalid_node_ids:
+                cluster_node: Optional[ClusterNode] = None
+                if cluster_data.status == ClusterStatus.READY:
+                    if node_id not in cluster_node_resource_map:
+                        logger.warning(
+                            f"Node {node_id} not found in cluster resources. This is not expected. Skipping node."
+                        )
+                        continue
 
+                    cluster_node = _map_cluster_node(
+                        cluster_node_ref=cluster_node_ref_map[node_id],
+                        cluster_node_resource=cluster_node_resource_map[node_id],
+                        cluster_node_data=nodes_data_map[node_id],
+                    )
+                elif (
+                    cluster_data.status == ClusterStatus.PENDING
+                    or cluster_data.status == ClusterStatus.DEPLOYING
+                ):
+                    cluster_node = _map_cluster_node(
+                        cluster_node_ref=cluster_node_ref_map[node_id],
+                        cluster_node_data=nodes_data_map[node_id],
+                        cluster_node_resource=None,
+                    )
+                if cluster_node:
+                    nodes.append(cluster_node)
         return nodes
 
     def list(self, status: Optional[ClusterStatus]) -> List[Cluster]:
@@ -127,11 +176,11 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
                 Cluster(
                     id=cluster_data.id,
                     name=cluster_data.name,
-                    status=ClusterStatus.from_str(cluster_data.status),
-                    type=ClusterType.from_str(cluster_data.type),
+                    status=cluster_data.status,
+                    type=cluster_data.type,
                     created_at=cluster_data.created_at,
                     updated_at=cluster_data.updated_at,
-                    nodes=self._load_cluster_nodes(cluster_id=cluster_data.id),
+                    nodes=self._load_cluster_nodes(cluster_data=cluster_data),
                 )
             )
         if status:
@@ -141,7 +190,7 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
 
     def get(self, cluster_id: str) -> Cluster:
         cluster_data: ClusterData = self._cluster_gateway.get(cluster_id=cluster_id)
-        nodes: List[ClusterNode] = self._load_cluster_nodes(cluster_id=cluster_id)
+        nodes: List[ClusterNode] = self._load_cluster_nodes(cluster_data=cluster_data)
         return Cluster(
             id=cluster_data.id,
             name=cluster_data.name,
