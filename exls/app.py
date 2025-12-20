@@ -5,9 +5,9 @@ import typer
 
 from exls import config as cli_config
 from exls.auth.adapters.bundle import AuthBundle
-from exls.auth.adapters.dtos import AcquiredAccessTokenDTO
 from exls.auth.adapters.ui.display.display import IOAuthFacade
 from exls.auth.app import login, logout
+from exls.auth.core.domain import AuthSession
 from exls.auth.core.service import AuthService, NotLoggedInWarning
 from exls.clusters.app import clusters_app
 from exls.logging import setup_logging
@@ -17,7 +17,7 @@ from exls.offers.app import offers_app
 from exls.services.app import services_app
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
-from exls.shared.core.service import ServiceError
+from exls.shared.core.exceptions import ServiceError
 from exls.state import AppState
 from exls.workspaces.app import workspaces_app
 
@@ -115,13 +115,10 @@ def __root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
-        auth_service: AuthService = AuthBundle(ctx).get_auth_service(config=config)
+        auth_service: AuthService = AuthBundle(ctx).get_auth_service()
         io_facade: IOAuthFacade = AuthBundle(ctx).get_io_facade()
         try:
-            auth_session = auth_service.acquire_access_token()
-            acquired_access_token: AcquiredAccessTokenDTO = (
-                AcquiredAccessTokenDTO.from_loaded_token(auth_session.token)
-            )
+            auth_session: AuthSession = auth_service.acquire_access_token()
         except NotLoggedInWarning:
             io_facade.display_info_message(
                 "You are not logged in. Please log in.",
@@ -137,7 +134,7 @@ def __root(  # pyright: ignore[reportUnusedFunction]
 
         ctx.obj = AppState(
             config=config,
-            access_token=acquired_access_token.access_token,
+            access_token=auth_session.token.access_token,
             message_output_format=format,
             object_output_format=format,
         )

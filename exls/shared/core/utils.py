@@ -3,14 +3,6 @@ import re
 from coolname import generate_slug  # type: ignore
 
 
-class ExalsiusError(Exception):
-    """Base exception for all Exalsius errors."""
-
-
-class ExalsiusWarning(Warning):
-    """Base warning for all Exalsius warnings."""
-
-
 def generate_random_name(prefix: str = "exls", slug_length: int = 2) -> str:
     """Generate a random name."""
     return f"{prefix}-{generate_slug(slug_length)}"

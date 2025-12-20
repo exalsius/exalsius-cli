@@ -9,10 +9,14 @@ from typing_extensions import Optional
 from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
 from exls.shared.adapters.ui.input.interfaces import EditDictionaryError
 from exls.shared.adapters.ui.input.values import UserCancellationException
-from exls.shared.adapters.ui.shared.render.render import YamlRenderContext
+from exls.shared.adapters.ui.output.values import OutputFormat
+from exls.shared.adapters.ui.shared.render.render import (
+    DictToYamlStringRenderer,
+    YamlRenderContext,
+)
 from exls.shared.core.dictionaries import deep_merge
-from exls.shared.core.domain import ExalsiusError, generate_random_name
-from exls.workspaces.adapters.bundle import WorkspacesBundle
+from exls.shared.core.exceptions import ExalsiusError
+from exls.shared.core.utils import generate_random_name
 from exls.workspaces.core.domain import WorkerGroupResources, WorkspaceGPUVendor
 
 
@@ -37,6 +41,18 @@ class IntegratedWorkspaceTemplates(StrEnum):
             return cls.OTHER
 
 
+class WorkspaceEditorRenderBundle:
+    def __init__(
+        self,
+        editor_renderer: DictToYamlStringRenderer,
+        editor_render_context: YamlRenderContext,
+        message_output_format: OutputFormat,
+    ):
+        self.editor_renderer: DictToYamlStringRenderer = editor_renderer
+        self.editor_render_context: YamlRenderContext = editor_render_context
+        self.message_output_format: OutputFormat = message_output_format
+
+
 @runtime_checkable
 class WorkspaceConfigurator(Protocol):
     @property
@@ -57,8 +73,8 @@ class BaseWorkspaceConfigurator(ABC):
     Shared logic for editing and validation.
     """
 
-    def __init__(self, bundle: WorkspacesBundle):
-        self._bundle = bundle
+    def __init__(self, bundle: WorkspaceEditorRenderBundle):
+        self._editor_render_bundle: WorkspaceEditorRenderBundle = bundle
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -125,28 +141,25 @@ class BaseWorkspaceConfigurator(ABC):
     def _run_editor_loop(
         self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
-        editor_render_context: YamlRenderContext = (
-            self._bundle.get_editor_render_context(integrated_template=self.template_id)
-        )
         current_variables = variables.copy()
         while True:
             try:
                 edited_variables: Dict[str, Any] = io_facade.edit_dictionary(
                     dictionary=current_variables,
-                    renderer=self._bundle.get_editor_renderer(),
-                    render_context=editor_render_context,
+                    renderer=self._editor_render_bundle.editor_renderer,
+                    render_context=self._editor_render_bundle.editor_render_context,
                 )
                 return edited_variables
             except UserCancellationException:
                 io_facade.display_info_message(
                     "User cancelled the workspace template editing. No changes were made.",
-                    self._bundle.message_output_format,
+                    self._editor_render_bundle.message_output_format,
                 )
                 return current_variables
             except (EditDictionaryError, Exception) as e:
                 io_facade.display_error_message(
                     f"An unexpected error occurred while editing the workspace template: {e}",
-                    self._bundle.message_output_format,
+                    self._editor_render_bundle.message_output_format,
                 )
                 try_again: bool = io_facade.ask_confirm(
                     message=(
@@ -161,8 +174,12 @@ class BaseWorkspaceConfigurator(ABC):
 
 
 class JupyterConfigurator(BaseWorkspaceConfigurator):
-    def __init__(self, bundle: WorkspacesBundle, password: str):
-        super().__init__(bundle)
+    def __init__(
+        self,
+        editor_render_bundle: WorkspaceEditorRenderBundle,
+        password: str,
+    ):
+        super().__init__(editor_render_bundle)
         self._password: str = password
 
     @property
@@ -189,8 +206,12 @@ class JupyterConfigurator(BaseWorkspaceConfigurator):
 
 
 class MarimoConfigurator(BaseWorkspaceConfigurator):
-    def __init__(self, bundle: WorkspacesBundle, password: str):
-        super().__init__(bundle)
+    def __init__(
+        self,
+        editor_render_bundle: WorkspaceEditorRenderBundle,
+        password: str,
+    ):
+        super().__init__(editor_render_bundle)
         self._password: str = password
 
     @property
@@ -219,11 +240,11 @@ class MarimoConfigurator(BaseWorkspaceConfigurator):
 class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
     def __init__(
         self,
-        bundle: WorkspacesBundle,
+        editor_render_bundle: WorkspaceEditorRenderBundle,
         ssh_password: Optional[str],
         ssh_public_key: Optional[str],
     ):
-        super().__init__(bundle)
+        super().__init__(editor_render_bundle)
         self._ssh_password: Optional[str] = ssh_password
         self._ssh_public_key: Optional[str] = ssh_public_key
 
@@ -301,14 +322,14 @@ class GradientCompression(StrEnum):
 class DistributedTrainingConfigurator(BaseWorkspaceConfigurator):
     def __init__(
         self,
-        bundle: WorkspacesBundle,
+        editor_render_bundle: WorkspaceEditorRenderBundle,
         model: DistributedTrainingModels,
         gradient_compression: GradientCompression,
         wandb_token: str,
         hf_token: str,
         worker_groups: List[WorkerGroupResources],
     ):
-        super().__init__(bundle)
+        super().__init__(editor_render_bundle)
         self._model: DistributedTrainingModels = model
         self._gradient_compression: GradientCompression = gradient_compression
         self._wandb_token: str = wandb_token

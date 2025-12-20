@@ -3,22 +3,19 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from exls.shared.adapters.gateway.file.gateways import (
-    IFileReadGateway,
-    IFileWriteGateway,
-)
 from exls.shared.adapters.ui.flows.keys import PublicKeySpecDTO
-from exls.shared.core.service import ServiceError
+from exls.shared.core.exceptions import ServiceError
+from exls.shared.core.ports.file import FileReadPort, FileWritePort
 
 
 class CryptoService:
     def __init__(
         self,
-        file_reader: IFileReadGateway[str],
-        file_writer: IFileWriteGateway[str],
+        file_reader: FileReadPort[str],
+        file_writer: FileWritePort[str],
     ):
-        self._file_reader = file_reader
-        self._file_writer = file_writer
+        self._file_reader: FileReadPort[str] = file_reader
+        self._file_writer: FileWritePort[str] = file_writer
 
     def resolve_public_key(self, spec: PublicKeySpecDTO) -> str:
         """

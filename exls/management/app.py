@@ -23,7 +23,7 @@ from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
     help_if_no_subcommand,
 )
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 management_app = typer.Typer()
 

@@ -5,9 +5,13 @@ import typer
 
 from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.ui.input.values import UserCancellationException
-from exls.shared.core.domain import ExalsiusError, ExalsiusWarning
+from exls.shared.core.exceptions import (
+    ExalsiusError,
+    ExalsiusWarning,
+    ServiceError,
+    ServiceWarning,
+)
 from exls.shared.core.ports.command import CommandError
-from exls.shared.core.service import ServiceError, ServiceWarning
 
 
 def handle_service_layer_errors(operation_name: str) -> Callable[..., Any]:

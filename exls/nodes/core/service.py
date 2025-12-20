@@ -26,9 +26,9 @@ from exls.nodes.core.results import (
     ImportSelfmanagedNodesResult,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.exceptions import ServiceError
 from exls.shared.core.parallel import ParallelExecutionResult, execute_in_parallel
 from exls.shared.core.polling import poll_until
-from exls.shared.core.service import ServiceError
 
 
 class NodesService:

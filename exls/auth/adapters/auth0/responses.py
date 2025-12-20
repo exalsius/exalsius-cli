@@ -48,13 +48,3 @@ class ValidatedAuthUserResponse(BaseModel):
     sub: StrictStr = Field(..., description="The subject")
 
     model_config = {"extra": "allow"}
-
-
-class LoadedTokenDTO(BaseModel):
-    client_id: StrictStr = Field(..., description="The client ID")
-    access_token: StrictStr = Field(..., description="The access token")
-    id_token: StrictStr = Field(..., description="The ID token")
-    refresh_token: Optional[StrictStr] = Field(
-        default=None, description="The refresh token"
-    )
-    expiry: datetime.datetime = Field(..., description="The expiry datetime")

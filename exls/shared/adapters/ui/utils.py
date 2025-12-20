@@ -5,7 +5,7 @@ import typer
 
 from exls.config import AppConfig
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.core.service import ServiceError
+from exls.shared.core.exceptions import ServiceError
 from exls.state import AppState
 
 

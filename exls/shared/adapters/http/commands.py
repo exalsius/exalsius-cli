@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional, Type, TypeVar, Union
 import requests
 from pydantic import BaseModel
 
-from exls.shared.adapters.gateway.deserializer import PydanticDeserializer
-from exls.shared.core.domain import ExalsiusWarning
+from exls.shared.adapters.deserializer import PydanticDeserializer
+from exls.shared.core.exceptions import ExalsiusWarning
 from exls.shared.core.ports.command import BaseCommand, CommandError
 
 T_SerOutput = TypeVar("T_SerOutput", bound=BaseModel)

@@ -16,7 +16,7 @@ from exls.shared.adapters.ui.input.service import (
     non_empty_string_validator,
 )
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 
 class FlowImportSshKeyRequestDTO(BaseModel):

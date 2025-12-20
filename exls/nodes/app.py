@@ -27,7 +27,7 @@ from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 nodes_app = typer.Typer()
 

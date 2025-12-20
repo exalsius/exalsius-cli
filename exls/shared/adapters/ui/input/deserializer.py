@@ -4,7 +4,7 @@ from typing import Any, Dict, cast
 
 from ruamel.yaml import YAML, YAMLError
 
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 
 
 class DeserializationError(ExalsiusError):

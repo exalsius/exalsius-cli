@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 
 from exls.auth.core.domain import (
     LoadedToken,
-    StoreTokenRequest,
+    Token,
 )
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 
 
 class TokenRepositoryError(ExalsiusError):
@@ -13,7 +13,7 @@ class TokenRepositoryError(ExalsiusError):
 
 class TokenRepository(ABC):
     @abstractmethod
-    def store(self, request: StoreTokenRequest) -> None: ...
+    def store(self, token: Token) -> None: ...
 
     @abstractmethod
     def load(self, client_id: str) -> LoadedToken: ...

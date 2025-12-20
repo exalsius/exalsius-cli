@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from exls.shared.adapters.ui.facade.interface import IIOFacade
 from exls.shared.adapters.ui.input.values import UserCancellationException
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 
 T = TypeVar("T")
 
@@ -16,7 +16,7 @@ class FlowError(ExalsiusError):
     pass
 
 
-class InvalidFlowStateError(Exception):
+class InvalidFlowStateError(ExalsiusError):
     """Exception raised when the flow is in an invalid state."""
 
     pass

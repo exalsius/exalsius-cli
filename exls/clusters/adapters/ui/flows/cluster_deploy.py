@@ -23,7 +23,7 @@ from exls.shared.adapters.ui.flow.steps import (
 from exls.shared.adapters.ui.input.service import kubernetes_name_validator
 from exls.shared.adapters.ui.input.values import DisplayChoice
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 
 class FlowClusterNodeDTO(BaseModel):

@@ -2,7 +2,7 @@ from exalsius_api_client.api.offers_api import OffersApi
 from exalsius_api_client.models.offers_list_response import OffersListResponse
 
 from exls.offers.core.requests import OffersFilterCriteria
-from exls.shared.adapters.gateway.sdk.command import ExalsiusSdkCommand
+from exls.shared.adapters.sdk.command import ExalsiusSdkCommand
 
 
 class BaseOffersSdkCommand[T_Cmd_Return](ExalsiusSdkCommand[OffersApi, T_Cmd_Return]):

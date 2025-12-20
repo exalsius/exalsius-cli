@@ -35,7 +35,7 @@ from exls.shared.adapters.ui.input.values import (
     UserCancellationException,
 )
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 
 ADD_NEW_KEY_SENTINEL: object = object()
 

@@ -31,7 +31,7 @@ from exls.shared.adapters.ui.utils import (
     help_if_no_subcommand,
     open_url_in_browser,
 )
-from exls.shared.core.domain import (
+from exls.shared.core.utils import (
     generate_random_name,
     validate_kubernetes_name,
 )

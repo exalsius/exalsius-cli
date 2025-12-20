@@ -31,9 +31,9 @@ from exls.clusters.core.results import (
     DeployClusterResult,
 )
 from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.exceptions import ServiceError
 from exls.shared.core.polling import PollingTimeoutError, poll_until
 from exls.shared.core.ports.file import FileWritePort
-from exls.shared.core.service import ServiceError
 
 logger = logging.getLogger(__name__)
 

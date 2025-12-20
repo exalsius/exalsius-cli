@@ -10,8 +10,8 @@ from exls.management.core.domain import (
 )
 from exls.management.core.ports.ports import ManagementRepository
 from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.exceptions import ServiceError
 from exls.shared.core.ports.file import FileReadPort
-from exls.shared.core.service import ServiceError
 
 
 class ManagementService:

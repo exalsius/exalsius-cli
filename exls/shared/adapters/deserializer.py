@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, Type, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from exls.shared.core.domain import ExalsiusError
+from exls.shared.core.exceptions import ExalsiusError
 
 T_SerInput_Contra = TypeVar("T_SerInput_Contra", contravariant=True)
 T_SerOutput = TypeVar("T_SerOutput", bound=BaseModel)

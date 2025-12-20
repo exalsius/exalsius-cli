@@ -16,7 +16,7 @@ from exls.shared.adapters.ui.input.values import (
 )
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 from exls.shared.core.crypto import CryptoService
-from exls.shared.core.domain import generate_random_name
+from exls.shared.core.utils import generate_random_name
 from exls.workspaces.adapters.bundle import WorkspacesBundle
 from exls.workspaces.adapters.ui.configurators import (
     DistributedTrainingConfigurator,
@@ -274,7 +274,12 @@ def deploy_jupyter_workspace(
     template: WorkspaceTemplate = _get_workspace_template(
         service, IntegratedWorkspaceTemplates.JUPYTER
     )
-    configurator: JupyterConfigurator = JupyterConfigurator(bundle, password)
+    configurator: JupyterConfigurator = JupyterConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.JUPYTER
+        ),
+        password=password,
+    )
     try:
         template_variables: Dict[str, Any] = configurator.configure_and_validate(
             template.variables, io_facade
@@ -383,7 +388,12 @@ def deploy_marimo_workspace(
     template: WorkspaceTemplate = _get_workspace_template(
         service, IntegratedWorkspaceTemplates.MARIMO
     )
-    configurator: MarimoConfigurator = MarimoConfigurator(bundle, password)
+    configurator: MarimoConfigurator = MarimoConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.MARIMO
+        ),
+        password=password,
+    )
     try:
         template_variables: Dict[str, Any] = configurator.configure_and_validate(
             template.variables, io_facade
@@ -510,7 +520,11 @@ def deploy_vscode_dev_pod_workspace(
         service, IntegratedWorkspaceTemplates.VSCODE_DEV_POD
     )
     configurator: VSCodeDevPodConfigurator = VSCodeDevPodConfigurator(
-        bundle, ssh_password, ssh_public_key_str
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.VSCODE_DEV_POD
+        ),
+        ssh_password=ssh_password,
+        ssh_public_key=ssh_public_key_str,
     )
     try:
         template_variables: Dict[str, Any] = configurator.configure_and_validate(
@@ -625,12 +639,14 @@ def deploy_distributed_training_workspace(
         service, IntegratedWorkspaceTemplates.DIST_TRAINING
     )
     configurator: DistributedTrainingConfigurator = DistributedTrainingConfigurator(
-        bundle,
-        model,
-        gradient_compression,
-        wandb_token,
-        hf_token,
-        resources,
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.DIST_TRAINING
+        ),
+        model=model,
+        gradient_compression=gradient_compression,
+        wandb_token=wandb_token,
+        hf_token=hf_token,
+        worker_groups=resources,
     )
 
     template_variables: Dict[str, Any] = configurator.configure_and_validate(

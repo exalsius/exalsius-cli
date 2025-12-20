@@ -17,7 +17,10 @@ from exls.workspaces.adapters.gateway.gateway import WorkspacesGateway
 from exls.workspaces.adapters.gateway.sdk.sdk import SdkWorkspacesGateway
 from exls.workspaces.adapters.provider.clusters import ClustersDomainProvider
 from exls.workspaces.adapters.provider.templates import WorkspaceTemplatesDomainProvider
-from exls.workspaces.adapters.ui.configurators import IntegratedWorkspaceTemplates
+from exls.workspaces.adapters.ui.configurators import (
+    IntegratedWorkspaceTemplates,
+    WorkspaceEditorRenderBundle,
+)
 from exls.workspaces.adapters.ui.editor.render import (
     get_workspace_template_editing_comments,
 )
@@ -73,21 +76,25 @@ class WorkspacesBundle(BaseBundle):
     def get_configure_workspace_access_flow(self) -> ConfigureWorkspaceAccessFlow:
         return ConfigureWorkspaceAccessFlow(service=self.get_crypto_service())
 
-    def get_editor_render_context(
+    def get_editor_render_bundle(
         self, integrated_template: IntegratedWorkspaceTemplates
-    ) -> YamlRenderContext:
+    ) -> WorkspaceEditorRenderBundle:
         editor_yaml_render_config: EditorYamlRenderConfig = EditorYamlRenderConfig()
+        editor_renderer: DictToYamlStringRenderer = DictToYamlStringRenderer(
+            default_render_config=editor_yaml_render_config,
+        )
+
         comments: Dict[str, str] = get_workspace_template_editing_comments(
             integrated_template
         )
 
-        return YamlRenderContext(
+        editor_render_context: YamlRenderContext = YamlRenderContext(
             indent=editor_yaml_render_config.indent,
             comments=comments,
         )
 
-    def get_editor_renderer(self) -> DictToYamlStringRenderer:
-        editor_yaml_render_config: EditorYamlRenderConfig = EditorYamlRenderConfig()
-        return DictToYamlStringRenderer(
-            default_render_config=editor_yaml_render_config,
+        return WorkspaceEditorRenderBundle(
+            editor_renderer=editor_renderer,
+            editor_render_context=editor_render_context,
+            message_output_format=self.message_output_format,
         )
