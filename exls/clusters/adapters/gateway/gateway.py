@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from exls.clusters.core.domain import (
     ClusterStatus,
+    ClusterType,
 )
 
 # It's a leaky abstraction between the domain and the gateway layer.
@@ -17,8 +18,8 @@ from exls.clusters.core.ports.repository import ClusterCreateParameters
 class ClusterData(BaseModel):
     id: StrictStr = Field(..., description="The ID of the cluster")
     name: StrictStr = Field(..., description="The name of the cluster")
-    status: StrictStr = Field(..., description="The status of the cluster")
-    type: StrictStr = Field(..., description="The type of the cluster")
+    status: ClusterStatus = Field(..., description="The status of the cluster")
+    type: ClusterType = Field(..., description="The type of the cluster")
     created_at: datetime.datetime = Field(
         ..., description="The creation date of the cluster"
     )

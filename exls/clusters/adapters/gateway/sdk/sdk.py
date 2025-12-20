@@ -56,6 +56,7 @@ from exls.clusters.adapters.gateway.sdk.commands import (
 )
 from exls.clusters.core.domain import (
     ClusterStatus,
+    ClusterType,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,8 +66,8 @@ def _cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
     return ClusterData(
         id=sdk_model.id or "",
         name=sdk_model.name,
-        status=sdk_model.cluster_status or "",
-        type=sdk_model.cluster_type or "",
+        status=ClusterStatus.from_str(sdk_model.cluster_status or ""),
+        type=ClusterType.from_str(sdk_model.cluster_type or ""),
         created_at=sdk_model.created_at,
         updated_at=sdk_model.updated_at,
     )
