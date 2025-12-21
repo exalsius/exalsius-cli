@@ -32,7 +32,7 @@ T = TypeVar("T", bound=BaseModel)
 def _get_nested_attribute(obj: Any, attr: str, default: Any = "") -> Any:
     """
     Safely retrieves a nested attribute from an object using dot notation.
-    For example, for an attribute `a.b.c`, it will try to get `obj.a.b.c`.
+    For example for an attribute `a.b.c`, it will try to get `obj.a.b.c`.
     If any attribute in the chain does not exist, it returns the default value.
     """
     try:
@@ -228,9 +228,9 @@ class _BaseTableRenderer:
     ) -> TableRenderContext:
         """Resolve the render context."""
         if render_context:
-            assert isinstance(render_context, TableRenderContext), (
-                "Render context must be a TableRenderContext"
-            )
+            assert isinstance(
+                render_context, TableRenderContext
+            ), "Render context must be a TableRenderContext"
             return render_context
 
         assert columns, "If no render context is provided, columns must be set"

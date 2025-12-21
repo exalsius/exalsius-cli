@@ -28,7 +28,7 @@ class JsonRenderContext(BaseRenderContext):
     """Render context for JSON output."""
 
     indent: PositiveInt = Field(
-        ..., description="The number of spaces to use for indentation."
+        ..., description="The number of spaces to use for the JSON indentation."
     )
 
 
@@ -58,9 +58,9 @@ class _BaseJsonRenderer:
     ) -> JsonRenderContext:
         """Resolve the render context."""
         if render_context:
-            assert isinstance(render_context, JsonRenderContext), (
-                "Render context must be a JsonRenderContext"
-            )
+            assert isinstance(
+                render_context, JsonRenderContext
+            ), "Render context must be a JsonRenderContext"
         return (
             render_context
             if render_context
