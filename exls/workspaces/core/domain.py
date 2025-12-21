@@ -206,14 +206,15 @@ class WorkspaceCluster(BaseModel):
     def has_enough_resources(self, requested_resources: WorkerResources) -> bool:
         for resource in self.available_resources:
             if resource.gpu_count < requested_resources.gpu_count:
-                return False
+                continue
             if resource.cpu_cores < requested_resources.cpu_cores:
-                return False
+                continue
             if resource.memory_gb < requested_resources.memory_gb:
-                return False
+                continue
             if resource.storage_gb < requested_resources.storage_gb:
-                return False
-        return True
+                continue
+            return True
+        return False
 
     def get_resource_partition_for_single_worker(
         self,
@@ -240,15 +241,36 @@ class WorkspaceCluster(BaseModel):
                 if resource.storage_gb < 20:
                     continue
 
-                requested_cpu_cores: int = int(
-                    (resource.cpu_cores / resource.gpu_count) * num_requested_gpus
-                )
-                requested_memory_gb: int = int(
-                    (resource.memory_gb / resource.gpu_count) * num_requested_gpus
-                )
-                requested_storage_gb: int = int(
-                    (resource.storage_gb / resource.gpu_count) * num_requested_gpus
-                )
+                requested_cpu_cores: int
+                requested_memory_gb: int
+                requested_storage_gb: int
+
+                if resource.gpu_count > 0:
+                    requested_cpu_cores = max(
+                        int(
+                            (resource.cpu_cores / resource.gpu_count)
+                            * num_requested_gpus
+                        ),
+                        1,
+                    )
+                    requested_memory_gb = max(
+                        int(
+                            (resource.memory_gb / resource.gpu_count)
+                            * num_requested_gpus
+                        ),
+                        1,
+                    )
+                    requested_storage_gb = max(
+                        int(
+                            (resource.storage_gb / resource.gpu_count)
+                            * num_requested_gpus
+                        ),
+                        1,
+                    )
+                else:
+                    requested_cpu_cores = resource.cpu_cores
+                    requested_memory_gb = resource.memory_gb
+                    requested_storage_gb = resource.storage_gb
 
                 # We need a bit of tolerance here
                 if requested_cpu_cores == resource.cpu_cores:
@@ -290,7 +312,7 @@ class WorkspaceCluster(BaseModel):
         cpu_split: int = min(
             [
                 (
-                    int(resource.cpu_cores / resource.gpu_count)
+                    max(int(resource.cpu_cores / resource.gpu_count), 1)
                     if resource.gpu_count > 0
                     else resource.cpu_cores
                 )
@@ -300,7 +322,7 @@ class WorkspaceCluster(BaseModel):
         memory_split: int = min(
             [
                 (
-                    int(resource.memory_gb / resource.gpu_count)
+                    max(int(resource.memory_gb / resource.gpu_count), 1)
                     if resource.gpu_count > 0
                     else resource.memory_gb
                 )
@@ -310,7 +332,7 @@ class WorkspaceCluster(BaseModel):
         storage_split: int = min(
             [
                 (
-                    int(resource.storage_gb / resource.gpu_count)
+                    max(int(resource.storage_gb / resource.gpu_count), 1)
                     if resource.gpu_count > 0
                     else resource.storage_gb
                 )
