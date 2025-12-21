@@ -11,7 +11,7 @@ from exls.shared.adapters.ui.output.view import ViewContext
 T = TypeVar("T", bound=BaseModel)
 
 
-class IIOFacade(
+class IOFacade(
     IMessageOutputManager,
     IInputManager,
     Generic[T],

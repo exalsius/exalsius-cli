@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialFlow
 from exls.shared.adapters.ui.flow.steps import (
     ChoicesSpec,
@@ -41,7 +41,7 @@ class PublicKeyFlow(FlowStep[PublicKeySpecDTO]):
         self,
         model: PublicKeySpecDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         flow = SequentialFlow[PublicKeySpecDTO](
             steps=[

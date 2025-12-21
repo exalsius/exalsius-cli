@@ -30,7 +30,7 @@ from exls.clusters.core.results import (
     ClusterScaleResult,
     DeployClusterResult,
 )
-from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.decorators import handle_service_layer_errors
 from exls.shared.core.exceptions import ServiceError
 from exls.shared.core.polling import PollingTimeoutError, poll_until
 from exls.shared.core.ports.file import FileWritePort

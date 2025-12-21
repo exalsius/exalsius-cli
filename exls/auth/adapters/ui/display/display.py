@@ -7,7 +7,7 @@ from typing import Any
 import qrcode
 
 from exls.auth.core.domain import DeviceCode
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.output.values import OutputFormat
 
 logger = logging.getLogger(__name__)

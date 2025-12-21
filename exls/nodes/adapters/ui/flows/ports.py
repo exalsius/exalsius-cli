@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, StrictStr
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep
 
 
@@ -18,5 +18,5 @@ class ImportSshKeyFlowPort(FlowStep[FlowNodesSshKeySpecification], ABC):
         self,
         model: FlowNodesSshKeySpecification,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None: ...

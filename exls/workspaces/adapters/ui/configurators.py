@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Protocol, cast, runtime_checkable
 
 from typing_extensions import Optional
 
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.input.interfaces import EditDictionaryError
 from exls.shared.adapters.ui.input.values import UserCancellationException
 from exls.shared.adapters.ui.output.values import OutputFormat

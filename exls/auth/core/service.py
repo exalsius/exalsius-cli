@@ -8,7 +8,7 @@ from exls.auth.core.domain import (
 )
 from exls.auth.core.ports.operations import AuthError, AuthOperations
 from exls.auth.core.ports.repository import TokenRepository, TokenRepositoryError
-from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.decorators import handle_service_layer_errors
 from exls.shared.core.exceptions import ServiceError, ServiceWarning
 
 

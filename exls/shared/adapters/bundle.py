@@ -6,7 +6,7 @@ from exalsius_api_client.configuration import Configuration
 
 from exls.config import AppConfig
 from exls.shared.adapters.file.adapters import StringFileIOAdapter
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.factory import IOFactory
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (

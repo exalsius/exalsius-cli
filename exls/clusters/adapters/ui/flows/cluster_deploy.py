@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, StrictStr
 
 from exls.clusters.core.domain import ClusterNode, ClusterType
 from exls.clusters.core.service import ClustersService
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import (
     FlowCancelationByUserException,
     FlowContext,
@@ -80,7 +80,7 @@ class DeployClusterFlow(FlowStep[FlowDeployClusterRequestDTO]):
         self,
         model: FlowDeployClusterRequestDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         flow: SequentialFlow[FlowDeployClusterRequestDTO] = SequentialFlow[
             FlowDeployClusterRequestDTO
@@ -119,7 +119,7 @@ class DeployClusterFlow(FlowStep[FlowDeployClusterRequestDTO]):
     def _confirm_import(
         self,
         deploy_cluster_request: FlowDeployClusterRequestDTO,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> bool:
         io_facade.display_info_message(
             message="Deploying the following cluster:", output_format=OutputFormat.TEXT
@@ -136,7 +136,7 @@ class DeployClusterFlow(FlowStep[FlowDeployClusterRequestDTO]):
         self,
         model: FlowDeployClusterRequestDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         deployable_nodes: List[ClusterNode] = self._service.list_available_nodes()
         if len(deployable_nodes) == 0:

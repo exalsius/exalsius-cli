@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
 from exls.config import ConfigWorkspaceCreationPolling
-from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.decorators import handle_service_layer_errors
 from exls.shared.core.exceptions import ServiceError
 from exls.shared.core.polling import poll_until
 from exls.workspaces.core.domain import (

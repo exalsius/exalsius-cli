@@ -1,7 +1,7 @@
 import typer
 from exalsius_api_client import NodesApi
 
-from exls.management.adapters.bundel import ManagementBundle
+from exls.management.adapters.bundle import ManagementBundle
 from exls.nodes.adapters.gateway.gateway import NodesGateway
 from exls.nodes.adapters.gateway.sdk.sdk import SdkNodesGateway
 from exls.nodes.adapters.provider.sshkey import ManagementDomainSshProvider

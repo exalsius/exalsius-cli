@@ -3,7 +3,7 @@ from typing import List
 from exls.offers.core.domain import Offer
 from exls.offers.core.ports.repository import OffersRepository
 from exls.offers.core.requests import OffersFilterCriteria
-from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.decorators import handle_service_layer_errors
 
 
 class OffersService:
