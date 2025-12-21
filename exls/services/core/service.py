@@ -3,7 +3,7 @@ from typing import List
 from exls.services.core.domain import Service
 from exls.services.core.ports.operations import ServiceOperations
 from exls.services.core.ports.repository import ServiceRepository
-from exls.shared.adapters.decorators import handle_service_layer_errors
+from exls.shared.core.decorators import handle_service_layer_errors
 
 # TODO: Now domain service logic yet; like checking if cluster exists
 #       or if service template exists etc.; need to be added.

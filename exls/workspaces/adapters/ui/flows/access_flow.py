@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import Field, StrictStr
 from pydantic.main import BaseModel
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialFlow
 from exls.shared.adapters.ui.flow.steps import (
     ActionStep,
@@ -65,7 +65,7 @@ class ConfigureWorkspaceAccessFlow(FlowStep[AccessDTO]):
         self,
         model: AccessDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ):
         key_spec = PublicKeySpecDTO()
         flow: PublicKeyFlow = PublicKeyFlow()
@@ -77,7 +77,7 @@ class ConfigureWorkspaceAccessFlow(FlowStep[AccessDTO]):
         self,
         model: AccessDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ):
         flow = SequentialFlow[AccessDTO](
             steps=[

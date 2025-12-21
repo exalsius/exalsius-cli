@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, cast
 
 from pydantic import BaseModel, Field
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.input.values import UserCancellationException
 from exls.shared.core.exceptions import ExalsiusError
 
@@ -44,7 +44,7 @@ class FlowStep(Generic[T], ABC):
 
     @abstractmethod
     def execute(
-        self, model: T, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None: ...
 
 
@@ -55,7 +55,7 @@ class SequentialFlow(FlowStep[T]):
         self.steps = steps
 
     def execute(
-        self, model: T, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         for step in self.steps:
             try:

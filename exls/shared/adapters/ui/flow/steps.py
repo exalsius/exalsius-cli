@@ -14,7 +14,7 @@ from typing import (
 from pydantic import BaseModel, Field
 from typing_extensions import Any
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import (
     FlowCancelationByUserException,
     FlowContext,
@@ -48,7 +48,7 @@ class ConfirmStep(FlowStep[T_Model]):
         self.default = default
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         try:
             result: bool = io_facade.ask_confirm(
@@ -74,7 +74,7 @@ class TextInputStep(FlowStep[T_Model]):
         self.validator = validator
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         try:
             result: str = io_facade.ask_text(
@@ -100,7 +100,7 @@ class PathInputStep(FlowStep[T_Model]):
         self.default = default
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         try:
             result: Path = io_facade.ask_path(
@@ -166,7 +166,7 @@ class ChoicesStep(FlowStep[T_Model], Generic[T_Model, T_Choice]):
 
 class SelectRequiredStep(ChoicesStep[T_Model, T_Choice]):
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         choices_spec: ChoicesSpec[T_Choice] = self._resolve_choices_spec(model, context)
 
@@ -185,7 +185,7 @@ class SelectRequiredStep(ChoicesStep[T_Model, T_Choice]):
 
 class SelectOptionalStep(ChoicesStep[T_Model, T_Choice]):
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         choices_spec: ChoicesSpec[T_Choice] = self._resolve_choices_spec(model, context)
 
@@ -213,7 +213,7 @@ class UpdateLastChoiceStep(FlowStep[T_Model]):
         self.key: str = key
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         value: Any = getattr(model, self.key)
         if "last_choices" not in context.meta:
@@ -241,7 +241,7 @@ class CheckboxStep(ChoicesStep[T_Model, T_Choice]):
         self.min_choices: int = min_choices
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         choices_spec: ChoicesSpec[T_Choice] = self._resolve_choices_spec(model, context)
         try:
@@ -260,12 +260,12 @@ class ActionStep(FlowStep[T_Model]):
 
     def __init__(
         self,
-        action: Callable[[T_Model, FlowContext, IIOFacade[BaseModel]], None],
+        action: Callable[[T_Model, FlowContext, IOFacade[BaseModel]], None],
     ):
         self._action = action
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         self._action(model, context, io_facade)
 
@@ -282,7 +282,7 @@ class ConditionalStep(FlowStep[T_Model], Generic[T_Model]):
         self.false_step: Optional[FlowStep[T_Model]] = false_step
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         try:
             if self.condition(model):
@@ -312,7 +312,7 @@ class SubModelStep(FlowStep[T_Model], Generic[T_Model, T_ChildModel]):
         self.child_model_class: Type[T_ChildModel] = child_model_class
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         child_model: T_ChildModel = self.child_model_class()
 
@@ -348,7 +348,7 @@ class ListBuilderStep(FlowStep[T_Model], Generic[T_Model, T_ChildModel]):
         self.max_items: Optional[int] = max_items
 
     def execute(
-        self, model: T_Model, context: FlowContext, io_facade: IIOFacade[BaseModel]
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
     ) -> None:
         items: List[T_ChildModel] = []
         while True:

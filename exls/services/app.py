@@ -7,7 +7,7 @@ from exls.services.adapters.ui.display.render import SERVICE_VIEW
 from exls.services.core.domain import Service
 from exls.services.core.service import ServicesService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 
 services_app = typer.Typer()

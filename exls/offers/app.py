@@ -8,7 +8,7 @@ from exls.offers.core.domain import Offer
 from exls.offers.core.requests import OffersFilterCriteria
 from exls.offers.core.service import OffersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
 
 offers_app = typer.Typer()

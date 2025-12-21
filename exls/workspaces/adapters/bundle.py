@@ -6,7 +6,7 @@ from pydantic_settings import SettingsConfigDict
 
 from exls.clusters.adapters.bundle import ClustersBundle
 from exls.defaults import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
-from exls.management.adapters.bundel import ManagementBundle
+from exls.management.adapters.bundle import ManagementBundle
 from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.ui.shared.render.render import (
     BaseYamlRenderConfig,

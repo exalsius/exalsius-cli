@@ -24,7 +24,7 @@ from exls.clusters.core.requests import ClusterDeployRequest
 from exls.clusters.core.results import DeployClusterResult
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,

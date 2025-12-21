@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import typer
 
-from exls.management.adapters.bundel import ManagementBundle
+from exls.management.adapters.bundle import ManagementBundle
 from exls.management.adapters.ui.flows.import_ssh_key import (
     FlowImportSshKeyRequestDTO,
     ImportSshKeyFlow,
@@ -17,7 +17,7 @@ from exls.management.core.domain import (
 )
 from exls.management.core.service import ManagementService
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,

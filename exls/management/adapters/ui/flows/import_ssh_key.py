@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, StrictStr
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import (
     FlowCancelationByUserException,
     FlowContext,
@@ -34,7 +34,7 @@ class ImportSshKeyFlow(FlowStep[FlowImportSshKeyRequestDTO]):
         self,
         model: FlowImportSshKeyRequestDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         flow = SequentialFlow[FlowImportSshKeyRequestDTO](
             steps=[
@@ -56,7 +56,7 @@ class ImportSshKeyFlow(FlowStep[FlowImportSshKeyRequestDTO]):
     def _confirm_import(
         self,
         add_ssh_key_request: FlowImportSshKeyRequestDTO,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> bool:
         io_facade.display_info_message(
             message="Importing the following SSH key:", output_format=OutputFormat.TEXT
@@ -73,7 +73,7 @@ class ImportSshKeyFlow(FlowStep[FlowImportSshKeyRequestDTO]):
         self,
         model: FlowImportSshKeyRequestDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         """
         Collect SSH key import details and return DTO.

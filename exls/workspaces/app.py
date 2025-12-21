@@ -6,7 +6,7 @@ import typer
 from pydantic import BaseModel, Field
 
 from exls.shared.adapters.decorators import handle_application_layer_errors
-from exls.shared.adapters.ui.facade.interaction import IOBaseModelFacade
+from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext, SequentialFlow
 from exls.shared.adapters.ui.flow.steps import ChoicesSpec, SelectRequiredStep
 from exls.shared.adapters.ui.flows.keys import PublicKeySpecDTO

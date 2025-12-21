@@ -8,7 +8,7 @@ from exls.nodes.adapters.ui.flows.ports import (
     FlowNodesSshKeySpecification,
     ImportSshKeyFlowPort,
 )
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.output.values import OutputFormat
 
@@ -21,7 +21,7 @@ class ImportSshKeyFlowAdapter(ImportSshKeyFlowPort):
         self,
         model: FlowNodesSshKeySpecification,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         add_ssh_key_request: FlowImportSshKeyRequestDTO = FlowImportSshKeyRequestDTO()
 

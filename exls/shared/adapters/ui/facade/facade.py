@@ -12,7 +12,7 @@ from typing import (
 from pydantic import BaseModel
 from rich.table import Table
 
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.input.interfaces import IInputManager
 from exls.shared.adapters.ui.input.values import DisplayChoice
 from exls.shared.adapters.ui.output.interfaces import (
@@ -28,7 +28,7 @@ from exls.shared.adapters.ui.shared.render.render import (
 T = TypeVar("T")
 
 
-class IOBaseModelFacade(IIOFacade[BaseModel]):
+class IOBaseModelFacade(IOFacade[BaseModel]):
     def __init__(
         self,
         output_manager: IOutputManager[BaseModel, Union[Table, str]],

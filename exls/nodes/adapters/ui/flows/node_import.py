@@ -14,7 +14,7 @@ from exls.nodes.core.requests import (
     NodesSshKeySpecification,
 )
 from exls.nodes.core.service import NodesService
-from exls.shared.adapters.ui.facade.interface import IIOFacade
+from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialFlow
 from exls.shared.adapters.ui.flow.steps import (
     ChoicesSpec,
@@ -132,7 +132,7 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
         self,
         model: FlowSelfmanagedNodeSpecificationDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         """
         Collect SSH node import details and return DTO.
@@ -229,7 +229,7 @@ class ImportSelfmanagedNodeRequestListFlow(
         self,
         model: FlowImportSelfmanagedNodesRequestListDTO,
         context: FlowContext,
-        io_facade: IIOFacade[BaseModel],
+        io_facade: IOFacade[BaseModel],
     ) -> None:
         """
         Collect self-managed node import details and return DTO.
