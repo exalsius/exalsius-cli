@@ -14,7 +14,7 @@ from typing import (
 from pydantic import BaseModel, Field, PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from exls.config import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
+from exls.defaults import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
 from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
@@ -58,9 +58,9 @@ class _BaseJsonRenderer:
     ) -> JsonRenderContext:
         """Resolve the render context."""
         if render_context:
-            assert isinstance(
-                render_context, JsonRenderContext
-            ), "Render context must be a JsonRenderContext"
+            assert isinstance(render_context, JsonRenderContext), (
+                "Render context must be a JsonRenderContext"
+            )
         return (
             render_context
             if render_context

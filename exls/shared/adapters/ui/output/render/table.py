@@ -19,7 +19,7 @@ from rich.console import JustifyMethod
 from rich.style import Style, StyleType
 from rich.table import Table
 
-from exls.config import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
+from exls.defaults import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
 from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
@@ -228,9 +228,9 @@ class _BaseTableRenderer:
     ) -> TableRenderContext:
         """Resolve the render context."""
         if render_context:
-            assert isinstance(
-                render_context, TableRenderContext
-            ), "Render context must be a TableRenderContext"
+            assert isinstance(render_context, TableRenderContext), (
+                "Render context must be a TableRenderContext"
+            )
             return render_context
 
         assert columns, "If no render context is provided, columns must be set"
