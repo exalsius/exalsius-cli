@@ -29,10 +29,14 @@ def poll_until(
     """
     start_time = time.time()
 
-    while time.time() - start_time < timeout_seconds:
+    while True:
         result = fetcher()
         if predicate(result):
             return result
+
+        if time.time() - start_time >= timeout_seconds:
+            break
+
         time.sleep(interval_seconds)
 
     raise PollingTimeoutError(message=error_message)

@@ -19,7 +19,7 @@ from rich.console import JustifyMethod
 from rich.style import Style, StyleType
 from rich.table import Table
 
-from exls.config import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
+from exls.defaults import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
 from exls.shared.adapters.ui.output.interfaces import (
     IListRenderer,
     ISingleItemRenderer,
@@ -32,7 +32,7 @@ T = TypeVar("T", bound=BaseModel)
 def _get_nested_attribute(obj: Any, attr: str, default: Any = "") -> Any:
     """
     Safely retrieves a nested attribute from an object using dot notation.
-    For example, for an attribute `a.b.c`, it will try to get `obj.a.b.c`.
+    For example for an attribute `a.b.c`, it will try to get `obj.a.b.c`.
     If any attribute in the chain does not exist, it returns the default value.
     """
     try:

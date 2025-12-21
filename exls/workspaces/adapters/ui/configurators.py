@@ -14,9 +14,8 @@ from exls.shared.adapters.ui.shared.render.render import (
     DictToYamlStringRenderer,
     YamlRenderContext,
 )
-from exls.shared.core.dictionaries import deep_merge
 from exls.shared.core.exceptions import ExalsiusError
-from exls.shared.core.utils import generate_random_name
+from exls.shared.core.utils import deep_merge, generate_random_name
 from exls.workspaces.core.domain import WorkerGroupResources, WorkspaceGPUVendor
 
 
