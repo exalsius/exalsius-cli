@@ -43,6 +43,11 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 xfail_strict = true
 norecursedirs = [".git", ".venv", "env", "venv*", "build", "dist", ".mypy_cache", ".pytest_cache", "__pycache__"]
+markers = [
+    "unit: mark a test as a unit test",
+    "integration: mark a test as an integration test",
+    "e2e: mark a test as an end-to-end test",
+]
 
 [dependency-groups]
 dev = [
