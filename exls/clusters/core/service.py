@@ -98,6 +98,13 @@ class ClustersService:
                 valid_ready_ids.append(node_id)
             elif node.status == ClusterNodeStatus.DISCOVERING:
                 nodes_to_poll.append(node_id)
+            else:
+                issues.append(
+                    ClusterNodeIssue(
+                        node=node,
+                        error_message=f"Node {node_id} is in invalid status: {node.status}",
+                    )
+                )
 
         return valid_ready_ids, nodes_to_poll, issues
 
@@ -382,6 +389,9 @@ class ClustersService:
                 continue
             nodes_to_add.append(available_nodes_map[node_id])
 
+        if not nodes_to_add:
+            return ClusterScaleResult(nodes=[], issues=issues)
+
         scale_result: ClusterScaleResult = self._clusters_operations.scale_up(
             cluster_id=cluster_id, nodes_to_add=nodes_to_add
         )
@@ -412,6 +422,9 @@ class ClustersService:
                 )
                 continue
             nodes_to_remove.append(cluster_nodes_map[node_id])
+
+        if not nodes_to_remove:
+            return ClusterScaleResult(nodes=[], issues=issues)
 
         scale_result: ClusterScaleResult = self._clusters_operations.scale_down(
             cluster_id=cluster_id, nodes_to_remove=nodes_to_remove
