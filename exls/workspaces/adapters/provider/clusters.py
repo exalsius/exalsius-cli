@@ -26,18 +26,9 @@ class ClustersDomainProvider(ClustersProvider):
             for cluster in clusters
         ]
 
-    def get_cluster(self, cluster_id: str) -> WorkspaceCluster:
-        cluster: Cluster = self.clusters_service.get_cluster(cluster_id=cluster_id)
-        return WorkspaceCluster(
-            id=cluster.id,
-            name=cluster.name,
-            status=WorkspaceClusterStatus.from_str(cluster.status.value),
-        )
-
-    def get_cluster_resources(
-        self, cluster_id: str
+    def _get_cluster_resources(
+        self, cluster: Cluster
     ) -> List[AvailableClusterNodeResources]:
-        cluster: Cluster = self.clusters_service.get_cluster(cluster_id=cluster_id)
         available_cluster_resources: List[AvailableClusterNodeResources] = []
         for resource in cluster.nodes:
             node_name: str = resource.hostname
@@ -59,3 +50,15 @@ class ClustersDomainProvider(ClustersProvider):
                 )
             )
         return available_cluster_resources
+
+    def get_cluster(self, cluster_id: str) -> WorkspaceCluster:
+        cluster: Cluster = self.clusters_service.get_cluster(cluster_id=cluster_id)
+        available_cluster_resources: List[AvailableClusterNodeResources] = (
+            self._get_cluster_resources(cluster=cluster)
+        )
+        return WorkspaceCluster(
+            id=cluster.id,
+            name=cluster.name,
+            status=WorkspaceClusterStatus.from_str(cluster.status.value),
+            available_resources=available_cluster_resources,
+        )

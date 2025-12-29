@@ -19,6 +19,7 @@ from exls.shared.core.crypto import CryptoService
 from exls.shared.core.utils import generate_random_name
 from exls.workspaces.adapters.bundle import WorkspacesBundle
 from exls.workspaces.adapters.ui.configurators import (
+    DevPodConfigurator,
     DistributedTrainingConfigurator,
     DistributedTrainingModels,
     GradientCompression,
@@ -26,20 +27,23 @@ from exls.workspaces.adapters.ui.configurators import (
     InvalidWorkspaceConfiguration,
     JupyterConfigurator,
     MarimoConfigurator,
-    VSCodeDevPodConfigurator,
 )
 from exls.workspaces.adapters.ui.display.render import (
     DEPLOY_WORKSPACE_REQUEST_VIEW,
     WORKSPACE_LIST_VIEW,
 )
 from exls.workspaces.core.domain import (
+    GPUVendorPreference,
     WorkerGroupResources,
     WorkerResources,
     Workspace,
     WorkspaceCluster,
     WorkspaceTemplate,
 )
-from exls.workspaces.core.requests import DeployWorkspaceRequest
+from exls.workspaces.core.requests import (
+    DeployWorkspaceRequest,
+    SingleNodeWorkerResourcesRequest,
+)
 from exls.workspaces.core.service import WorkspacesService
 
 logger = logging.getLogger("cli.workspaces")
@@ -208,6 +212,25 @@ def _get_cluster_id(
         return cluster_selection_dto.cluster_id
 
 
+def _get_resources_for_single_node_worker(
+    service: WorkspacesService,
+    cluster_id: str,
+    num_gpus: int,
+) -> WorkerResources:
+    resources_request: SingleNodeWorkerResourcesRequest = (
+        SingleNodeWorkerResourcesRequest(
+            cluster_id=cluster_id,
+            gpu_vendor_preference=GPUVendorPreference.AUTO,
+            resource_split_tolerance=0.1,
+            num_gpus=num_gpus,
+        )
+    )
+    resources: WorkerResources = service.get_resources_for_single_node_worker(
+        request=resources_request
+    )
+    return resources
+
+
 @workspaces_deploy_app.command("jupyter", help="Deploy a Jupyter workspace")
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_jupyter_workspace(
@@ -267,8 +290,8 @@ def deploy_jupyter_workspace(
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
-    resources: WorkerResources = service.get_resources_for_single_node_worker(
-        cluster_id=valid_cluster_id, num_gpus=num_gpus
+    resources: WorkerResources = _get_resources_for_single_node_worker(
+        service, cluster.id, num_gpus
     )
 
     template: WorkspaceTemplate = _get_workspace_template(
@@ -381,8 +404,8 @@ def deploy_marimo_workspace(
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
-    resources: WorkerResources = service.get_resources_for_single_node_worker(
-        cluster_id=valid_cluster_id, num_gpus=num_gpus
+    resources: WorkerResources = _get_resources_for_single_node_worker(
+        service, cluster.id, num_gpus
     )
 
     template: WorkspaceTemplate = _get_workspace_template(
@@ -435,9 +458,9 @@ def deploy_marimo_workspace(
     )
 
 
-@workspaces_deploy_app.command("dev-pod", help="Deploy a VSCode dev pod workspace")
+@workspaces_deploy_app.command("dev-pod", help="Deploy a dev pod workspace")
 @handle_application_layer_errors(WorkspacesBundle)
-def deploy_vscode_dev_pod_workspace(
+def deploy_dev_pod_workspace(
     ctx: typer.Context,
     cluster_id: Optional[str] = typer.Argument(
         None,
@@ -476,7 +499,7 @@ def deploy_vscode_dev_pod_workspace(
     ),
 ):
     """
-    Deploy a VSCode dev pod workspace.
+    Deploy a dev pod workspace.
     """
     bundle = WorkspacesBundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
@@ -505,8 +528,8 @@ def deploy_vscode_dev_pod_workspace(
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
-    resources: WorkerResources = service.get_resources_for_single_node_worker(
-        cluster_id=valid_cluster_id, num_gpus=num_gpus
+    resources: WorkerResources = _get_resources_for_single_node_worker(
+        service, cluster.id, num_gpus
     )
 
     ssh_public_key_str: Optional[str] = None
@@ -517,11 +540,11 @@ def deploy_vscode_dev_pod_workspace(
         )
 
     template: WorkspaceTemplate = _get_workspace_template(
-        service, IntegratedWorkspaceTemplates.VSCODE_DEV_POD
+        service, IntegratedWorkspaceTemplates.DEV_POD
     )
-    configurator: VSCodeDevPodConfigurator = VSCodeDevPodConfigurator(
+    configurator: DevPodConfigurator = DevPodConfigurator(
         editor_render_bundle=bundle.get_editor_render_bundle(
-            IntegratedWorkspaceTemplates.VSCODE_DEV_POD
+            IntegratedWorkspaceTemplates.DEV_POD
         ),
         ssh_password=ssh_password,
         ssh_public_key=ssh_public_key_str,
@@ -540,7 +563,7 @@ def deploy_vscode_dev_pod_workspace(
         template_id=template.id_name,
         template_variables=template_variables,
         resources=resources,
-        description=f"VSCode dev pod workspace with {num_gpus} GPUs",
+        description=f"Dev pod workspace with {num_gpus} GPUs",
     )
 
     io_facade.display_data(

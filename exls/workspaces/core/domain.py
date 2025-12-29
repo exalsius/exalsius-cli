@@ -80,8 +80,8 @@ class WorkspaceTemplate(BaseModel):
 
 class WorkspaceAccessInformation(BaseModel):
     access_type: WorkspaceAccessType = Field(..., description="The access type")
-    access_protocol: str = Field(..., description="The access protocol")
-    external_ips: List[str] = Field(
+    access_protocol: StrictStr = Field(..., description="The access protocol")
+    external_ips: List[StrictStr] = Field(
         default_factory=list, description="The external IPs"
     )
     port_number: int = Field(..., description="The port number")
@@ -90,11 +90,11 @@ class WorkspaceAccessInformation(BaseModel):
     def formatted_access_information(self) -> str:
         if not self.external_ips:
             return "<pending>"
-        if self.access_protocol == "ssh":
+        if self.access_protocol.lower() == "ssh":
             if self.port_number != 22:
                 return f"ssh -p {self.port_number} {self.external_ips[0]}"
             return f"ssh {self.external_ips[0]}"
-        return f"{self.access_protocol}://{self.external_ips[0]}:{self.port_number}"
+        return f"{self.access_protocol.lower()}://{self.external_ips[0]}:{self.port_number}"
 
 
 class Workspace(BaseModel):

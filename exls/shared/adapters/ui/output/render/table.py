@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import logging
 from typing import (
     Any,
@@ -36,7 +35,13 @@ def _get_nested_attribute(obj: Any, attr: str, default: Any = "") -> Any:
     If any attribute in the chain does not exist, it returns the default value.
     """
     try:
-        return functools.reduce(getattr, attr.split("."), obj)
+        current = obj
+        for part in attr.split("."):
+            if isinstance(current, list):
+                current = [getattr(item, part) for item in current]  # type: ignore
+            else:
+                current = getattr(current, part)
+        return current
     except (AttributeError, TypeError) as e:
         logging.debug(
             f"Error getting nested attribute {attr} from {obj} - Returning default value: {default} - Error: {e}"
