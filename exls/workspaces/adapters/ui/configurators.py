@@ -28,7 +28,7 @@ class InvalidWorkspaceConfiguration(ExalsiusError):
 class IntegratedWorkspaceTemplates(StrEnum):
     JUPYTER = "jupyter-notebook-template"
     MARIMO = "marimo-workspace-template"
-    VSCODE_DEV_POD = "vscode-devcontainer-template"
+    DEV_POD = "vscode-devcontainer-template"
     DIST_TRAINING = "diloco-training-template"
     OTHER = "other"
 
@@ -236,7 +236,7 @@ class MarimoConfigurator(BaseWorkspaceConfigurator):
         return super().configure_and_validate(variables, io_facade)
 
 
-class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
+class DevPodConfigurator(BaseWorkspaceConfigurator):
     def __init__(
         self,
         editor_render_bundle: WorkspaceEditorRenderBundle,
@@ -249,7 +249,7 @@ class VSCodeDevPodConfigurator(BaseWorkspaceConfigurator):
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
-        return IntegratedWorkspaceTemplates.VSCODE_DEV_POD
+        return IntegratedWorkspaceTemplates.DEV_POD
 
     def _validate(
         self,

@@ -1,6 +1,6 @@
 from typing import Dict
 
-from exls.shared.adapters.ui.output.render.service import format_datetime
+from exls.shared.adapters.ui.output.render.service import format_datetime, format_list
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
 
@@ -18,7 +18,9 @@ _WORKSPACE_LIST_COLUMNS: Dict[str, Column] = {
         "Created At", value_formatter=format_datetime
     ),
     "cluster_id": TableRenderContext.get_column("Cluster ID"),
-    "formatted_access_information": TableRenderContext.get_column("Access"),
+    "access_information.formatted_access_information": TableRenderContext.get_column(
+        "Access", value_formatter=format_list
+    ),
 }
 
 WORKSPACE_LIST_VIEW = ViewContext.from_table_columns(_WORKSPACE_LIST_COLUMNS)
