@@ -133,12 +133,16 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
                     )
                     invalid_node_ids.append(node_id)
 
-        cluster_node_resources: List[ClusterNodeRefResourcesData] = (
-            self._cluster_gateway.get_cluster_resources(cluster_id=cluster_data.id)
-        )
-        cluster_node_resource_map: Dict[str, ClusterNodeRefResourcesData] = {
-            resource.node_id: resource for resource in cluster_node_resources
-        }
+        # Only fetch cluster resources when cluster is READY, as resources
+        # are not available during DEPLOYING or PENDING states
+        cluster_node_resource_map: Dict[str, ClusterNodeRefResourcesData] = {}
+        if cluster_data.status == ClusterStatus.READY:
+            cluster_node_resources: List[ClusterNodeRefResourcesData] = (
+                self._cluster_gateway.get_cluster_resources(cluster_id=cluster_data.id)
+            )
+            cluster_node_resource_map = {
+                resource.node_id: resource for resource in cluster_node_resources
+            }
         nodes: List[ClusterNode] = []
         for node_id in cluster_node_ref_map.keys():
             if node_id not in invalid_node_ids:
