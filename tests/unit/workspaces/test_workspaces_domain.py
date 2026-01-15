@@ -406,7 +406,7 @@ class TestWorkspaceValueObjects:
             external_ips=["1.2.3.4"],
             port_number=22,
         )
-        assert wai.formatted_access_information == "ssh 1.2.3.4"
+        assert wai.formatted_access_information == "ssh dev@1.2.3.4"
 
         # Case 2: SSH non-standard port
         wai = WorkspaceAccessInformation(
@@ -415,7 +415,7 @@ class TestWorkspaceValueObjects:
             external_ips=["1.2.3.4"],
             port_number=2222,
         )
-        assert wai.formatted_access_information == "ssh -p 2222 1.2.3.4"
+        assert wai.formatted_access_information == "ssh -p 2222 dev@1.2.3.4"
 
     def test_formatted_access_info_http(self):
         wai = WorkspaceAccessInformation(
