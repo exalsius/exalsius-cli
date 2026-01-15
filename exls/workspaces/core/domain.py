@@ -92,8 +92,8 @@ class WorkspaceAccessInformation(BaseModel):
             return "<pending>"
         if self.access_protocol.lower() == "ssh":
             if self.port_number != 22:
-                return f"ssh -p {self.port_number} {self.external_ips[0]}"
-            return f"ssh {self.external_ips[0]}"
+                return f"ssh -p {self.port_number} dev@{self.external_ips[0]}"
+            return f"ssh dev@{self.external_ips[0]}"
         return f"{self.access_protocol.lower()}://{self.external_ips[0]}:{self.port_number}"
 
 
