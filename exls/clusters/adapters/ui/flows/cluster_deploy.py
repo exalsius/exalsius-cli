@@ -102,16 +102,16 @@ class DeployClusterFlow(FlowStep[FlowDeployClusterRequestDTO]):
                     message="Enable multinode AI model training for the cluster?",
                     default=False,
                 ),
-                ConfirmStep[FlowDeployClusterRequestDTO](
-                    key="enable_vpn",
-                    message="Enable VPN for the cluster?",
-                    default=False,
-                ),
-                # ConfirmStep[DeployClusterRequestFromFlowDTO](
-                #     key="enable_telemetry",
-                #     message="Enable telemetry for the cluster?",
+                # ConfirmStep[FlowDeployClusterRequestDTO](
+                #     key="enable_vpn",
+                #     message="Enable VPN for the cluster?",
                 #     default=False,
                 # ),
+                ConfirmStep[FlowDeployClusterRequestDTO](
+                    key="enable_telemetry",
+                    message="Enable telemetry for the cluster?",
+                    default=False,
+                ),
             ]
         )
         flow.execute(model, context, io_facade)
