@@ -30,6 +30,7 @@ class IntegratedWorkspaceTemplates(StrEnum):
     MARIMO = "marimo-workspace-template"
     DEV_POD = "vscode-devcontainer-template"
     DIST_TRAINING = "diloco-training-template"
+    LLM_D = "llm-d-model-template"
     OTHER = "other"
 
     @classmethod
@@ -281,6 +282,110 @@ class DevPodConfigurator(BaseWorkspaceConfigurator):
             variables["sshPublicKey"] = ""
 
         return edited_variables
+
+
+class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
+    def __init__(
+        self,
+        editor_render_bundle: WorkspaceEditorRenderBundle,
+        huggingface_token: str,
+        model_name: str,
+    ):
+        super().__init__(editor_render_bundle)
+        self._huggingface_token: str = huggingface_token
+        self._model_name: str = model_name
+
+    @property
+    def template_id(self) -> IntegratedWorkspaceTemplates:
+        return IntegratedWorkspaceTemplates.LLM_D
+
+    def _extract_model_short_name(self, full_model_name: str) -> str:
+        """
+        Extract short model name from full HuggingFace model path.
+        Example: "Qwen/Qwen3-1.7B" -> "Qwen3-1.7B"
+        """
+        if "/" in full_model_name:
+            return full_model_name.split("/")[-1]
+        return full_model_name
+
+    def _validate(
+        self,
+        ref_variables: Dict[str, Any],
+        edited_variables: Dict[str, Any],
+        parent_keys: Optional[List[str]] = None,
+    ) -> None:
+        super()._validate(ref_variables, edited_variables, parent_keys=parent_keys)
+
+        # Validate huggingfaceToken
+        if edited_variables.get("huggingfaceToken", "") == "":
+            raise InvalidWorkspaceConfiguration(
+                "LLM inference workspace requires 'huggingfaceToken' to be set."
+            )
+
+        # Validate ms.modelArtifacts fields
+        if "ms" not in edited_variables:
+            raise InvalidWorkspaceConfiguration(
+                "LLM inference workspace requires 'ms' configuration."
+            )
+
+        ms_config = edited_variables["ms"]
+        if "modelArtifacts" not in ms_config:
+            raise InvalidWorkspaceConfiguration(
+                "LLM inference workspace requires 'ms.modelArtifacts' configuration."
+            )
+
+        model_artifacts = ms_config["modelArtifacts"]
+        if not model_artifacts.get("uri"):
+            raise InvalidWorkspaceConfiguration(
+                "LLM inference workspace requires 'ms.modelArtifacts.uri' to be set."
+            )
+        if not model_artifacts.get("name"):
+            raise InvalidWorkspaceConfiguration(
+                "LLM inference workspace requires 'ms.modelArtifacts.name' to be set."
+            )
+
+    def configure_and_validate(
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
+    ) -> Dict[str, Any]:
+        # Set the Hugging Face token
+        variables["huggingfaceToken"] = self._huggingface_token
+
+        # Extract model short name
+        model_short_name = self._extract_model_short_name(self._model_name)
+
+        # Configure model artifacts
+        if "ms" not in variables:
+            variables["ms"] = {}
+        if "modelArtifacts" not in variables["ms"]:
+            variables["ms"]["modelArtifacts"] = {}
+
+        variables["ms"]["modelArtifacts"]["uri"] = f"hf://{self._model_name}"
+        variables["ms"]["modelArtifacts"]["name"] = self._model_name
+
+        # Set model labels
+        if "labels" not in variables["ms"]:
+            variables["ms"]["labels"] = {}
+        variables["ms"]["labels"]["llm-d.ai/model"] = model_short_name
+        variables["ms"]["labels"]["llm-d.ai/inferenceServing"] = "true"
+
+        # Configure inference pool model server labels
+        if "ip" not in variables:
+            variables["ip"] = {}
+        if "inferencePool" not in variables["ip"]:
+            variables["ip"]["inferencePool"] = {}
+        if "modelServers" not in variables["ip"]["inferencePool"]:
+            variables["ip"]["inferencePool"]["modelServers"] = {}
+        if "matchLabels" not in variables["ip"]["inferencePool"]["modelServers"]:
+            variables["ip"]["inferencePool"]["modelServers"]["matchLabels"] = {}
+
+        variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
+            "llm-d.ai/model"
+        ] = model_short_name
+        variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
+            "llm-d.ai/inferenceServing"
+        ] = "true"
+
+        return super().configure_and_validate(variables, io_facade)
 
 
 class DistributedTrainingModels(StrEnum):
