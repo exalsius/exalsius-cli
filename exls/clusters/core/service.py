@@ -305,6 +305,7 @@ class ClustersService:
             enable_vpn=create_params.enable_vpn,
             enable_telemetry=create_params.enable_telemetry,
             enable_multinode_training=create_params.enable_multinode_training,
+            prepare_llm_inference_environment=create_params.prepare_llm_inference_environment,
             colony_id=create_params.colony_id,
             to_be_deleted_at=create_params.to_be_deleted_at,
             worker_node_ids=final_worker_ids,

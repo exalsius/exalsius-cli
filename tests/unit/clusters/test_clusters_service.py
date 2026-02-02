@@ -141,6 +141,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=["node-1"],
             control_plane_nodes=[],
         )
@@ -188,6 +189,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=[node_spec],
         )
 
@@ -236,6 +238,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=["missing-node"],
             control_plane_nodes=[],
         )
@@ -274,6 +277,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=[spec],
         )
 
@@ -302,6 +306,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=["node-1"],
         )
 
@@ -348,6 +353,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=[],
             control_plane_nodes=["cp-1"],
         )
@@ -397,6 +403,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=["node-1"],
         )
 
@@ -488,6 +495,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=["node-1", "missing-node"],
         )
 
@@ -520,6 +528,7 @@ class TestClustersService(unittest.TestCase):
             enable_vpn=False,
             enable_telemetry=False,
             enable_multinode_training=False,
+            prepare_llm_inference_environment=False,
             worker_nodes=["node-1"],
         )
 

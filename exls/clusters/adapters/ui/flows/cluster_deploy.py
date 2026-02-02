@@ -48,6 +48,10 @@ class FlowDeployClusterRequestDTO(BaseModel):
         default=False,
         description="Enable multinode AI model training for the cluster",
     )
+    prepare_llm_inference_environment: bool = Field(
+        default=False,
+        description="Prepare LLM inference environment for the cluster",
+    )
     enable_telemetry: bool = Field(
         default=False, description="Enable telemetry for the cluster"
     )
@@ -100,6 +104,11 @@ class DeployClusterFlow(FlowStep[FlowDeployClusterRequestDTO]):
                 ConfirmStep[FlowDeployClusterRequestDTO](
                     key="enable_multinode_training",
                     message="Enable multinode AI model training for the cluster?",
+                    default=False,
+                ),
+                ConfirmStep[FlowDeployClusterRequestDTO](
+                    key="prepare_llm_inference_environment",
+                    message="Prepare LLM inference environment for the cluster?",
                     default=False,
                 ),
                 # ConfirmStep[FlowDeployClusterRequestDTO](
