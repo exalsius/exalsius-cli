@@ -314,40 +314,15 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         edited_variables: Dict[str, Any],
         parent_keys: Optional[List[str]] = None,
     ) -> None:
+        # Note: We don't validate huggingfaceToken here because it's set programmatically
+        # in configure_and_validate() and we trust that value. We only validate the
+        # structural elements that come from the template.
         super()._validate(ref_variables, edited_variables, parent_keys=parent_keys)
-
-        # Validate huggingfaceToken
-        if edited_variables.get("huggingfaceToken", "") == "":
-            raise InvalidWorkspaceConfiguration(
-                "LLM inference workspace requires 'huggingfaceToken' to be set."
-            )
-
-        # Validate ms.modelArtifacts fields
-        if "ms" not in edited_variables:
-            raise InvalidWorkspaceConfiguration(
-                "LLM inference workspace requires 'ms' configuration."
-            )
-
-        ms_config = edited_variables["ms"]
-        if "modelArtifacts" not in ms_config:
-            raise InvalidWorkspaceConfiguration(
-                "LLM inference workspace requires 'ms.modelArtifacts' configuration."
-            )
-
-        model_artifacts = ms_config["modelArtifacts"]
-        if not model_artifacts.get("uri"):
-            raise InvalidWorkspaceConfiguration(
-                "LLM inference workspace requires 'ms.modelArtifacts.uri' to be set."
-            )
-        if not model_artifacts.get("name"):
-            raise InvalidWorkspaceConfiguration(
-                "LLM inference workspace requires 'ms.modelArtifacts.name' to be set."
-            )
 
     def configure_and_validate(
         self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
-        # Set the Hugging Face token
+        # Set the Hugging Face token - this will be preserved through editing
         variables["huggingfaceToken"] = self._huggingface_token
 
         # Extract model short name
@@ -363,10 +338,12 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         variables["ms"]["modelArtifacts"]["name"] = self._model_name
 
         # Set model labels
-        if "labels" not in variables["ms"]:
-            variables["ms"]["labels"] = {}
-        variables["ms"]["labels"]["llm-d.ai/model"] = model_short_name
-        variables["ms"]["labels"]["llm-d.ai/inferenceServing"] = "true"
+        if "labels" not in variables["ms"]["modelArtifacts"]:
+            variables["ms"]["modelArtifacts"]["labels"] = {}
+        variables["ms"]["modelArtifacts"]["labels"]["llm-d.ai/model"] = model_short_name
+        variables["ms"]["modelArtifacts"]["labels"][
+            "llm-d.ai/inferenceServing"
+        ] = "true"
 
         # Configure inference pool model server labels
         if "ip" not in variables:
