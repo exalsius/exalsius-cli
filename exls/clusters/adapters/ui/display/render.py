@@ -101,6 +101,9 @@ _FLOW_DEPLOY_CLUSTER_REQUEST_COLUMNS: Dict[str, Column] = {
     "enable_multinode_training": TableRenderContext.get_column(
         "Multinode Training Enabled"
     ),
+    "prepare_llm_inference_environment": TableRenderContext.get_column(
+        "LLM Inference Environment Prepared"
+    ),
     "enable_vpn": TableRenderContext.get_column("VPN Enabled"),
     "worker_node_ids": TableRenderContext.get_column(
         "Worker Node IDs",

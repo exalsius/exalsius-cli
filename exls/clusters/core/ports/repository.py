@@ -17,6 +17,9 @@ class ClusterCreateParameters(BaseModel):
     enable_multinode_training: bool = Field(
         ..., description="Enable multinode AI model training for the cluster"
     )
+    prepare_llm_inference_environment: bool = Field(
+        ..., description="Prepare LLM inference environment for the cluster"
+    )
     colony_id: Optional[StrictStr] = Field(
         default=None, description="The ID of the colony to add the cluster to"
     )

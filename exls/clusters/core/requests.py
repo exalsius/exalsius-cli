@@ -44,5 +44,8 @@ class ClusterDeployRequest(BaseModel):
     enable_multinode_training: bool = Field(
         ..., description="Enable multinode AI model training for the cluster"
     )
+    prepare_llm_inference_environment: bool = Field(
+        ..., description="Prepare LLM inference environment for the cluster"
+    )
     enable_telemetry: bool = Field(..., description="Enable telemetry for the cluster")
     enable_vpn: bool = Field(..., description="Enable VPN for the cluster")

@@ -59,6 +59,7 @@ class _ClusterLabels(StrEnum):
 
 class _ClusterLabelValuesWorkloadType(StrEnum):
     VOLCANO = "volcano"
+    LLM_D = "llm-d"
 
 
 def get_cluster_labels(
@@ -67,6 +68,8 @@ def get_cluster_labels(
     labels: Dict[StrictStr, StrictStr] = {}
     if parameters.enable_multinode_training:
         labels[_ClusterLabels.WORKLOAD_TYPE] = _ClusterLabelValuesWorkloadType.VOLCANO
+    if parameters.prepare_llm_inference_environment:
+        labels[_ClusterLabels.WORKLOAD_TYPE] = _ClusterLabelValuesWorkloadType.LLM_D
     return labels
 
 

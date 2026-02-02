@@ -166,6 +166,11 @@ def deploy_cluster(
         "--enable-multinode-training",
         help="Enable multinode AI model training for the cluster",
     ),
+    prepare_llm_inference_environment: bool = typer.Option(
+        False,
+        "--prepare-llm-inference-environment",
+        help="Prepare LLM inference environment for the cluster",
+    ),
     enable_telemetry: bool = typer.Option(
         False,
         "--enable-telemetry",
@@ -201,6 +206,7 @@ def deploy_cluster(
             ],
             control_plane_nodes=[],
             enable_multinode_training=cluster_deploy_request_dto.enable_multinode_training,
+            prepare_llm_inference_environment=cluster_deploy_request_dto.prepare_llm_inference_environment,
             enable_telemetry=cluster_deploy_request_dto.enable_telemetry,
             enable_vpn=False,
         )
@@ -210,6 +216,7 @@ def deploy_cluster(
             type=ClusterType.REMOTE,
             worker_nodes=[node for node in worker_node_ids or []],
             enable_multinode_training=enable_multinode_training,
+            prepare_llm_inference_environment=prepare_llm_inference_environment,
             enable_telemetry=enable_telemetry,
             enable_vpn=False,
         )
