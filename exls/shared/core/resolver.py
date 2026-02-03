@@ -59,6 +59,11 @@ def resolve_resource_id(
     """
     Resolve a resource name or ID to an ID.
 
+    Resolution order:
+        1. Exact ID match - we can return the ID immediately
+        2. Exact name match (case-sensitive)
+        3. Case-insensitive name match
+
     Args:
         resources: List of resources to search through
         name_or_id: Either a resource ID or name
@@ -71,30 +76,26 @@ def resolve_resource_id(
         ResourceNotFoundError: If no resource matches the name or ID
         AmbiguousResourceError: If multiple resources match the name
     """
-    # First, try exact ID match
-    for resource in resources:
-        if resource.id == name_or_id:
-            return resource.id
+    # 1) Exact ID match
+    id_matches = [r for r in resources if r.id == name_or_id]
+    if len(id_matches) == 1:
+        return id_matches[0].id
 
     # If it looks like a UUID but wasn't found, it's probably a wrong ID
     if is_uuid(name_or_id):
         raise ResourceNotFoundError(resource_type, name_or_id)
 
-    # Try name match (case-sensitive exact match)
+    # Exact name match (case-sensitive)
     name_matches = [r for r in resources if r.name == name_or_id]
-
     if len(name_matches) == 1:
         return name_matches[0].id
-
     if len(name_matches) > 1:
         raise AmbiguousResourceError(resource_type, name_or_id, name_matches)
 
-    # No exact name match - try case-insensitive match
+    # Case-insensitive name match
     name_matches_ci = [r for r in resources if r.name.lower() == name_or_id.lower()]
-
     if len(name_matches_ci) == 1:
         return name_matches_ci[0].id
-
     if len(name_matches_ci) > 1:
         raise AmbiguousResourceError(resource_type, name_or_id, name_matches_ci)
 
