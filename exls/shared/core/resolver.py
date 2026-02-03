@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import re
+import uuid
 from typing import List, Protocol, Sequence, TypeVar
 
 
@@ -18,16 +18,14 @@ class NamedResource(Protocol):
 
 T = TypeVar("T", bound=NamedResource)
 
-# UUID v4 pattern (common format for resource IDs)
-UUID_PATTERN = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-    re.IGNORECASE,
-)
-
 
 def is_uuid(value: str) -> bool:
     """Check if a string looks like a UUID."""
-    return bool(UUID_PATTERN.match(value))
+    try:
+        uuid.UUID(value)
+        return True
+    except ValueError:
+        return False
 
 
 class ResourceNotFoundError(Exception):
