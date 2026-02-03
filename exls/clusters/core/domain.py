@@ -65,6 +65,11 @@ class ClusterNode(BaseModel):
         ..., description="The occupied resources of the node"
     )
 
+    @property
+    def name(self) -> str:
+        """Alias for hostname to support name-or-id resolution."""
+        return self.hostname
+
 
 class ClusterType(StrEnum):
     REMOTE = "REMOTE"
