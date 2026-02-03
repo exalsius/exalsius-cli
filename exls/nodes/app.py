@@ -27,6 +27,7 @@ from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.core.resolver import resolve_resource_id
 from exls.shared.core.utils import generate_random_name
 
 nodes_app = typer.Typer()
@@ -76,13 +77,17 @@ def list_nodes(
 @handle_application_layer_errors(NodesBundle)
 def get_node(
     ctx: typer.Context,
-    node_id: str = typer.Argument(..., help="The ID of the node to get"),
+    node_name_or_id: str = typer.Argument(
+        ..., help="The name (hostname) or ID of the node to get"
+    ),
 ):
     """Get a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
+    nodes: List[BaseNode] = service.list_nodes(NodesFilterCriteria())
+    node_id: str = resolve_resource_id(nodes, node_name_or_id, "node")
     node: BaseNode = service.get_node(node_id)
 
     io_facade.display_data(
@@ -96,14 +101,22 @@ def get_node(
 @handle_application_layer_errors(NodesBundle)
 def delete_nodes(
     ctx: typer.Context,
-    node_ids: List[str] = typer.Argument(..., help="The IDs of the nodes to delete"),
+    node_names_or_ids: List[str] = typer.Argument(
+        ..., help="The names (hostnames) or IDs of the nodes to delete"
+    ),
 ):
     """Delete a node in the node pool."""
     bundle: NodesBundle = NodesBundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
-    deleted_node_ids_result = service.delete_nodes(node_ids)
+    nodes: List[BaseNode] = service.list_nodes(NodesFilterCriteria())
+    resolved_node_ids: List[str] = [
+        resolve_resource_id(nodes, node_name_or_id, "node")
+        for node_name_or_id in node_names_or_ids
+    ]
+
+    deleted_node_ids_result = service.delete_nodes(resolved_node_ids)
 
     io_facade.display_success_message(
         f"Nodes {', '.join(deleted_node_ids_result.deleted_node_ids)} deleted successfully",

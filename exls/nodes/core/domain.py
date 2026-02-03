@@ -43,6 +43,11 @@ class BaseNode(BaseModel):
     status: NodeStatus = Field(..., description="The status of the node")
     resources: NodeResources = Field(..., description="The resources of the node")
 
+    @property
+    def name(self) -> str:
+        """Alias for hostname to support name-or-id resolution."""
+        return self.hostname
+
 
 class CloudNode(BaseNode):
     """Domain object representing a cloud node."""
