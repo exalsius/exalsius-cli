@@ -77,6 +77,7 @@ class NodesDomainProvider(NodesProvider):
                 ),
             )
             for node in node_data_list
+            if node.status == ClusterNodeStatus.AVAILABLE
         ]
 
     def import_nodes(
