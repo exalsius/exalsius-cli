@@ -25,6 +25,12 @@ from exls.workspaces.adapters.ui.editor.render import (
     get_workspace_template_editing_comments,
 )
 from exls.workspaces.adapters.ui.flows.access_flow import ConfigureWorkspaceAccessFlow
+from exls.workspaces.adapters.ui.flows.workspace_deploy import (
+    DeployDevPodFlow,
+    DeployDistributedTrainingFlow,
+    DeployJupyterFlow,
+    DeployMarimoFlow,
+)
 from exls.workspaces.core.ports.providers import (
     ClustersProvider,
     WorkspaceTemplatesProvider,
@@ -75,6 +81,21 @@ class WorkspacesBundle(BaseBundle):
 
     def get_configure_workspace_access_flow(self) -> ConfigureWorkspaceAccessFlow:
         return ConfigureWorkspaceAccessFlow(service=self.get_crypto_service())
+
+    def get_deploy_jupyter_flow(self) -> DeployJupyterFlow:
+        return DeployJupyterFlow(service=self.get_workspaces_service())
+
+    def get_deploy_marimo_flow(self) -> DeployMarimoFlow:
+        return DeployMarimoFlow(service=self.get_workspaces_service())
+
+    def get_deploy_dev_pod_flow(self) -> DeployDevPodFlow:
+        return DeployDevPodFlow(
+            service=self.get_workspaces_service(),
+            access_flow=self.get_configure_workspace_access_flow(),
+        )
+
+    def get_deploy_distributed_training_flow(self) -> DeployDistributedTrainingFlow:
+        return DeployDistributedTrainingFlow(service=self.get_workspaces_service())
 
     def get_editor_render_bundle(
         self, integrated_template: IntegratedWorkspaceTemplates

@@ -14,7 +14,10 @@ from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
     UserCancellationException,
 )
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    called_with_any_user_input,
+    help_if_no_subcommand,
+)
 from exls.shared.core.crypto import CryptoService
 from exls.shared.core.resolver import resolve_resource_id
 from exls.shared.core.utils import generate_random_name
@@ -33,6 +36,12 @@ from exls.workspaces.adapters.ui.display.render import (
     DEPLOY_WORKSPACE_REQUEST_VIEW,
     WORKSPACE_DETAIL_VIEW,
     WORKSPACE_LIST_VIEW,
+)
+from exls.workspaces.adapters.ui.flows.workspace_deploy import (
+    DeployDevPodFlowDTO,
+    DeployDistributedTrainingFlowDTO,
+    DeployJupyterFlowDTO,
+    DeployMarimoFlowDTO,
 )
 from exls.workspaces.core.domain import (
     GPUVendorPreference,
@@ -201,13 +210,9 @@ def deploy_workspace_interactive(
 
     bundle = WorkspacesBundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
+    service: WorkspacesService = bundle.get_workspaces_service()
 
-    io_facade.display_info_message(
-        "Deploying a new workspace - Interactive Mode",
-        bundle.message_output_format,
-    )
-
-    # Step 1: Select workspace type
+    # Select workspace type
     workspace_type_dto = WorkspaceTypeChoice()
     type_selection_flow: SequentialFlow[WorkspaceTypeChoice] = SequentialFlow[
         WorkspaceTypeChoice
@@ -224,475 +229,28 @@ def deploy_workspace_interactive(
 
     workspace_type = workspace_type_dto.workspace_type
 
-    # Step 2: Dispatch to the appropriate deployment flow based on type
+    # Run the appropriate flow and execute deployment
     if workspace_type == "jupyter":
-        _deploy_jupyter_interactive(ctx, bundle, io_facade)
+        flow_dto = DeployJupyterFlowDTO()
+        bundle.get_deploy_jupyter_flow().execute(flow_dto, FlowContext(), io_facade)
+        _execute_jupyter_deployment(bundle, io_facade, service, flow_dto)
+
     elif workspace_type == "marimo":
-        _deploy_marimo_interactive(ctx, bundle, io_facade)
+        flow_dto = DeployMarimoFlowDTO()
+        bundle.get_deploy_marimo_flow().execute(flow_dto, FlowContext(), io_facade)
+        _execute_marimo_deployment(bundle, io_facade, service, flow_dto)
+
     elif workspace_type == "dev-pod":
-        _deploy_dev_pod_interactive(ctx, bundle, io_facade)
+        flow_dto = DeployDevPodFlowDTO()
+        bundle.get_deploy_dev_pod_flow().execute(flow_dto, FlowContext(), io_facade)
+        _execute_dev_pod_deployment(bundle, io_facade, service, flow_dto)
+
     elif workspace_type == "distributed-training":
-        _deploy_distributed_training_interactive(ctx, bundle, io_facade)
-
-
-def _deploy_jupyter_interactive(
-    ctx: typer.Context,
-    bundle: WorkspacesBundle,
-    io_facade: IOBaseModelFacade,
-) -> None:
-    """Interactive deployment flow for Jupyter workspace."""
-    service: WorkspacesService = bundle.get_workspaces_service()
-
-    # Get cluster
-    cluster_id = _get_cluster_id(service, io_facade)
-    if not cluster_id:
-        io_facade.display_error_message(
-            "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
-            bundle.message_output_format,
+        flow_dto = DeployDistributedTrainingFlowDTO()
+        bundle.get_deploy_distributed_training_flow().execute(
+            flow_dto, FlowContext(), io_facade
         )
-        raise typer.Exit(0)
-
-    # Get workspace name
-    name = io_facade.ask_text(
-        message="Workspace name:",
-        default=generate_random_name(prefix="jupyter"),
-    )
-
-    # Get password
-    password = io_facade.ask_password(
-        message="Jupyter password (min. 6 characters):",
-        validator=lambda x: (
-            True if len(x) >= 6 else "Password must be at least 6 characters"
-        ),
-    )
-
-    # Get number of GPUs
-    num_gpus_str = io_facade.ask_text(
-        message="Number of GPUs:",
-        default="1",
-        validator=lambda x: (
-            True if x.isdigit() and int(x) >= 1 else "Must be a positive integer"
-        ),
-    )
-    num_gpus = int(num_gpus_str)
-
-    # Get wait for ready
-    wait_for_ready = io_facade.ask_confirm(
-        message="Wait for workspace to be ready?",
-        default=False,
-    )
-
-    # Get resources and template
-    resources = _get_resources_for_single_node_worker(service, cluster_id, num_gpus)
-    template = _get_workspace_template(service, IntegratedWorkspaceTemplates.JUPYTER)
-
-    configurator = JupyterConfigurator(
-        editor_render_bundle=bundle.get_editor_render_bundle(
-            IntegratedWorkspaceTemplates.JUPYTER
-        ),
-        password=password,
-    )
-    template_variables: Dict[str, Any] = configurator.configure_and_validate(
-        template.variables, io_facade
-    )
-
-    request = DeployWorkspaceRequest(
-        cluster_id=cluster_id,
-        workspace_name=name,
-        template_id=template.id_name,
-        template_variables=template_variables,
-        resources=resources,
-    )
-
-    io_facade.display_data(
-        request,
-        bundle.object_output_format,
-        view_context=DEPLOY_WORKSPACE_REQUEST_VIEW,
-    )
-    if not io_facade.ask_confirm(
-        message="Deploy this workspace?",
-        default=True,
-    ):
-        raise UserCancellationException("User cancelled the workspace deployment")
-
-    workspace: Workspace
-    if wait_for_ready:
-        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
-            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
-    else:
-        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
-
-
-def _deploy_marimo_interactive(
-    ctx: typer.Context,
-    bundle: WorkspacesBundle,
-    io_facade: IOBaseModelFacade,
-) -> None:
-    """Interactive deployment flow for Marimo workspace."""
-    service: WorkspacesService = bundle.get_workspaces_service()
-
-    # Get cluster
-    cluster_id = _get_cluster_id(service, io_facade)
-    if not cluster_id:
-        io_facade.display_error_message(
-            "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
-            bundle.message_output_format,
-        )
-        raise typer.Exit(0)
-
-    # Get workspace name
-    name = io_facade.ask_text(
-        message="Workspace name:",
-        default=generate_random_name(prefix="marimo"),
-    )
-
-    # Get password (optional for Marimo)
-    password = io_facade.ask_text(
-        message="Marimo password (optional, min. 6 characters if set):",
-        default="",
-        validator=lambda x: (
-            True
-            if x == "" or len(x) >= 6
-            else "Password must be at least 6 characters if provided"
-        ),
-    )
-
-    # Get number of GPUs
-    num_gpus_str = io_facade.ask_text(
-        message="Number of GPUs:",
-        default="1",
-        validator=lambda x: (
-            True if x.isdigit() and int(x) >= 1 else "Must be a positive integer"
-        ),
-    )
-    num_gpus = int(num_gpus_str)
-
-    # Get wait for ready
-    wait_for_ready = io_facade.ask_confirm(
-        message="Wait for workspace to be ready?",
-        default=False,
-    )
-
-    # Get resources and template
-    resources = _get_resources_for_single_node_worker(service, cluster_id, num_gpus)
-    template = _get_workspace_template(service, IntegratedWorkspaceTemplates.MARIMO)
-
-    configurator = MarimoConfigurator(
-        editor_render_bundle=bundle.get_editor_render_bundle(
-            IntegratedWorkspaceTemplates.MARIMO
-        ),
-        password=password,
-    )
-    template_variables: Dict[str, Any] = configurator.configure_and_validate(
-        template.variables, io_facade
-    )
-
-    request = DeployWorkspaceRequest(
-        cluster_id=cluster_id,
-        workspace_name=name,
-        template_id=template.id_name,
-        template_variables=template_variables,
-        resources=resources,
-    )
-
-    io_facade.display_data(
-        request,
-        bundle.object_output_format,
-        view_context=DEPLOY_WORKSPACE_REQUEST_VIEW,
-    )
-    if not io_facade.ask_confirm(
-        message="Deploy this workspace?",
-        default=True,
-    ):
-        raise UserCancellationException("User cancelled the workspace deployment")
-
-    workspace: Workspace
-    if wait_for_ready:
-        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
-            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
-    else:
-        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
-
-
-def _deploy_dev_pod_interactive(
-    ctx: typer.Context,
-    bundle: WorkspacesBundle,
-    io_facade: IOBaseModelFacade,
-) -> None:
-    """Interactive deployment flow for DevPod workspace."""
-    from exls.workspaces.adapters.ui.flows.access_flow import AccessDTO
-
-    service: WorkspacesService = bundle.get_workspaces_service()
-
-    # Get cluster
-    cluster_id = _get_cluster_id(service, io_facade)
-    if not cluster_id:
-        io_facade.display_error_message(
-            "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
-            bundle.message_output_format,
-        )
-        raise typer.Exit(0)
-
-    # Get workspace name
-    name = io_facade.ask_text(
-        message="Workspace name:",
-        default=generate_random_name(prefix="dev-pod"),
-    )
-
-    # Get number of GPUs
-    num_gpus_str = io_facade.ask_text(
-        message="Number of GPUs:",
-        default="1",
-        validator=lambda x: (
-            True if x.isdigit() and int(x) >= 1 else "Must be a positive integer"
-        ),
-    )
-    num_gpus = int(num_gpus_str)
-
-    # Get SSH access configuration using existing flow
-    access_dto = AccessDTO()
-    access_flow = bundle.get_configure_workspace_access_flow()
-    access_flow.execute(access_dto, FlowContext(), io_facade)
-
-    # Validate access configuration
-    if not access_dto.ssh_password and not access_dto.ssh_public_key:
-        raise ValueError("SSH password or public key is required")
-    if access_dto.ssh_password and len(access_dto.ssh_password) < 6:
-        raise ValueError("SSH password must be at least 6 characters")
-
-    # Get wait for ready
-    wait_for_ready = io_facade.ask_confirm(
-        message="Wait for workspace to be ready?",
-        default=False,
-    )
-
-    # Get resources and template
-    resources = _get_resources_for_single_node_worker(service, cluster_id, num_gpus)
-    template = _get_workspace_template(service, IntegratedWorkspaceTemplates.DEV_POD)
-
-    configurator = DevPodConfigurator(
-        editor_render_bundle=bundle.get_editor_render_bundle(
-            IntegratedWorkspaceTemplates.DEV_POD
-        ),
-        ssh_password=access_dto.ssh_password,
-        ssh_public_key=access_dto.ssh_public_key,
-    )
-    template_variables: Dict[str, Any] = configurator.configure_and_validate(
-        template.variables, io_facade
-    )
-
-    request = DeployWorkspaceRequest(
-        cluster_id=cluster_id,
-        workspace_name=name,
-        template_id=template.id_name,
-        template_variables=template_variables,
-        resources=resources,
-    )
-
-    io_facade.display_data(
-        request,
-        bundle.object_output_format,
-        view_context=DEPLOY_WORKSPACE_REQUEST_VIEW,
-    )
-    if not io_facade.ask_confirm(
-        message="Deploy this workspace?",
-        default=True,
-    ):
-        raise UserCancellationException("User cancelled the workspace deployment")
-
-    workspace: Workspace
-    if wait_for_ready:
-        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
-            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
-    else:
-        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-
-    # Format access information for DevPod
-    for access_info in workspace.access_information:
-        access_info_str = access_info.formatted_access_information
-        if access_info.access_protocol.lower() == "ssh":
-            access_info_str = access_info_str.replace("dev@", "dev@")
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
-
-
-def _deploy_distributed_training_interactive(
-    ctx: typer.Context,
-    bundle: WorkspacesBundle,
-    io_facade: IOBaseModelFacade,
-) -> None:
-    """Interactive deployment flow for Distributed Training workspace."""
-    service: WorkspacesService = bundle.get_workspaces_service()
-
-    # Get cluster
-    cluster_id = _get_cluster_id(service, io_facade)
-    if not cluster_id:
-        io_facade.display_error_message(
-            "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
-            bundle.message_output_format,
-        )
-        raise typer.Exit(0)
-
-    cluster: WorkspaceCluster = service.get_cluster(cluster_id)
-
-    # Select model
-    model_choices = ChoicesSpec[DistributedTrainingModels](
-        choices=[
-            DisplayChoice[DistributedTrainingModels](title=model.value, value=model)
-            for model in DistributedTrainingModels
-        ],
-        default=DisplayChoice[DistributedTrainingModels](
-            title=DistributedTrainingModels.GPT_NEO_X.value,
-            value=DistributedTrainingModels.GPT_NEO_X,
-        ),
-    )
-
-    class ModelSelectionDTO(BaseModel):
-        model: Optional[DistributedTrainingModels] = None
-
-    model_dto = ModelSelectionDTO()
-    model_flow: SequentialFlow[ModelSelectionDTO] = SequentialFlow[ModelSelectionDTO](
-        steps=[
-            SelectRequiredStep[ModelSelectionDTO, DistributedTrainingModels](
-                key="model",
-                message="Select model to train:",
-                choices_spec=model_choices,
-            )
-        ]
-    )
-    model_flow.execute(model_dto, FlowContext(), io_facade)
-    assert model_dto.model is not None  # SelectRequiredStep ensures this
-    model: DistributedTrainingModels = model_dto.model
-
-    # Select gradient compression
-    compression_choices = ChoicesSpec[GradientCompression](
-        choices=[
-            DisplayChoice[GradientCompression](
-                title=compression.value, value=compression
-            )
-            for compression in GradientCompression
-        ],
-        default=DisplayChoice[GradientCompression](
-            title=GradientCompression.MEDIUM_COMPRESSION.value,
-            value=GradientCompression.MEDIUM_COMPRESSION,
-        ),
-    )
-
-    class CompressionSelectionDTO(BaseModel):
-        gradient_compression: Optional[GradientCompression] = None
-
-    compression_dto = CompressionSelectionDTO()
-    compression_flow: SequentialFlow[CompressionSelectionDTO] = SequentialFlow[
-        CompressionSelectionDTO
-    ](
-        steps=[
-            SelectRequiredStep[CompressionSelectionDTO, GradientCompression](
-                key="gradient_compression",
-                message="Select gradient compression level:",
-                choices_spec=compression_choices,
-            )
-        ]
-    )
-    compression_flow.execute(compression_dto, FlowContext(), io_facade)
-    assert (
-        compression_dto.gradient_compression is not None
-    )  # SelectRequiredStep ensures this
-    gradient_compression: GradientCompression = compression_dto.gradient_compression
-
-    # Get API tokens
-    wandb_token = io_facade.ask_text(
-        message="Weights & Biases API token:",
-        validator=lambda x: True if len(x) > 0 else "Token cannot be empty",
-    )
-
-    hf_token = io_facade.ask_text(
-        message="Hugging Face API token:",
-        validator=lambda x: True if len(x) > 0 else "Token cannot be empty",
-    )
-
-    # Get resources for worker groups
-    resources: List[WorkerGroupResources] = service.get_resources_for_worker_groups(
-        cluster_id=cluster_id
-    )
-
-    template = _get_workspace_template(
-        service, IntegratedWorkspaceTemplates.DIST_TRAINING
-    )
-    configurator = DistributedTrainingConfigurator(
-        editor_render_bundle=bundle.get_editor_render_bundle(
-            IntegratedWorkspaceTemplates.DIST_TRAINING
-        ),
-        model=model,
-        gradient_compression=gradient_compression,
-        wandb_token=wandb_token,
-        hf_token=hf_token,
-        worker_groups=resources,
-    )
-
-    template_variables: Dict[str, Any] = configurator.configure_and_validate(
-        template.variables, io_facade
-    )
-
-    request = DeployWorkspaceRequest(
-        cluster_id=cluster.id,
-        workspace_name=f"dist-train-{model.value}-compression-{gradient_compression.value}",
-        template_id=template.id_name,
-        template_variables=template_variables,
-        resources=WorkerResources(
-            gpu_count=1,
-            gpu_type=None,
-            gpu_vendor=None,
-            cpu_cores=min([wg.worker_resources.cpu_cores for wg in resources]),
-            memory_gb=min([wg.worker_resources.memory_gb for wg in resources]),
-            storage_gb=min([wg.worker_resources.storage_gb for wg in resources]),
-        ),
-        description=f"Distributed training of {model.value} with gradient compression {gradient_compression.value} on {sum([wg.num_workers for wg in resources])} nodes",
-    )
-
-    io_facade.display_data(
-        request,
-        bundle.object_output_format,
-        view_context=DEPLOY_WORKSPACE_REQUEST_VIEW,
-    )
-    if not io_facade.ask_confirm(
-        message="Deploy this workspace?",
-        default=False,
-    ):
-        raise UserCancellationException("User cancelled the workspace deployment")
-
-    workspace: Workspace = service.deploy_workspace(
-        request=request, wait_for_ready=False
-    )
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
+        _execute_distributed_training_deployment(bundle, io_facade, service, flow_dto)
 
 
 def _get_workspace_template(
@@ -710,12 +268,6 @@ def _validate_optional_password(x: Optional[str]) -> Optional[str]:
         return x
     if len(x) < 6:
         raise ValueError("Password must be at least 6 characters long")
-    return x
-
-
-def _validate_api_token_non_empty(x: str) -> str:
-    if len(x) == 0:
-        raise ValueError("API token must be non-empty")
     return x
 
 
@@ -779,6 +331,217 @@ def _get_resources_for_single_node_worker(
     return resources
 
 
+# -----------------------------------------------------------------------------
+# Deployment Execution Helpers (shared by interactive callback and subcommands)
+# -----------------------------------------------------------------------------
+
+
+def _execute_jupyter_deployment(
+    bundle: WorkspacesBundle,
+    io_facade: IOBaseModelFacade,
+    service: WorkspacesService,
+    flow_dto: DeployJupyterFlowDTO,
+) -> None:
+    """Execute Jupyter workspace deployment with collected inputs."""
+    assert flow_dto.cluster is not None
+    cluster_id = flow_dto.cluster.id
+    num_gpus = int(flow_dto.num_gpus)
+
+    resources = _get_resources_for_single_node_worker(service, cluster_id, num_gpus)
+    template = _get_workspace_template(service, IntegratedWorkspaceTemplates.JUPYTER)
+
+    configurator = JupyterConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.JUPYTER
+        ),
+        password=flow_dto.password,
+    )
+    template_variables: Dict[str, Any] = configurator.configure_and_validate(
+        template.variables, io_facade
+    )
+
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster_id,
+        workspace_name=flow_dto.name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"Workspace with {num_gpus} GPUs",
+    )
+
+    _deploy_and_display_result(
+        bundle, io_facade, service, request, flow_dto.wait_for_ready
+    )
+
+
+def _execute_marimo_deployment(
+    bundle: WorkspacesBundle,
+    io_facade: IOBaseModelFacade,
+    service: WorkspacesService,
+    flow_dto: DeployMarimoFlowDTO,
+) -> None:
+    """Execute Marimo workspace deployment with collected inputs."""
+    assert flow_dto.cluster is not None
+    cluster_id = flow_dto.cluster.id
+    num_gpus = int(flow_dto.num_gpus)
+
+    resources = _get_resources_for_single_node_worker(service, cluster_id, num_gpus)
+    template = _get_workspace_template(service, IntegratedWorkspaceTemplates.MARIMO)
+
+    configurator = MarimoConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.MARIMO
+        ),
+        password=flow_dto.password,
+    )
+    template_variables: Dict[str, Any] = configurator.configure_and_validate(
+        template.variables, io_facade
+    )
+
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster_id,
+        workspace_name=flow_dto.name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"Marimo workspace with {num_gpus} GPUs",
+    )
+
+    _deploy_and_display_result(
+        bundle, io_facade, service, request, flow_dto.wait_for_ready
+    )
+
+
+def _execute_dev_pod_deployment(
+    bundle: WorkspacesBundle,
+    io_facade: IOBaseModelFacade,
+    service: WorkspacesService,
+    flow_dto: DeployDevPodFlowDTO,
+) -> None:
+    """Execute DevPod workspace deployment with collected inputs."""
+    assert flow_dto.cluster is not None
+    cluster_id = flow_dto.cluster.id
+    num_gpus = int(flow_dto.num_gpus)
+
+    resources = _get_resources_for_single_node_worker(service, cluster_id, num_gpus)
+    template = _get_workspace_template(service, IntegratedWorkspaceTemplates.DEV_POD)
+
+    configurator = DevPodConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.DEV_POD
+        ),
+        ssh_password=flow_dto.access.ssh_password,
+        ssh_public_key=flow_dto.access.ssh_public_key,
+    )
+    template_variables: Dict[str, Any] = configurator.configure_and_validate(
+        template.variables, io_facade
+    )
+
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster_id,
+        workspace_name=flow_dto.name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"Dev pod workspace with {num_gpus} GPUs",
+    )
+
+    _deploy_and_display_result(
+        bundle, io_facade, service, request, flow_dto.wait_for_ready
+    )
+
+
+def _execute_distributed_training_deployment(
+    bundle: WorkspacesBundle,
+    io_facade: IOBaseModelFacade,
+    service: WorkspacesService,
+    flow_dto: DeployDistributedTrainingFlowDTO,
+) -> None:
+    """Execute Distributed Training workspace deployment with collected inputs."""
+    assert flow_dto.cluster is not None
+    assert flow_dto.model is not None
+    assert flow_dto.gradient_compression is not None
+    cluster_id = flow_dto.cluster.id
+
+    resources: List[WorkerGroupResources] = service.get_resources_for_worker_groups(
+        cluster_id=cluster_id
+    )
+    template = _get_workspace_template(
+        service, IntegratedWorkspaceTemplates.DIST_TRAINING
+    )
+
+    configurator = DistributedTrainingConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.DIST_TRAINING
+        ),
+        model=flow_dto.model,
+        gradient_compression=flow_dto.gradient_compression,
+        wandb_token=flow_dto.wandb_token,
+        hf_token=flow_dto.hf_token,
+        worker_groups=resources,
+    )
+    template_variables: Dict[str, Any] = configurator.configure_and_validate(
+        template.variables, io_facade
+    )
+
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster_id,
+        workspace_name=f"dist-train-{flow_dto.model.value}-compression-{flow_dto.gradient_compression.value}",
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=WorkerResources(
+            gpu_count=1,
+            gpu_type=None,
+            gpu_vendor=None,
+            cpu_cores=min([wg.worker_resources.cpu_cores for wg in resources]),
+            memory_gb=min([wg.worker_resources.memory_gb for wg in resources]),
+            storage_gb=min([wg.worker_resources.storage_gb for wg in resources]),
+        ),
+        description=f"Distributed training of {flow_dto.model.value} with gradient compression {flow_dto.gradient_compression.value} on {sum([wg.num_workers for wg in resources])} nodes",
+    )
+
+    workspace: Workspace = service.deploy_workspace(
+        request=request, wait_for_ready=False
+    )
+
+    io_facade.display_success_message(
+        f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(
+        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
+    )
+
+
+def _deploy_and_display_result(
+    bundle: WorkspacesBundle,
+    io_facade: IOBaseModelFacade,
+    service: WorkspacesService,
+    request: DeployWorkspaceRequest,
+    wait_for_ready: bool,
+) -> None:
+    """Execute deployment and display results."""
+    workspace: Workspace
+    if wait_for_ready:
+        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
+            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
+    else:
+        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
+
+    io_facade.display_success_message(
+        f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(
+        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
+    )
+
+
+# -----------------------------------------------------------------------------
+# Subcommands
+# -----------------------------------------------------------------------------
+
+
 @workspaces_deploy_app.command("jupyter", help="Deploy a Jupyter workspace")
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_jupyter_workspace(
@@ -788,18 +551,18 @@ def deploy_jupyter_workspace(
         show_default=False,
         default=None,
     ),
-    name: str = typer.Option(
-        generate_random_name(prefix="jupyter"),
+    name: Optional[str] = typer.Option(
+        None,
         "--name",
         "-n",
         help="The name of the workspace to deploy",
+        show_default=False,
     ),
-    password: str = typer.Option(
+    password: Optional[str] = typer.Option(
         None,
         "--password",
         "-p",
         help="The password to use for the Jupyter workspace. Must be at least 6 characters long.",
-        prompt="You need a password to access your Jupyter workspace. Please enter the password (min. 6 characters)",
         show_default=False,
     ),
     num_gpus: int = typer.Option(
@@ -820,9 +583,18 @@ def deploy_jupyter_workspace(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    if len(password) < 6:
-        raise ValueError("Password must be at least 6 characters long")
+    # If no CLI args provided, use interactive flow
+    if not called_with_any_user_input(ctx):
+        flow_dto = DeployJupyterFlowDTO()
+        bundle.get_deploy_jupyter_flow().execute(flow_dto, FlowContext(), io_facade)
+        _execute_jupyter_deployment(bundle, io_facade, service, flow_dto)
+        return
 
+    # CLI args provided - validate and use them
+    if password is None or len(password) < 6:
+        raise ValueError("Password must be provided and be at least 6 characters long")
+
+    # Resolve cluster
     valid_cluster_id: str
     if not cluster_name_or_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
@@ -860,9 +632,10 @@ def deploy_jupyter_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
+    workspace_name = name if name else generate_random_name(prefix="jupyter")
     request = DeployWorkspaceRequest(
         cluster_id=cluster.id,
-        workspace_name=name,
+        workspace_name=workspace_name,
         template_id=template.id_name,
         template_variables=template_variables,
         resources=resources,
@@ -880,20 +653,7 @@ def deploy_jupyter_workspace(
     ):
         raise UserCancellationException("User cancelled the workspace deployment")
 
-    workspace: Workspace
-    if wait_for_ready:
-        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
-            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
-    else:
-        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
+    _deploy_and_display_result(bundle, io_facade, service, request, wait_for_ready)
 
 
 @workspaces_deploy_app.command("marimo", help="Deploy a Marimo workspace")
@@ -905,18 +665,18 @@ def deploy_marimo_workspace(
         show_default=False,
         default=None,
     ),
-    name: str = typer.Option(
-        generate_random_name(prefix="marimo"),
+    name: Optional[str] = typer.Option(
+        None,
         "--name",
         "-n",
         help="The name of the workspace to deploy",
+        show_default=False,
     ),
-    password: str = typer.Option(
+    password: Optional[str] = typer.Option(
         None,
         "--password",
         "-p",
-        help="The password to use for the Marimo workspace. Must be at least 6 characters long.",
-        prompt="You need a password to access your Marimo workspace. Please enter the password (min. 6 characters)",
+        help="The password to use for the Marimo workspace (optional, min. 6 characters if set).",
         callback=_validate_optional_password,
         show_default=False,
     ),
@@ -938,9 +698,15 @@ def deploy_marimo_workspace(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    if len(password) < 6:
-        raise ValueError("Password must be at least 6 characters long")
+    # If no CLI args provided, use interactive flow
+    if not called_with_any_user_input(ctx):
+        flow_dto = DeployMarimoFlowDTO()
+        bundle.get_deploy_marimo_flow().execute(flow_dto, FlowContext(), io_facade)
+        _execute_marimo_deployment(bundle, io_facade, service, flow_dto)
+        return
 
+    # CLI args provided - validate and use them
+    # Resolve cluster
     valid_cluster_id: str
     if not cluster_name_or_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
@@ -968,7 +734,7 @@ def deploy_marimo_workspace(
         editor_render_bundle=bundle.get_editor_render_bundle(
             IntegratedWorkspaceTemplates.MARIMO
         ),
-        password=password,
+        password=password or "",
     )
     try:
         template_variables: Dict[str, Any] = configurator.configure_and_validate(
@@ -978,9 +744,10 @@ def deploy_marimo_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
+    workspace_name = name if name else generate_random_name(prefix="marimo")
     request = DeployWorkspaceRequest(
         cluster_id=cluster.id,
-        workspace_name=name,
+        workspace_name=workspace_name,
         template_id=template.id_name,
         template_variables=template_variables,
         resources=resources,
@@ -998,20 +765,7 @@ def deploy_marimo_workspace(
     ):
         raise UserCancellationException("User cancelled the workspace deployment")
 
-    workspace: Workspace
-    if wait_for_ready:
-        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
-            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
-    else:
-        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
+    _deploy_and_display_result(bundle, io_facade, service, request, wait_for_ready)
 
 
 @workspaces_deploy_app.command("dev-pod", help="Deploy a dev pod workspace")
@@ -1023,11 +777,12 @@ def deploy_dev_pod_workspace(
         help="The name or ID of the cluster to deploy the workspace to",
         show_default=False,
     ),
-    name: str = typer.Option(
-        generate_random_name(prefix="dev-pod"),
+    name: Optional[str] = typer.Option(
+        None,
         "--name",
         "-n",
         help="The name of the workspace to deploy",
+        show_default=False,
     ),
     num_gpus: int = typer.Option(
         1, "--num-gpus", "-g", help="The number of GPUs to deploy the workspace with"
@@ -1061,6 +816,14 @@ def deploy_dev_pod_workspace(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
+    # If no CLI args provided, use interactive flow
+    if not called_with_any_user_input(ctx):
+        flow_dto = DeployDevPodFlowDTO()
+        bundle.get_deploy_dev_pod_flow().execute(flow_dto, FlowContext(), io_facade)
+        _execute_dev_pod_deployment(bundle, io_facade, service, flow_dto)
+        return
+
+    # CLI args provided - validate and use them
     if not ssh_password and not ssh_public_key:
         raise ValueError(
             "No SSH password or public key provided. Please provide at least one of them."
@@ -1114,9 +877,10 @@ def deploy_dev_pod_workspace(
         io_facade.display_error_message(str(e), bundle.message_output_format)
         raise typer.Exit(1)
 
+    workspace_name = name if name else generate_random_name(prefix="dev-pod")
     request = DeployWorkspaceRequest(
         cluster_id=cluster.id,
-        workspace_name=name,
+        workspace_name=workspace_name,
         template_id=template.id_name,
         template_variables=template_variables,
         resources=resources,
@@ -1134,20 +898,7 @@ def deploy_dev_pod_workspace(
     ):
         raise UserCancellationException("User cancelled the workspace deployment")
 
-    workspace: Workspace
-    if wait_for_ready:
-        with io_facade.spinner("Deploying workspace and waiting for it to be ready..."):
-            workspace = service.deploy_workspace(request=request, wait_for_ready=True)
-    else:
-        workspace = service.deploy_workspace(request=request, wait_for_ready=False)
-
-    io_facade.display_success_message(
-        f"Workspace {workspace.name} deployed successfully.",
-        bundle.message_output_format,
-    )
-    io_facade.display_data(
-        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
-    )
+    _deploy_and_display_result(bundle, io_facade, service, request, wait_for_ready)
 
 
 @workspaces_deploy_app.command(
@@ -1161,34 +912,32 @@ def deploy_distributed_training_workspace(
         show_default=False,
         default=None,
     ),
-    model: DistributedTrainingModels = typer.Option(
-        DistributedTrainingModels.GPT_NEO_X,
+    model: Optional[DistributedTrainingModels] = typer.Option(
+        None,
         "--model",
         "-m",
         help="The model to deploy the workspace with",
+        show_default=False,
     ),
-    gradient_compression: GradientCompression = typer.Option(
-        GradientCompression.MEDIUM_COMPRESSION,
+    gradient_compression: Optional[GradientCompression] = typer.Option(
+        None,
         "--gradient-compression",
         "-g",
-        help="We can compress the gradients during training to reduce the communication overhead.",
+        help="Compress the gradients during training to reduce the communication overhead.",
+        show_default=False,
     ),
-    wandb_token: str = typer.Option(
+    wandb_token: Optional[str] = typer.Option(
         None,
         "--wandb-token",
         "-w",
         help="The API token to use for Weights and Biases",
-        callback=_validate_api_token_non_empty,
-        prompt=True,
         show_default=False,
     ),
-    hf_token: str = typer.Option(
+    hf_token: Optional[str] = typer.Option(
         None,
         "--hf-token",
         "-t",
         help="The API token to use for Hugging Face",
-        callback=_validate_api_token_non_empty,
-        prompt=True,
         show_default=False,
     ),
 ):
@@ -1198,6 +947,29 @@ def deploy_distributed_training_workspace(
     bundle = WorkspacesBundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
+
+    # If no CLI args provided, use interactive flow
+    if not called_with_any_user_input(ctx):
+        flow_dto = DeployDistributedTrainingFlowDTO()
+        bundle.get_deploy_distributed_training_flow().execute(
+            flow_dto, FlowContext(), io_facade
+        )
+        _execute_distributed_training_deployment(bundle, io_facade, service, flow_dto)
+        return
+
+    # CLI args provided - validate and use them
+    if not wandb_token or len(wandb_token) == 0:
+        raise ValueError("Weights & Biases API token must be provided")
+    if not hf_token or len(hf_token) == 0:
+        raise ValueError("Hugging Face API token must be provided")
+
+    # Use defaults if not provided
+    effective_model = model if model else DistributedTrainingModels.GPT_NEO_X
+    effective_compression = (
+        gradient_compression
+        if gradient_compression
+        else GradientCompression.MEDIUM_COMPRESSION
+    )
 
     valid_cluster_id: str
     if not cluster_name_or_id:
@@ -1226,8 +998,8 @@ def deploy_distributed_training_workspace(
         editor_render_bundle=bundle.get_editor_render_bundle(
             IntegratedWorkspaceTemplates.DIST_TRAINING
         ),
-        model=model,
-        gradient_compression=gradient_compression,
+        model=effective_model,
+        gradient_compression=effective_compression,
         wandb_token=wandb_token,
         hf_token=hf_token,
         worker_groups=resources,
@@ -1239,7 +1011,7 @@ def deploy_distributed_training_workspace(
 
     request = DeployWorkspaceRequest(
         cluster_id=cluster.id,
-        workspace_name=f"dist-train-{model.value}-compression-{gradient_compression.value}",
+        workspace_name=f"dist-train-{effective_model.value}-compression-{effective_compression.value}",
         template_id=template.id_name,
         template_variables=template_variables,
         resources=WorkerResources(
@@ -1250,7 +1022,7 @@ def deploy_distributed_training_workspace(
             memory_gb=min([wg.worker_resources.memory_gb for wg in resources]),
             storage_gb=min([wg.worker_resources.storage_gb for wg in resources]),
         ),
-        description=f"Distributed training of {model.value} with gradient compression {gradient_compression.value} on {sum([wg.num_workers for wg in resources])} nodes",
+        description=f"Distributed training of {effective_model.value} with gradient compression {effective_compression.value} on {sum([wg.num_workers for wg in resources])} nodes",
     )
 
     io_facade.display_data(
