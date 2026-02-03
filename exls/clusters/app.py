@@ -31,6 +31,7 @@ from exls.shared.adapters.ui.utils import (
     help_if_no_subcommand,
     open_url_in_browser,
 )
+from exls.shared.core.resolver import resolve_resource_id
 from exls.shared.core.utils import (
     generate_random_name,
     validate_kubernetes_name,
@@ -76,7 +77,9 @@ def list_clusters(
 @handle_application_layer_errors(ClustersBundle)
 def get_cluster(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(..., help="The ID of the cluster to get"),
+    cluster_name_or_id: str = typer.Argument(
+        ..., help="The name or ID of the cluster to get"
+    ),
 ):
     """
     Get a cluster.
@@ -85,6 +88,8 @@ def get_cluster(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster_domain: Cluster = service.get_cluster(cluster_id)
 
     io_facade.display_data(
@@ -98,7 +103,9 @@ def get_cluster(
 @handle_application_layer_errors(ClustersBundle)
 def delete_cluster(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(..., help="The ID of the cluster to delete"),
+    cluster_name_or_id: str = typer.Argument(
+        ..., help="The name or ID of the cluster to delete"
+    ),
     confirmation: bool = typer.Option(
         False,
         "--yes",
@@ -113,6 +120,8 @@ def delete_cluster(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster_domain: Cluster = service.get_cluster(cluster_id)
 
     if not confirmation:
@@ -130,7 +139,8 @@ def delete_cluster(
     service.delete_cluster(cluster_id)
 
     io_facade.display_success_message(
-        f"Cluster {cluster_id} deleted successfully.", bundle.message_output_format
+        f"Cluster '{cluster_domain.name}' deleted successfully.",
+        bundle.message_output_format,
     )
 
 
@@ -275,7 +285,9 @@ def deploy_cluster(
 @handle_application_layer_errors(ClustersBundle)
 def list_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument("", help="The ID of the cluster to list nodes of"),
+    cluster_name_or_id: str = typer.Argument(
+        "", help="The name or ID of the cluster to list nodes of"
+    ),
 ):
     """
     List all nodes of a cluster.
@@ -284,6 +296,8 @@ def list_nodes(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster: Cluster = service.get_cluster(cluster_id)
 
     io_facade.display_info_message(
@@ -324,13 +338,13 @@ def add_nodes(
 @handle_application_layer_errors(ClustersBundle)
 def remove_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to remove nodes from"
+    cluster_name_or_id: str = typer.Argument(
+        ..., help="The name or ID of the cluster to remove nodes from"
     ),
-    node_ids: List[str] = typer.Option(
+    node_names_or_ids: List[str] = typer.Option(
         [],
         "--node-ids",
-        help="The IDs of the nodes to remove from the cluster.",
+        help="The names or IDs of the nodes to remove from the cluster.",
         show_default=False,
     ),
 ):
@@ -341,13 +355,23 @@ def remove_nodes(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
+    cluster: Cluster = service.get_cluster(cluster_id)
+
+    # Resolve node names/IDs within this cluster
+    resolved_node_ids: List[str] = [
+        resolve_resource_id(cluster.nodes, node_name_or_id, "node")
+        for node_name_or_id in node_names_or_ids
+    ]
+
     removed_node_ids: List[str] = service.remove_nodes_from_cluster(
         cluster_id=cluster_id,
-        node_ids=node_ids,
+        node_ids=resolved_node_ids,
     )
 
     io_facade.display_success_message(
-        message=f"Following nodes removed from cluster {cluster_id} successfully: {', '.join(removed_node_ids)}.",
+        message=f"Following nodes removed from cluster '{cluster.name}' successfully: {', '.join(removed_node_ids)}.",
         output_format=bundle.message_output_format,
     )
 
@@ -356,9 +380,9 @@ def remove_nodes(
 @handle_application_layer_errors(ClustersBundle)
 def get_cluster_resources(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
+    cluster_name_or_id: str = typer.Argument(
         ...,
-        help="The ID of the cluster to get resources of",
+        help="The name or ID of the cluster to get resources of",
     ),
 ):
     """
@@ -368,6 +392,8 @@ def get_cluster_resources(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster: Cluster = service.get_cluster(cluster_id=cluster_id)
 
     io_facade.display_info_message(
@@ -387,8 +413,8 @@ def get_cluster_resources(
 @handle_application_layer_errors(ClustersBundle)
 def get_dashboard_url(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to get the monitoring dashboard URL of"
+    cluster_name_or_id: str = typer.Argument(
+        ..., help="The name or ID of the cluster to get the monitoring dashboard URL of"
     ),
     open_browser: bool = typer.Option(
         False,
@@ -403,6 +429,8 @@ def get_dashboard_url(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     dashboard_url_str: str = service.get_dashboard_url(cluster_id)
 
     if open_browser:
@@ -427,8 +455,8 @@ def get_dashboard_url(
 @handle_application_layer_errors(ClustersBundle)
 def import_kubeconfig(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ..., help="The ID of the cluster to import the kubeconfig to"
+    cluster_name_or_id: str = typer.Argument(
+        ..., help="The name or ID of the cluster to import the kubeconfig to"
     ),
     kubeconfig_path: str = typer.Option(
         Path.home().joinpath(".kube", "config").as_posix(),
@@ -443,9 +471,13 @@ def import_kubeconfig(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
+    clusters: List[Cluster] = service.list_clusters()
+    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
+    cluster: Cluster = service.get_cluster(cluster_id)
+
     service.import_kubeconfig(cluster_id, kubeconfig_path)
 
     io_facade.display_success_message(
-        message=f"Kubeconfig from cluster {cluster_id} successfully imported to {kubeconfig_path}.",
+        message=f"Kubeconfig from cluster '{cluster.name}' successfully imported to {kubeconfig_path}.",
         output_format=bundle.message_output_format,
     )
