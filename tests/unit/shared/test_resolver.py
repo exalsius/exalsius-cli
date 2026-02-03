@@ -5,6 +5,10 @@ from typing import List
 import pytest
 from pydantic import BaseModel
 
+from exls.shared.core.resolver import _check_id  # pyright: ignore[reportPrivateUsage]
+from exls.shared.core.resolver import (
+    _check_names,  # pyright: ignore[reportPrivateUsage]
+)
 from exls.shared.core.resolver import (
     AmbiguousResourceError,
     ResourceNotFoundError,
@@ -49,6 +53,119 @@ class TestIsUuid:
     def test_regular_name(self):
         assert is_uuid("my-cluster") is False
         assert is_uuid("jupyter-workspace-123") is False
+
+
+class TestCheckId:
+    """Tests for the _check_id helper function."""
+
+    @pytest.fixture
+    def resources(self) -> List[MockResource]:
+        return [
+            MockResource(
+                id="550e8400-e29b-41d4-a716-446655440001", name="cluster-alpha"
+            ),
+            MockResource(
+                id="550e8400-e29b-41d4-a716-446655440002", name="cluster-beta"
+            ),
+            MockResource(id="simple-id", name="cluster-gamma"),
+        ]
+
+    def test_returns_id_on_exact_uuid_match(
+        self, resources: List[MockResource]
+    ) -> None:
+        result = _check_id(resources, "550e8400-e29b-41d4-a716-446655440001")
+        assert result == "550e8400-e29b-41d4-a716-446655440001"
+
+    def test_returns_id_on_exact_non_uuid_match(
+        self, resources: List[MockResource]
+    ) -> None:
+        result = _check_id(resources, "simple-id")
+        assert result == "simple-id"
+
+    def test_returns_none_when_no_match(self, resources: List[MockResource]) -> None:
+        result = _check_id(resources, "nonexistent-id")
+        assert result is None
+
+    def test_returns_none_for_empty_list(self) -> None:
+        result = _check_id([], "any-id")
+        assert result is None
+
+    def test_does_not_match_by_name(self, resources: List[MockResource]) -> None:
+        # Should not find anything when searching by name
+        result = _check_id(resources, "cluster-alpha")
+        assert result is None
+
+
+class TestCheckNames:
+    """Tests for the _check_names helper function."""
+
+    @pytest.fixture
+    def resources(self) -> List[MockResource]:
+        return [
+            MockResource(id="id-1", name="cluster-alpha"),
+            MockResource(id="id-2", name="cluster-beta"),
+            MockResource(id="id-3", name="cluster-gamma"),
+        ]
+
+    def test_returns_id_on_exact_name_match(
+        self, resources: List[MockResource]
+    ) -> None:
+        result = _check_names(resources, "cluster-beta", "cluster")
+        assert result == "id-2"
+
+    def test_returns_id_on_case_insensitive_match(
+        self, resources: List[MockResource]
+    ) -> None:
+        result = _check_names(resources, "CLUSTER-BETA", "cluster")
+        assert result == "id-2"
+
+    def test_returns_id_on_mixed_case_match(
+        self, resources: List[MockResource]
+    ) -> None:
+        result = _check_names(resources, "Cluster-Beta", "cluster")
+        assert result == "id-2"
+
+    def test_raises_not_found_when_no_match(
+        self, resources: List[MockResource]
+    ) -> None:
+        with pytest.raises(ResourceNotFoundError) as exc_info:
+            _check_names(resources, "cluster-delta", "cluster")
+        assert exc_info.value.resource_type == "cluster"
+        assert exc_info.value.identifier == "cluster-delta"
+
+    def test_raises_ambiguous_on_exact_duplicates(self) -> None:
+        resources = [
+            MockResource(id="id-1", name="my-cluster"),
+            MockResource(id="id-2", name="my-cluster"),
+        ]
+        with pytest.raises(AmbiguousResourceError) as exc_info:
+            _check_names(resources, "my-cluster", "cluster")
+        assert exc_info.value.resource_type == "cluster"
+        assert exc_info.value.name == "my-cluster"
+        assert len(exc_info.value.matches) == 2
+
+    def test_raises_ambiguous_on_case_insensitive_duplicates(self) -> None:
+        resources = [
+            MockResource(id="id-1", name="My-Cluster"),
+            MockResource(id="id-2", name="my-cluster"),
+        ]
+        with pytest.raises(AmbiguousResourceError) as exc_info:
+            _check_names(resources, "MY-CLUSTER", "cluster")
+        assert len(exc_info.value.matches) == 2
+
+    def test_prefers_exact_match_over_case_insensitive(self) -> None:
+        """If there's an exact match, return it even if case-insensitive would match multiple."""
+        resources = [
+            MockResource(id="id-1", name="My-Cluster"),
+            MockResource(id="id-2", name="my-cluster"),
+        ]
+        # Exact match for "my-cluster" should return id-2
+        result = _check_names(resources, "my-cluster", "cluster")
+        assert result == "id-2"
+
+    def test_raises_not_found_for_empty_list(self) -> None:
+        with pytest.raises(ResourceNotFoundError):
+            _check_names([], "any-name", "cluster")
 
 
 class TestResolveResourceId:
@@ -129,26 +246,6 @@ class TestResolveResourceId:
         with pytest.raises(ResourceNotFoundError):
             resolve_resource_id([], "any-name", "cluster")
 
-    def test_id_takes_precedence_over_name(self):
-        """If a resource's ID matches the search term, use it even if another resource has that as its name."""
-        resources = [
-            MockResource(id="special-id", name="cluster-one"),
-            MockResource(
-                id="other-id", name="special-id"
-            ),  # Name matches first resource's ID
-        ]
-        result = resolve_resource_id(resources, "special-id", "cluster")
-        # Should return the resource with matching ID, not the one with matching name
-        assert result == "special-id"
-
-    def test_non_uuid_id_still_matches_by_id(self):
-        """IDs don't have to be UUIDs - any exact ID match should work."""
-        resources = [
-            MockResource(id="simple-id-123", name="cluster-one"),
-        ]
-        result = resolve_resource_id(resources, "simple-id-123", "cluster")
-        assert result == "simple-id-123"
-
 
 class TestFindResourceByNameOrId:
     """Tests for the find_resource_by_name_or_id function."""
@@ -156,18 +253,24 @@ class TestFindResourceByNameOrId:
     @pytest.fixture
     def resources(self) -> List[MockResource]:
         return [
-            MockResource(id="id-1", name="resource-alpha"),
-            MockResource(id="id-2", name="resource-beta"),
+            MockResource(
+                id="550e8400-e29b-41d4-a716-446655440001", name="resource-alpha"
+            ),
+            MockResource(
+                id="550e8400-e29b-41d4-a716-446655440002", name="resource-beta"
+            ),
         ]
 
     def test_find_by_id(self, resources: List[MockResource]) -> None:
-        result = find_resource_by_name_or_id(resources, "id-1", "resource")
-        assert result.id == "id-1"
+        result = find_resource_by_name_or_id(
+            resources, "550e8400-e29b-41d4-a716-446655440001", "resource"
+        )
+        assert result.id == "550e8400-e29b-41d4-a716-446655440001"
         assert result.name == "resource-alpha"
 
     def test_find_by_name(self, resources: List[MockResource]) -> None:
         result = find_resource_by_name_or_id(resources, "resource-beta", "resource")
-        assert result.id == "id-2"
+        assert result.id == "550e8400-e29b-41d4-a716-446655440002"
         assert result.name == "resource-beta"
 
     def test_not_found(self, resources: List[MockResource]) -> None:
@@ -176,8 +279,8 @@ class TestFindResourceByNameOrId:
 
     def test_ambiguous(self) -> None:
         resources: List[MockResource] = [
-            MockResource(id="id-1", name="duplicate"),
-            MockResource(id="id-2", name="duplicate"),
+            MockResource(id="550e8400-e29b-41d4-a716-446655440001", name="duplicate"),
+            MockResource(id="550e8400-e29b-41d4-a716-446655440002", name="duplicate"),
         ]
         with pytest.raises(AmbiguousResourceError):
             find_resource_by_name_or_id(resources, "duplicate", "resource")
