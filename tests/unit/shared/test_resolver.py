@@ -36,8 +36,9 @@ class TestIsUuid:
     def test_invalid_uuid_too_short(self):
         assert is_uuid("550e8400-e29b-41d4-a716") is False
 
-    def test_invalid_uuid_no_dashes(self):
-        assert is_uuid("550e8400e29b41d4a716446655440000") is False
+    def test_valid_uuid_no_dashes(self):
+        # Python's uuid.UUID() accepts UUIDs without dashes
+        assert is_uuid("550e8400e29b41d4a716446655440000") is True
 
     def test_invalid_uuid_wrong_format(self):
         assert is_uuid("not-a-uuid-at-all") is False
