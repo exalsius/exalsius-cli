@@ -1,15 +1,40 @@
 from typing import Dict
 
-from exls.shared.adapters.ui.output.render.service import format_datetime, format_list
+from exls.shared.adapters.ui.output.render.service import (
+    format_datetime,
+    format_datetime_humanized,
+    format_list,
+)
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
 
 # -----------------------------------------------------------------------------
-# WORKSPACE VIEWS
+# WORKSPACE LIST VIEWS (humanized timestamps)
 # -----------------------------------------------------------------------------
 
 
 _WORKSPACE_LIST_COLUMNS: Dict[str, Column] = {
+    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "name": TableRenderContext.get_column("Name"),
+    "template_name": TableRenderContext.get_column("Template"),
+    "status": TableRenderContext.get_column("Status"),
+    "created_at": TableRenderContext.get_column(
+        "Created At", value_formatter=format_datetime_humanized
+    ),
+    "cluster_id": TableRenderContext.get_column("Cluster ID"),
+    "access_information.formatted_access_information": TableRenderContext.get_column(
+        "Access", value_formatter=format_list
+    ),
+}
+
+WORKSPACE_LIST_VIEW = ViewContext.from_table_columns(_WORKSPACE_LIST_COLUMNS)
+
+
+# -----------------------------------------------------------------------------
+# WORKSPACE DETAIL VIEWS (ISO timestamps for single resource get)
+# -----------------------------------------------------------------------------
+
+_WORKSPACE_DETAIL_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "template_name": TableRenderContext.get_column("Template"),
@@ -23,7 +48,7 @@ _WORKSPACE_LIST_COLUMNS: Dict[str, Column] = {
     ),
 }
 
-WORKSPACE_LIST_VIEW = ViewContext.from_table_columns(_WORKSPACE_LIST_COLUMNS)
+WORKSPACE_DETAIL_VIEW = ViewContext.from_table_columns(_WORKSPACE_DETAIL_COLUMNS)
 
 # -----------------------------------------------------------------------------
 # DEPLOY REQUEST VIEWS

@@ -31,6 +31,7 @@ from exls.workspaces.adapters.ui.configurators import (
 )
 from exls.workspaces.adapters.ui.display.render import (
     DEPLOY_WORKSPACE_REQUEST_VIEW,
+    WORKSPACE_DETAIL_VIEW,
     WORKSPACE_LIST_VIEW,
 )
 from exls.workspaces.core.domain import (
@@ -124,7 +125,7 @@ def get_workspace(
     io_facade.display_data(
         data=workspace,
         output_format=bundle.object_output_format,
-        view_context=WORKSPACE_LIST_VIEW,
+        view_context=WORKSPACE_DETAIL_VIEW,
     )
 
 

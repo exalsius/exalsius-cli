@@ -1,14 +1,42 @@
 from typing import Dict
 
-from exls.shared.adapters.ui.output.render.service import format_datetime, format_na
+from exls.shared.adapters.ui.output.render.service import (
+    format_datetime,
+    format_datetime_humanized,
+    format_na,
+)
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
 
 # -----------------------------------------------------------------------------
-# NODE VIEWS
+# NODE LIST VIEWS (humanized timestamps)
 # -----------------------------------------------------------------------------
 
 _NODE_LIST_COLUMNS: Dict[str, Column] = {
+    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "hostname": TableRenderContext.get_column("Hostname"),
+    "import_time": TableRenderContext.get_column(
+        "Import Time", value_formatter=format_datetime_humanized
+    ),
+    "status": TableRenderContext.get_column("Status"),
+    # Cloud Node Attributes
+    "provider": TableRenderContext.get_column("Provider"),
+    "instance_type": TableRenderContext.get_column("Instance Type"),
+    "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
+    # Self-Managed Node Attributes
+    "username": TableRenderContext.get_column("Username"),
+    "ssh_key_name": TableRenderContext.get_column("SSH Key"),
+    "endpoint": TableRenderContext.get_column("Endpoint", value_formatter=format_na),
+}
+
+NODE_LIST_VIEW = ViewContext.from_table_columns(_NODE_LIST_COLUMNS)
+
+
+# -----------------------------------------------------------------------------
+# NODE DETAIL VIEWS (ISO timestamps for single resource get)
+# -----------------------------------------------------------------------------
+
+_NODE_DETAIL_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "hostname": TableRenderContext.get_column("Hostname"),
     "import_time": TableRenderContext.get_column(
@@ -25,7 +53,7 @@ _NODE_LIST_COLUMNS: Dict[str, Column] = {
     "endpoint": TableRenderContext.get_column("Endpoint", value_formatter=format_na),
 }
 
-NODE_LIST_VIEW = ViewContext.from_table_columns(_NODE_LIST_COLUMNS)
+NODE_DETAIL_VIEW = ViewContext.from_table_columns(_NODE_DETAIL_COLUMNS)
 
 # -----------------------------------------------------------------------------
 # IMPORT REQUEST VIEWS

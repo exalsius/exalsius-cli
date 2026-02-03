@@ -5,6 +5,7 @@ import typer
 
 from exls.clusters.adapters.bundle import ClustersBundle
 from exls.clusters.adapters.ui.display.render import (
+    CLUSTER_DETAIL_VIEW,
     CLUSTER_LIST_VIEW,
     CLUSTER_NODE_ISSUE_VIEW,
     CLUSTER_NODE_LIST_VIEW,
@@ -95,7 +96,7 @@ def get_cluster(
     io_facade.display_data(
         cluster_domain,
         bundle.object_output_format,
-        view_context=CLUSTER_LIST_VIEW,
+        view_context=CLUSTER_DETAIL_VIEW,
     )
 
 
