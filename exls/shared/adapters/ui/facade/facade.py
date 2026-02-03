@@ -1,8 +1,10 @@
+from contextlib import contextmanager
 from pathlib import Path
 from typing import (
     Any,
     Callable,
     Dict,
+    Generator,
     Optional,
     Sequence,
     TypeVar,
@@ -129,3 +131,9 @@ class IOBaseModelFacade(IOFacade[BaseModel]):
         return self.input_manager.edit_dictionary(
             dictionary=dictionary, renderer=renderer
         )
+
+    @contextmanager
+    def spinner(self, message: str) -> Generator[None, None, None]:
+        """Display a spinner with a message while a long-running operation is in progress."""
+        with self.output_manager.spinner(message):
+            yield

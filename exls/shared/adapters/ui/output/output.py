@@ -1,4 +1,6 @@
+from contextlib import contextmanager
 from typing import (
+    Generator,
     Generic,
     Literal,
     Optional,
@@ -164,3 +166,9 @@ class TyperConsoleOutputManager(
             self._get_error_message_renderer(output_format)
         )
         self.console.print(renderer.render(item))
+
+    @contextmanager
+    def spinner(self, message: str) -> Generator[None, None, None]:
+        """Display a spinner with a message while a long-running operation is in progress."""
+        with self.console.status(message, spinner="dots"):
+            yield

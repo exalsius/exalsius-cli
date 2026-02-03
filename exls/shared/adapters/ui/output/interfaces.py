@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from typing import (
     TYPE_CHECKING,
+    Generator,
     Generic,
     Literal,
     Optional,
@@ -108,6 +110,12 @@ class IMessageOutputManager(ABC):
     def display_error_message(
         self, message: str, output_format: OutputFormat
     ) -> None: ...
+
+    @abstractmethod
+    @contextmanager
+    def spinner(self, message: str) -> Generator[None, None, None]:
+        """Display a spinner with a message while a long-running operation is in progress."""
+        ...
 
 
 class IOutputManager(
