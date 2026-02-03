@@ -6,6 +6,7 @@ import typer
 
 from exls.nodes.adapters.bundle import NodesBundle
 from exls.nodes.adapters.ui.display.render import (
+    NODE_DETAIL_VIEW,
     NODE_IMPORT_FAILURE_VIEW,
     NODE_LIST_VIEW,
 )
@@ -93,7 +94,7 @@ def get_node(
     io_facade.display_data(
         data=node,
         output_format=bundle.object_output_format,
-        view_context=NODE_LIST_VIEW,
+        view_context=NODE_DETAIL_VIEW,
     )
 
 

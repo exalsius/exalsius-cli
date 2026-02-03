@@ -2,19 +2,27 @@ from typing import Dict, cast
 
 from exls.clusters.adapters.ui.flows.cluster_deploy import FlowClusterNodeDTO
 from exls.clusters.core.domain import ClusterNode
+from exls.shared.adapters.ui.output.render.service import (
+    format_datetime,
+    format_datetime_humanized,
+)
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
 
 # -----------------------------------------------------------------------------
-# CLUSTER VIEWS
+# CLUSTER LIST VIEWS (humanized timestamps)
 # -----------------------------------------------------------------------------
 
 _CLUSTER_LIST_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "status": TableRenderContext.get_column("Status"),
-    "created_at": TableRenderContext.get_column("Created At"),
-    "updated_at": TableRenderContext.get_column("Updated At"),
+    "created_at": TableRenderContext.get_column(
+        "Created At", value_formatter=format_datetime_humanized
+    ),
+    "updated_at": TableRenderContext.get_column(
+        "Updated At", value_formatter=format_datetime_humanized
+    ),
 }
 
 CLUSTER_LIST_VIEW = ViewContext.from_table_columns(_CLUSTER_LIST_COLUMNS)
@@ -24,8 +32,12 @@ _CLUSTER_WITH_NODES_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "status": TableRenderContext.get_column("Status"),
-    "created_at": TableRenderContext.get_column("Created At"),
-    "updated_at": TableRenderContext.get_column("Updated At"),
+    "created_at": TableRenderContext.get_column(
+        "Created At", value_formatter=format_datetime_humanized
+    ),
+    "updated_at": TableRenderContext.get_column(
+        "Updated At", value_formatter=format_datetime_humanized
+    ),
     "nodes": TableRenderContext.get_column(
         "Worker Nodes",
         value_formatter=lambda nodes: ", ".join(
@@ -46,6 +58,25 @@ _CLUSTER_WITH_NODES_COLUMNS: Dict[str, Column] = {
 }
 
 CLUSTER_WITH_NODES_VIEW = ViewContext.from_table_columns(_CLUSTER_WITH_NODES_COLUMNS)
+
+
+# -----------------------------------------------------------------------------
+# CLUSTER DETAIL VIEWS (ISO timestamps for single resource get)
+# -----------------------------------------------------------------------------
+
+_CLUSTER_DETAIL_COLUMNS: Dict[str, Column] = {
+    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "name": TableRenderContext.get_column("Name"),
+    "status": TableRenderContext.get_column("Status"),
+    "created_at": TableRenderContext.get_column(
+        "Created At", value_formatter=format_datetime
+    ),
+    "updated_at": TableRenderContext.get_column(
+        "Updated At", value_formatter=format_datetime
+    ),
+}
+
+CLUSTER_DETAIL_VIEW = ViewContext.from_table_columns(_CLUSTER_DETAIL_COLUMNS)
 
 
 # -----------------------------------------------------------------------------
