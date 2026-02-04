@@ -21,11 +21,19 @@ from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
+    get_app_state_from_ctx,
+    get_config_from_ctx,
     help_if_no_subcommand,
 )
 from exls.shared.core.utils import generate_random_name
 
 management_app = typer.Typer()
+
+
+def _get_bundle(ctx: typer.Context) -> ManagementBundle:
+    """Helper to instantiate the ManagementBundle from the context."""
+    return ManagementBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
+
 
 credentials_app = typer.Typer()
 cluster_templates_app = typer.Typer()
@@ -56,7 +64,7 @@ def list_cluster_templates(
     ctx: typer.Context,
 ):
     """List all cluster templates."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
     domain_cluster_templates: List[ClusterTemplate] = service.list_cluster_templates()
@@ -70,7 +78,7 @@ def list_cluster_templates(
 @handle_application_layer_errors(ManagementBundle)
 def list_credentials(ctx: typer.Context):
     """List all available credentials."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
@@ -87,7 +95,7 @@ def list_service_templates(
     ctx: typer.Context,
 ):
     """List all available service templates."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
@@ -104,7 +112,7 @@ def list_workspace_templates(
     ctx: typer.Context,
 ):
     """List all available workspace templates."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
@@ -123,7 +131,7 @@ def list_ssh_keys(
     ctx: typer.Context,
 ):
     """List all available SSH keys."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
@@ -147,7 +155,7 @@ def import_ssh_key(
     ),
 ):
     """Import a new SSH key to the management cluster."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 
@@ -180,7 +188,7 @@ def delete_ssh_key(
     ssh_key_id: str = typer.Argument(..., help="ID of the SSH key to delete"),
 ):
     """Delete an SSH key from the management cluster."""
-    bundle: ManagementBundle = ManagementBundle(ctx)
+    bundle: ManagementBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ManagementService = bundle.get_management_service()
 

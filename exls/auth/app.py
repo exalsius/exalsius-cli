@@ -9,9 +9,15 @@ from exls.auth.core.domain import AuthSession, DeviceCode
 from exls.auth.core.ports.operations import AuthError
 from exls.auth.core.ports.repository import TokenRepositoryError
 from exls.auth.core.service import AuthService, NotLoggedInWarning
+from exls.shared.adapters.ui.utils import get_app_state_from_ctx, get_config_from_ctx
 from exls.shared.core.exceptions import ServiceError, ServiceWarning
 
 logger = logging.getLogger(__name__)
+
+
+def _get_bundle(ctx: typer.Context) -> AuthBundle:
+    """Helper to instantiate the AuthBundle from the context."""
+    return AuthBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
 def login(
@@ -25,7 +31,7 @@ def login(
     for the authentication to complete. Upon success, the tokens are stored
     securely in the system's keyring for subsequent CLI calls.
     """
-    bundle = AuthBundle(ctx)
+    bundle = _get_bundle(ctx)
     io_facade: IOAuthFacade = bundle.get_io_facade()
     auth_service: AuthService = bundle.get_auth_service()
 
@@ -65,7 +71,7 @@ def logout(ctx: typer.Context):
     This command removes the user's authentication tokens from the system's
     keyring, effectively logging them out of the Exalsius CLI.
     """
-    bundle = AuthBundle(ctx)
+    bundle = _get_bundle(ctx)
     io_facade: IOAuthFacade = bundle.get_io_facade()
     auth_service: AuthService = bundle.get_auth_service()
 

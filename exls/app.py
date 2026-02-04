@@ -16,12 +16,21 @@ from exls.nodes.app import nodes_app
 from exls.offers.app import offers_app
 from exls.services.app import services_app
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    get_app_state_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.shared.core.exceptions import ServiceError
 from exls.state import AppState
 from exls.workspaces.app import workspaces_app
 
 NON_AUTH_COMMANDS = ["login", "logout"]
+
+
+def _get_bundle(ctx: typer.Context) -> AuthBundle:
+    """Helper to instantiate the AuthBundle from the context."""
+    return AuthBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
 app = typer.Typer()
@@ -114,9 +123,17 @@ def __root(  # pyright: ignore[reportUnusedFunction]
 
     help_if_no_subcommand(ctx)
 
+    ctx.obj = AppState(
+        config=config,
+        access_token=None,
+        message_output_format=format,
+        object_output_format=format,
+    )
+
     if ctx.invoked_subcommand not in NON_AUTH_COMMANDS:
-        auth_service: AuthService = AuthBundle(ctx).get_auth_service()
-        io_facade: IOAuthFacade = AuthBundle(ctx).get_io_facade()
+        bundle: AuthBundle = _get_bundle(ctx)
+        auth_service: AuthService = bundle.get_auth_service()
+        io_facade: IOAuthFacade = bundle.get_io_facade()
         try:
             auth_session: AuthSession = auth_service.acquire_access_token()
         except NotLoggedInWarning:
@@ -131,13 +148,8 @@ def __root(  # pyright: ignore[reportUnusedFunction]
                 output_format=format or OutputFormat.TEXT,
             )
             raise typer.Exit(1)
-
-        ctx.obj = AppState(
-            config=config,
-            access_token=auth_session.token.access_token,
-            message_output_format=format,
-            object_output_format=format,
-        )
+        # Set the access token in the context object
+        ctx.obj.access_token = auth_session.token.access_token
     else:
         ctx.obj = AppState(
             config=config,

@@ -1,15 +1,16 @@
-import typer
 from exalsius_api_client.api.services_api import ServicesApi
 
+from exls.config import AppConfig
 from exls.services.adapters.gateway.gateway import ServicesGateway
 from exls.services.adapters.gateway.sdk.sdk import ServicesGatewaySdk
 from exls.services.core.service import ServicesService
 from exls.shared.adapters.bundle import BaseBundle
+from exls.state import AppState
 
 
 class ServicesBundle(BaseBundle):
-    def __init__(self, ctx: typer.Context):
-        super().__init__(ctx)
+    def __init__(self, app_config: AppConfig, app_state: AppState):
+        super().__init__(app_config, app_state)
 
     def get_services_service(self) -> ServicesService:
         services_api: ServicesApi = ServicesApi(api_client=self.create_api_client())

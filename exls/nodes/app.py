@@ -27,11 +27,20 @@ from exls.nodes.core.service import NodesService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    get_app_state_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.shared.core.resolver import resolve_resource_id
 from exls.shared.core.utils import generate_random_name
 
 nodes_app = typer.Typer()
+
+
+def _get_bundle(ctx: typer.Context) -> NodesBundle:
+    """Helper to instantiate the NodesBundle from the context."""
+    return NodesBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
 class AllowedNodeTypes(StrEnum):
@@ -59,7 +68,7 @@ def list_nodes(
 ):
     """List all nodes in the node pool"""
 
-    bundle: NodesBundle = NodesBundle(ctx)
+    bundle: NodesBundle = _get_bundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
@@ -83,7 +92,7 @@ def get_node(
     ),
 ):
     """Get a node in the node pool."""
-    bundle: NodesBundle = NodesBundle(ctx)
+    bundle: NodesBundle = _get_bundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
@@ -107,7 +116,7 @@ def delete_nodes(
     ),
 ):
     """Delete a node in the node pool."""
-    bundle: NodesBundle = NodesBundle(ctx)
+    bundle: NodesBundle = _get_bundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
@@ -158,7 +167,7 @@ def import_selfmanaged_node(
     ),
 ):
     """Import a self-managed node into the node pool."""
-    bundle: NodesBundle = NodesBundle(ctx)
+    bundle: NodesBundle = _get_bundle(ctx)
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
@@ -197,7 +206,7 @@ def import_selfmanaged_node(
 @handle_application_layer_errors(NodesBundle)
 def import_nodes(ctx: typer.Context):
     """Import nodes using interactive mode."""
-    bundle: NodesBundle = NodesBundle(ctx)
+    bundle: NodesBundle = _get_bundle(ctx)
     node_service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 

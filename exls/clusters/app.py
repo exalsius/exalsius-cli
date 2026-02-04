@@ -29,6 +29,8 @@ from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
+    get_app_state_from_ctx,
+    get_config_from_ctx,
     help_if_no_subcommand,
     open_url_in_browser,
 )
@@ -39,6 +41,11 @@ from exls.shared.core.utils import (
 )
 
 clusters_app = typer.Typer()
+
+
+def _get_bundle(ctx: typer.Context) -> ClustersBundle:
+    """Helper to instantiate the ClustersBundle from the context."""
+    return ClustersBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
 @clusters_app.callback(invoke_without_command=True)
@@ -64,7 +71,7 @@ def list_clusters(
     """
     List all clusters.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -85,7 +92,7 @@ def get_cluster(
     """
     Get a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -117,7 +124,7 @@ def delete_cluster(
     """
     Delete a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -196,7 +203,7 @@ def deploy_cluster(
     """
     Create a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -293,7 +300,7 @@ def list_nodes(
     """
     List all nodes of a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -352,7 +359,7 @@ def remove_nodes(
     """
     Remove nodes from a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -389,7 +396,7 @@ def get_cluster_resources(
     """
     Get the resources of a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -426,7 +433,7 @@ def get_dashboard_url(
     """
     Get the monitoring dashboard URL of a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
@@ -468,7 +475,7 @@ def import_kubeconfig(
     """
     Import a kubeconfig file into a cluster.
     """
-    bundle: ClustersBundle = ClustersBundle(ctx)
+    bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 

@@ -1,10 +1,10 @@
 from typing import Dict
 
-import typer
 from exalsius_api_client.api.workspaces_api import WorkspacesApi
 from pydantic_settings import SettingsConfigDict
 
 from exls.clusters.adapters.bundle import ClustersBundle
+from exls.config import AppConfig
 from exls.defaults import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
 from exls.management.adapters.bundle import ManagementBundle
 from exls.shared.adapters.bundle import BaseBundle
@@ -13,6 +13,7 @@ from exls.shared.adapters.ui.shared.render.render import (
     DictToYamlStringRenderer,
     YamlRenderContext,
 )
+from exls.state import AppState
 from exls.workspaces.adapters.gateway.gateway import WorkspacesGateway
 from exls.workspaces.adapters.gateway.sdk.sdk import SdkWorkspacesGateway
 from exls.workspaces.adapters.provider.clusters import ClustersDomainProvider
@@ -45,10 +46,12 @@ class EditorYamlRenderConfig(BaseYamlRenderConfig):
 
 
 class WorkspacesBundle(BaseBundle):
-    def __init__(self, ctx: typer.Context):
-        super().__init__(ctx)
-        self._management_bundle: ManagementBundle = ManagementBundle(ctx)
-        self._clusters_bundle: ClustersBundle = ClustersBundle(ctx)
+    def __init__(self, app_config: AppConfig, app_state: AppState):
+        super().__init__(app_config, app_state)
+        self._management_bundle: ManagementBundle = ManagementBundle(
+            app_config, app_state
+        )
+        self._clusters_bundle: ClustersBundle = ClustersBundle(app_config, app_state)
 
     def get_workspaces_service(self) -> WorkspacesService:
         workspaces_api: WorkspacesApi = WorkspacesApi(

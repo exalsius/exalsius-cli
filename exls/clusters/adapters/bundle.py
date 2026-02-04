@@ -1,4 +1,3 @@
-import typer
 from exalsius_api_client.api.clusters_api import ClustersApi
 
 from exls.clusters.adapters.adapter import ClusterAdapter
@@ -7,16 +6,18 @@ from exls.clusters.adapters.provider.nodes import NodesDomainProvider
 from exls.clusters.adapters.ui.flows.cluster_deploy import DeployClusterFlow
 from exls.clusters.core.ports.provider import NodesProvider
 from exls.clusters.core.service import ClustersService
+from exls.config import AppConfig
 from exls.nodes.adapters.bundle import NodesBundle
 from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.file.adapters import YamlFileWriteAdapter
 from exls.shared.core.ports.file import FileWritePort
+from exls.state import AppState
 
 
 class ClustersBundle(BaseBundle):
-    def __init__(self, ctx: typer.Context):
-        super().__init__(ctx)
-        self._nodes_bundle: NodesBundle = NodesBundle(ctx)
+    def __init__(self, app_config: AppConfig, app_state: AppState):
+        super().__init__(app_config, app_state)
+        self._nodes_bundle: NodesBundle = NodesBundle(app_config, app_state)
 
     def get_clusters_service(self) -> ClustersService:
         clusters_api: ClustersApi = ClustersApi(api_client=self.create_api_client())
