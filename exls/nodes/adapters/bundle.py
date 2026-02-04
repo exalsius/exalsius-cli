@@ -1,6 +1,6 @@
-import typer
 from exalsius_api_client import NodesApi
 
+from exls.config import AppConfig
 from exls.management.adapters.bundle import ManagementBundle
 from exls.nodes.adapters.gateway.gateway import NodesGateway
 from exls.nodes.adapters.gateway.sdk.sdk import SdkNodesGateway
@@ -14,12 +14,15 @@ from exls.nodes.adapters.ui.flows.ports import ImportSshKeyFlowPort
 from exls.nodes.core.ports.provider import SshKeyProvider
 from exls.nodes.core.service import NodesService
 from exls.shared.adapters.bundle import BaseBundle
+from exls.state import AppState
 
 
 class NodesBundle(BaseBundle):
-    def __init__(self, ctx: typer.Context):
-        super().__init__(ctx)
-        self._management_bundle: ManagementBundle = ManagementBundle(ctx)
+    def __init__(self, app_config: AppConfig, app_state: AppState):
+        super().__init__(app_config, app_state)
+        self._management_bundle: ManagementBundle = ManagementBundle(
+            app_config, app_state
+        )
 
     def get_nodes_service(self) -> NodesService:
         nodes_api: NodesApi = NodesApi(api_client=self.create_api_client())

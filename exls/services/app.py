@@ -8,9 +8,18 @@ from exls.services.core.domain import Service
 from exls.services.core.service import ServicesService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    get_app_state_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 
 services_app = typer.Typer()
+
+
+def _get_bundle(ctx: typer.Context) -> ServicesBundle:
+    """Helper to instantiate the ServicesBundle from the context."""
+    return ServicesBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
 @services_app.callback(invoke_without_command=True)
@@ -32,7 +41,7 @@ def list_services(
     """
     List all services of a cluster.
     """
-    bundle: ServicesBundle = ServicesBundle(ctx)
+    bundle: ServicesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ServicesService = bundle.get_services_service()
 
@@ -54,7 +63,7 @@ def get_service(
     """
     Get a service of a cluster.
     """
-    bundle: ServicesBundle = ServicesBundle(ctx)
+    bundle: ServicesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     services_service: ServicesService = bundle.get_services_service()
 
@@ -76,7 +85,7 @@ def delete_service(
     """
     Delete a service of a cluster.
     """
-    bundle: ServicesBundle = ServicesBundle(ctx)
+    bundle: ServicesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ServicesService = bundle.get_services_service()
 

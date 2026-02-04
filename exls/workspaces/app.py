@@ -14,7 +14,11 @@ from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
     UserCancellationException,
 )
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    get_app_state_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 from exls.shared.core.crypto import CryptoService
 from exls.shared.core.resolver import resolve_resource_id
 from exls.shared.core.utils import generate_random_name
@@ -56,6 +60,11 @@ workspaces_deploy_app = typer.Typer()
 workspaces_app.add_typer(workspaces_deploy_app, name="deploy")
 
 
+def _get_bundle(ctx: typer.Context) -> WorkspacesBundle:
+    """Helper to instantiate the WorkspacesBundle from the context."""
+    return WorkspacesBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
+
+
 @workspaces_app.callback(invoke_without_command=True)
 def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
@@ -76,7 +85,7 @@ def list_workspaces(
         default=None,
     ),
 ):
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
@@ -112,7 +121,7 @@ def get_workspace(
         help="The name or ID of the workspace to get",
     ),
 ):
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
@@ -138,7 +147,7 @@ def delete_workspace(
         help="The name or ID of the workspace to delete",
     ),
 ):
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
@@ -289,7 +298,7 @@ def deploy_jupyter_workspace(
     """
     Deploy a Jupyter workspace.
     """
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
@@ -404,7 +413,7 @@ def deploy_marimo_workspace(
     """
     Deploy a Marimo workspace.
     """
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
@@ -524,7 +533,7 @@ def deploy_dev_pod_workspace(
     """
     Deploy a dev pod workspace.
     """
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
@@ -659,7 +668,7 @@ def deploy_distributed_training_workspace(
     """
     Deploy a distributed training workspace.
     """
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 

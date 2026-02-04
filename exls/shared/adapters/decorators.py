@@ -5,6 +5,10 @@ import typer
 
 from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.ui.input.values import UserCancellationException
+from exls.shared.adapters.ui.utils import (
+    get_app_state_from_ctx,
+    get_config_from_ctx,
+)
 from exls.shared.core.exceptions import (
     ExalsiusError,
     ExalsiusWarning,
@@ -35,13 +39,17 @@ def handle_application_layer_errors(
                 return None
 
             def _display_error_message(ctx: typer.Context, e: ExalsiusError) -> None:
-                bundle: BaseBundle = bundle_class(ctx)
+                bundle: BaseBundle = bundle_class(
+                    get_config_from_ctx(ctx), get_app_state_from_ctx(ctx)
+                )
                 bundle.get_io_facade().display_error_message(
                     str(e), output_format=bundle.message_output_format
                 )
 
             def _display_info_message(ctx: typer.Context, e: ExalsiusWarning) -> None:
-                bundle: BaseBundle = bundle_class(ctx)
+                bundle: BaseBundle = bundle_class(
+                    get_config_from_ctx(ctx), get_app_state_from_ctx(ctx)
+                )
                 bundle.get_io_facade().display_info_message(
                     str(e), output_format=bundle.message_output_format
                 )

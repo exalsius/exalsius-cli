@@ -1,6 +1,5 @@
 from abc import ABC
 
-import typer
 from exalsius_api_client.api_client import ApiClient
 from exalsius_api_client.configuration import Configuration
 
@@ -9,38 +8,39 @@ from exls.shared.adapters.file.adapters import StringFileIOAdapter
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.factory import IOFactory
 from exls.shared.adapters.ui.output.values import OutputFormat
-from exls.shared.adapters.ui.utils import (
-    get_access_token_from_ctx,
-    get_config_from_ctx,
-    get_message_output_format_from_ctx,
-    get_object_output_format_from_ctx,
-)
 from exls.shared.core.crypto import CryptoService
+from exls.shared.core.exceptions import ServiceError
+from exls.state import AppState
 
 
 class BaseBundle(ABC):
-    def __init__(self, ctx: typer.Context):
-        self._ctx: typer.Context = ctx
+    def __init__(self, app_config: AppConfig, app_state: AppState):
+        self._app_config: AppConfig = app_config
+        self._app_state: AppState = app_state
 
     @property
     def config(self) -> AppConfig:
-        return get_config_from_ctx(self._ctx)
+        return self._app_config
 
     @property
     def access_token(self) -> str:
-        return get_access_token_from_ctx(self._ctx)
+        if not self._app_state.access_token:
+            raise ServiceError(
+                message="No access token found. Please try to log in again."
+            )
+        return self._app_state.access_token
 
     @property
     def message_output_format(self) -> OutputFormat:
         return (
-            get_message_output_format_from_ctx(self._ctx)
+            self._app_state.message_output_format
             or self.config.default_message_output_format
         )
 
     @property
     def object_output_format(self) -> OutputFormat:
         return (
-            get_object_output_format_from_ctx(self._ctx)
+            self._app_state.object_output_format
             or self.config.default_object_output_format
         )
 

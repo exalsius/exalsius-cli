@@ -1,6 +1,6 @@
-import typer
 from exalsius_api_client.api.management_api import ManagementApi
 
+from exls.config import AppConfig
 from exls.management.adapters.gateway.gateway import ManagementGateway
 from exls.management.adapters.gateway.sdk.sdk import ManagementGatewaySdk
 from exls.management.adapters.ui.flows.import_ssh_key import ImportSshKeyFlow
@@ -8,11 +8,12 @@ from exls.management.core.service import ManagementService
 from exls.shared.adapters.bundle import BaseBundle
 from exls.shared.adapters.file.adapters import StringBase64FileReadAdapter
 from exls.shared.core.ports.file import FileReadPort
+from exls.state import AppState
 
 
 class ManagementBundle(BaseBundle):
-    def __init__(self, ctx: typer.Context):
-        super().__init__(ctx)
+    def __init__(self, app_config: AppConfig, app_state: AppState):
+        super().__init__(app_config, app_state)
 
     def get_management_service(self) -> ManagementService:
         management_api: ManagementApi = ManagementApi(

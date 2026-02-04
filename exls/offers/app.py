@@ -9,9 +9,18 @@ from exls.offers.core.requests import OffersFilterCriteria
 from exls.offers.core.service import OffersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
-from exls.shared.adapters.ui.utils import help_if_no_subcommand
+from exls.shared.adapters.ui.utils import (
+    get_app_state_from_ctx,
+    get_config_from_ctx,
+    help_if_no_subcommand,
+)
 
 offers_app = typer.Typer()
+
+
+def _get_bundle(ctx: typer.Context) -> OffersBundle:
+    """Helper to instantiate the OffersBundle from the context."""
+    return OffersBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
 @offers_app.callback(invoke_without_command=True)
@@ -47,7 +56,7 @@ def list_offers(
     """
     List available GPU offers from cloud providers.
     """
-    bundle: OffersBundle = OffersBundle(ctx)
+    bundle: OffersBundle = _get_bundle(ctx)
     service: OffersService = bundle.get_offers_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
