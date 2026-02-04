@@ -34,7 +34,11 @@ from exls.shared.adapters.ui.utils import (
     help_if_no_subcommand,
     open_url_in_browser,
 )
-from exls.shared.core.resolver import resolve_resource_id
+from exls.shared.core.resolver import (
+    AmbiguousResourceError,
+    ResourceNotFoundError,
+    resolve_resource_id,
+)
 from exls.shared.core.utils import (
     generate_random_name,
     validate_kubernetes_name,
@@ -46,6 +50,20 @@ clusters_app = typer.Typer()
 def _get_bundle(ctx: typer.Context) -> ClustersBundle:
     """Helper to instantiate the ClustersBundle from the context."""
     return ClustersBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
+
+
+def _resolve_cluster_id_callback(ctx: typer.Context, value: str) -> str:
+    """
+    Callback to resolve a cluster name or ID to a cluster ID.
+    Fetches all clusters and matches the name/ID.
+    """
+    try:
+        bundle: ClustersBundle = _get_bundle(ctx)
+        service: ClustersService = bundle.get_clusters_service()
+        clusters: List[Cluster] = service.list_clusters()
+        return resolve_resource_id(clusters, value, "cluster")
+    except (ResourceNotFoundError, AmbiguousResourceError) as e:
+        raise typer.BadParameter(str(e))
 
 
 @clusters_app.callback(invoke_without_command=True)
@@ -85,8 +103,11 @@ def list_clusters(
 @handle_application_layer_errors(ClustersBundle)
 def get_cluster(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
-        ..., help="The name or ID of the cluster to get"
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to get",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
 ):
     """
@@ -96,8 +117,6 @@ def get_cluster(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster_domain: Cluster = service.get_cluster(cluster_id)
 
     io_facade.display_data(
@@ -111,8 +130,11 @@ def get_cluster(
 @handle_application_layer_errors(ClustersBundle)
 def delete_cluster(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
-        ..., help="The name or ID of the cluster to delete"
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to delete",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
     confirmation: bool = typer.Option(
         False,
@@ -128,8 +150,6 @@ def delete_cluster(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster_domain: Cluster = service.get_cluster(cluster_id)
 
     if not confirmation:
@@ -293,8 +313,11 @@ def deploy_cluster(
 @handle_application_layer_errors(ClustersBundle)
 def list_nodes(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
-        "", help="The name or ID of the cluster to list nodes of"
+    cluster_id: str = typer.Argument(
+        "",
+        help="The name or ID of the cluster to list nodes of",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
 ):
     """
@@ -304,8 +327,6 @@ def list_nodes(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster: Cluster = service.get_cluster(cluster_id)
 
     io_facade.display_info_message(
@@ -346,8 +367,11 @@ def add_nodes(
 @handle_application_layer_errors(ClustersBundle)
 def remove_nodes(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
-        ..., help="The name or ID of the cluster to remove nodes from"
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to remove nodes from",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
     node_names_or_ids: List[str] = typer.Option(
         [],
@@ -363,8 +387,6 @@ def remove_nodes(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster: Cluster = service.get_cluster(cluster_id)
 
     # Resolve node names/IDs within this cluster
@@ -388,9 +410,11 @@ def remove_nodes(
 @handle_application_layer_errors(ClustersBundle)
 def get_cluster_resources(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
+    cluster_id: str = typer.Argument(
         ...,
         help="The name or ID of the cluster to get resources of",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
 ):
     """
@@ -400,8 +424,6 @@ def get_cluster_resources(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster: Cluster = service.get_cluster(cluster_id=cluster_id)
 
     io_facade.display_info_message(
@@ -421,8 +443,11 @@ def get_cluster_resources(
 @handle_application_layer_errors(ClustersBundle)
 def get_dashboard_url(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
-        ..., help="The name or ID of the cluster to get the monitoring dashboard URL of"
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to get the monitoring dashboard URL of",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
     open_browser: bool = typer.Option(
         False,
@@ -437,8 +462,6 @@ def get_dashboard_url(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     dashboard_url_str: str = service.get_dashboard_url(cluster_id)
 
     if open_browser:
@@ -463,8 +486,11 @@ def get_dashboard_url(
 @handle_application_layer_errors(ClustersBundle)
 def import_kubeconfig(
     ctx: typer.Context,
-    cluster_name_or_id: str = typer.Argument(
-        ..., help="The name or ID of the cluster to import the kubeconfig to"
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to import the kubeconfig to",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
     ),
     kubeconfig_path: str = typer.Option(
         Path.home().joinpath(".kube", "config").as_posix(),
@@ -479,8 +505,6 @@ def import_kubeconfig(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters: List[Cluster] = service.list_clusters()
-    cluster_id: str = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
     cluster: Cluster = service.get_cluster(cluster_id)
 
     service.import_kubeconfig(cluster_id, kubeconfig_path)
