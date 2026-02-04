@@ -20,7 +20,11 @@ from exls.shared.adapters.ui.utils import (
     help_if_no_subcommand,
 )
 from exls.shared.core.crypto import CryptoService
-from exls.shared.core.resolver import resolve_resource_id
+from exls.shared.core.resolver import (
+    AmbiguousResourceError,
+    ResourceNotFoundError,
+    resolve_resource_id,
+)
 from exls.shared.core.utils import generate_random_name
 from exls.workspaces.adapters.bundle import WorkspacesBundle
 from exls.workspaces.adapters.ui.configurators import (
@@ -65,6 +69,39 @@ def _get_bundle(ctx: typer.Context) -> WorkspacesBundle:
     return WorkspacesBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
 
 
+def _resolve_workspace_id_callback(ctx: typer.Context, value: str) -> str:
+    """
+    Callback to resolve a workspace name or ID to a workspace ID.
+    Fetches all workspaces and matches the name/ID.
+    """
+    try:
+        bundle: WorkspacesBundle = _get_bundle(ctx)
+        service: WorkspacesService = bundle.get_workspaces_service()
+        workspaces: List[Workspace] = service.list_workspaces()
+        return resolve_resource_id(workspaces, value, "workspace")
+    except (ResourceNotFoundError, AmbiguousResourceError) as e:
+        raise typer.BadParameter(str(e))
+
+
+def _resolve_cluster_id_callback(
+    ctx: typer.Context, value: Optional[str]
+) -> Optional[str]:
+    """
+    Callback to resolve a cluster name or ID to a cluster ID.
+    Fetches all clusters and matches the name/ID.
+    If value is None, returns None (for optional cluster arguments).
+    """
+    if value is None:
+        return None
+    try:
+        bundle: WorkspacesBundle = _get_bundle(ctx)
+        service: WorkspacesService = bundle.get_workspaces_service()
+        clusters: List[WorkspaceCluster] = service.list_clusters()
+        return resolve_resource_id(clusters, value, "cluster")
+    except (ResourceNotFoundError, AmbiguousResourceError) as e:
+        raise typer.BadParameter(str(e))
+
+
 @workspaces_app.callback(invoke_without_command=True)
 def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
@@ -79,26 +116,19 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 @handle_application_layer_errors(WorkspacesBundle)
 def list_workspaces(
     ctx: typer.Context,
-    cluster_name_or_id: Optional[str] = typer.Argument(
+    cluster_id: Optional[str] = typer.Argument(
+        None,
         help="The name or ID of the cluster to list the workspaces for",
+        metavar="CLUSTER_NAME_OR_ID",
         show_default=False,
-        default=None,
+        callback=_resolve_cluster_id_callback,
     ),
 ):
     bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    resolved_cluster_id: Optional[str] = None
-    if cluster_name_or_id:
-        clusters: List[WorkspaceCluster] = service.list_clusters()
-        resolved_cluster_id = resolve_resource_id(
-            clusters, cluster_name_or_id, "cluster"
-        )
-
-    workspaces: List[Workspace] = service.list_workspaces(
-        cluster_id=resolved_cluster_id
-    )
+    workspaces: List[Workspace] = service.list_workspaces(cluster_id=cluster_id)
 
     if len(workspaces) == 0:
         io_facade.display_info_message(
@@ -117,18 +147,17 @@ def list_workspaces(
 @handle_application_layer_errors(WorkspacesBundle)
 def get_workspace(
     ctx: typer.Context,
-    workspace_name_or_id: str = typer.Argument(
+    workspace_id: str = typer.Argument(
+        ...,
         help="The name or ID of the workspace to get",
+        metavar="WORKSPACE_NAME_OR_ID",
+        callback=_resolve_workspace_id_callback,
     ),
 ):
     bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    workspaces: List[Workspace] = service.list_workspaces()
-    workspace_id: str = resolve_resource_id(
-        workspaces, workspace_name_or_id, "workspace"
-    )
     workspace: Workspace = service.get_workspace(workspace_id)
 
     io_facade.display_data(
@@ -142,19 +171,17 @@ def get_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def delete_workspace(
     ctx: typer.Context,
-    workspace_name_or_id: str = typer.Argument(
+    workspace_id: str = typer.Argument(
         ...,
         help="The name or ID of the workspace to delete",
+        metavar="WORKSPACE_NAME_OR_ID",
+        callback=_resolve_workspace_id_callback,
     ),
 ):
     bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
-    workspaces: List[Workspace] = service.list_workspaces()
-    workspace_id: str = resolve_resource_id(
-        workspaces, workspace_name_or_id, "workspace"
-    )
     workspace: Workspace = service.get_workspace(workspace_id)
 
     service.delete_workspaces(workspace_ids=[workspace_id])
@@ -265,10 +292,12 @@ def _get_resources_for_single_node_worker(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_jupyter_workspace(
     ctx: typer.Context,
-    cluster_name_or_id: Optional[str] = typer.Argument(
+    cluster_id: Optional[str] = typer.Argument(
+        None,
         help="The name or ID of the cluster to deploy the workspace to",
+        metavar="CLUSTER_NAME_OR_ID",
         show_default=False,
-        default=None,
+        callback=_resolve_cluster_id_callback,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="jupyter"),
@@ -306,7 +335,7 @@ def deploy_jupyter_workspace(
         raise ValueError("Password must be at least 6 characters long")
 
     valid_cluster_id: str
-    if not cluster_name_or_id:
+    if not cluster_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
         if not loaded_cluster_id:
             io_facade.display_error_message(
@@ -316,8 +345,7 @@ def deploy_jupyter_workspace(
             raise typer.Exit(0)
         valid_cluster_id = loaded_cluster_id
     else:
-        clusters: List[WorkspaceCluster] = service.list_clusters()
-        valid_cluster_id = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
+        valid_cluster_id = cluster_id
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
@@ -379,10 +407,12 @@ def deploy_jupyter_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_marimo_workspace(
     ctx: typer.Context,
-    cluster_name_or_id: Optional[str] = typer.Argument(
+    cluster_id: Optional[str] = typer.Argument(
+        None,
         help="The name or ID of the cluster to deploy the workspace to",
+        metavar="CLUSTER_NAME_OR_ID",
         show_default=False,
-        default=None,
+        callback=_resolve_cluster_id_callback,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="marimo"),
@@ -421,7 +451,7 @@ def deploy_marimo_workspace(
         raise ValueError("Password must be at least 6 characters long")
 
     valid_cluster_id: str
-    if not cluster_name_or_id:
+    if not cluster_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
         if not loaded_cluster_id:
             io_facade.display_error_message(
@@ -431,8 +461,7 @@ def deploy_marimo_workspace(
             raise typer.Exit(0)
         valid_cluster_id = loaded_cluster_id
     else:
-        clusters: List[WorkspaceCluster] = service.list_clusters()
-        valid_cluster_id = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
+        valid_cluster_id = cluster_id
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
@@ -494,10 +523,12 @@ def deploy_marimo_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_dev_pod_workspace(
     ctx: typer.Context,
-    cluster_name_or_id: Optional[str] = typer.Argument(
+    cluster_id: Optional[str] = typer.Argument(
         None,
         help="The name or ID of the cluster to deploy the workspace to",
+        metavar="CLUSTER_NAME_OR_ID",
         show_default=False,
+        callback=_resolve_cluster_id_callback,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="dev-pod"),
@@ -546,7 +577,7 @@ def deploy_dev_pod_workspace(
         raise ValueError("SSH password must be at least 6 characters long")
 
     valid_cluster_id: str
-    if not cluster_name_or_id:
+    if not cluster_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
         if not loaded_cluster_id:
             io_facade.display_error_message(
@@ -556,8 +587,7 @@ def deploy_dev_pod_workspace(
             raise typer.Exit(0)
         valid_cluster_id = loaded_cluster_id
     else:
-        clusters: List[WorkspaceCluster] = service.list_clusters()
-        valid_cluster_id = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
+        valid_cluster_id = cluster_id
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
@@ -629,10 +659,12 @@ def deploy_dev_pod_workspace(
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_distributed_training_workspace(
     ctx: typer.Context,
-    cluster_name_or_id: Optional[str] = typer.Argument(
+    cluster_id: Optional[str] = typer.Argument(
+        None,
         help="The name or ID of the cluster to deploy the workspace to",
+        metavar="CLUSTER_NAME_OR_ID",
         show_default=False,
-        default=None,
+        callback=_resolve_cluster_id_callback,
     ),
     model: DistributedTrainingModels = typer.Option(
         DistributedTrainingModels.GPT_NEO_X,
@@ -673,7 +705,7 @@ def deploy_distributed_training_workspace(
     service: WorkspacesService = bundle.get_workspaces_service()
 
     valid_cluster_id: str
-    if not cluster_name_or_id:
+    if not cluster_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
         if not loaded_cluster_id:
             io_facade.display_error_message(
@@ -683,8 +715,7 @@ def deploy_distributed_training_workspace(
             raise typer.Exit(0)
         valid_cluster_id = loaded_cluster_id
     else:
-        clusters: List[WorkspaceCluster] = service.list_clusters()
-        valid_cluster_id = resolve_resource_id(clusters, cluster_name_or_id, "cluster")
+        valid_cluster_id = cluster_id
 
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 

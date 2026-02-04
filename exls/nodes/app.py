@@ -32,7 +32,11 @@ from exls.shared.adapters.ui.utils import (
     get_config_from_ctx,
     help_if_no_subcommand,
 )
-from exls.shared.core.resolver import resolve_resource_id
+from exls.shared.core.resolver import (
+    AmbiguousResourceError,
+    ResourceNotFoundError,
+    resolve_resource_id,
+)
 from exls.shared.core.utils import generate_random_name
 
 nodes_app = typer.Typer()
@@ -41,6 +45,20 @@ nodes_app = typer.Typer()
 def _get_bundle(ctx: typer.Context) -> NodesBundle:
     """Helper to instantiate the NodesBundle from the context."""
     return NodesBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
+
+
+def _resolve_node_id_callback(ctx: typer.Context, value: str) -> str:
+    """
+    Callback to resolve a node name or ID to a node ID.
+    Fetches all nodes and matches the name/ID.
+    """
+    try:
+        bundle: NodesBundle = _get_bundle(ctx)
+        service: NodesService = bundle.get_nodes_service()
+        nodes: List[BaseNode] = service.list_nodes(NodesFilterCriteria())
+        return resolve_resource_id(nodes, value, "node")
+    except (ResourceNotFoundError, AmbiguousResourceError) as e:
+        raise typer.BadParameter(str(e))
 
 
 class AllowedNodeTypes(StrEnum):
@@ -87,8 +105,11 @@ def list_nodes(
 @handle_application_layer_errors(NodesBundle)
 def get_node(
     ctx: typer.Context,
-    node_name_or_id: str = typer.Argument(
-        ..., help="The name (hostname) or ID of the node to get"
+    node_id: str = typer.Argument(
+        ...,
+        help="The name (hostname) or ID of the node to get",
+        metavar="NODE_NAME_OR_ID",
+        callback=_resolve_node_id_callback,
     ),
 ):
     """Get a node in the node pool."""
@@ -96,8 +117,6 @@ def get_node(
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
-    nodes: List[BaseNode] = service.list_nodes(NodesFilterCriteria())
-    node_id: str = resolve_resource_id(nodes, node_name_or_id, "node")
     node: BaseNode = service.get_node(node_id)
 
     io_facade.display_data(
@@ -112,7 +131,9 @@ def get_node(
 def delete_nodes(
     ctx: typer.Context,
     node_names_or_ids: List[str] = typer.Argument(
-        ..., help="The names (hostnames) or IDs of the nodes to delete"
+        ...,
+        help="The names (hostnames) or IDs of the nodes to delete",
+        metavar="NODE_NAMES_OR_IDS",
     ),
 ):
     """Delete a node in the node pool."""
@@ -120,6 +141,7 @@ def delete_nodes(
     service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
+    # Note: For list arguments, we resolve manually as Typer callbacks don't work well with lists
     nodes: List[BaseNode] = service.list_nodes(NodesFilterCriteria())
     resolved_node_ids: List[str] = [
         resolve_resource_id(nodes, node_name_or_id, "node")

@@ -25,6 +25,11 @@ from exls.shared.adapters.ui.utils import (
     get_config_from_ctx,
     help_if_no_subcommand,
 )
+from exls.shared.core.resolver import (
+    AmbiguousResourceError,
+    ResourceNotFoundError,
+    resolve_resource_id,
+)
 from exls.shared.core.utils import generate_random_name
 
 management_app = typer.Typer()
@@ -33,6 +38,20 @@ management_app = typer.Typer()
 def _get_bundle(ctx: typer.Context) -> ManagementBundle:
     """Helper to instantiate the ManagementBundle from the context."""
     return ManagementBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
+
+
+def _resolve_ssh_key_id_callback(ctx: typer.Context, value: str) -> str:
+    """
+    Callback to resolve an SSH key name or ID to an SSH key ID.
+    Fetches all SSH keys and matches the name/ID.
+    """
+    try:
+        bundle: ManagementBundle = _get_bundle(ctx)
+        service: ManagementService = bundle.get_management_service()
+        ssh_keys: List[SshKey] = service.list_ssh_keys()
+        return resolve_resource_id(ssh_keys, value, "ssh-key")
+    except (ResourceNotFoundError, AmbiguousResourceError) as e:
+        raise typer.BadParameter(str(e))
 
 
 credentials_app = typer.Typer()
@@ -185,7 +204,12 @@ def import_ssh_key(
 @handle_application_layer_errors(ManagementBundle)
 def delete_ssh_key(
     ctx: typer.Context,
-    ssh_key_id: str = typer.Argument(..., help="ID of the SSH key to delete"),
+    ssh_key_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the SSH key to delete",
+        metavar="SSH_KEY_NAME_OR_ID",
+        callback=_resolve_ssh_key_id_callback,
+    ),
 ):
     """Delete an SSH key from the management cluster."""
     bundle: ManagementBundle = _get_bundle(ctx)

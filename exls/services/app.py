@@ -2,6 +2,9 @@ from typing import List
 
 import typer
 
+from exls.clusters.adapters.bundle import ClustersBundle
+from exls.clusters.core.domain import Cluster
+from exls.clusters.core.service import ClustersService
 from exls.services.adapters.bundle import ServicesBundle
 from exls.services.adapters.ui.display.render import SERVICE_VIEW
 from exls.services.core.domain import Service
@@ -13,6 +16,11 @@ from exls.shared.adapters.ui.utils import (
     get_config_from_ctx,
     help_if_no_subcommand,
 )
+from exls.shared.core.resolver import (
+    AmbiguousResourceError,
+    ResourceNotFoundError,
+    resolve_resource_id,
+)
 
 services_app = typer.Typer()
 
@@ -20,6 +28,22 @@ services_app = typer.Typer()
 def _get_bundle(ctx: typer.Context) -> ServicesBundle:
     """Helper to instantiate the ServicesBundle from the context."""
     return ServicesBundle(get_config_from_ctx(ctx), get_app_state_from_ctx(ctx))
+
+
+def _resolve_cluster_id_callback(ctx: typer.Context, value: str) -> str:
+    """
+    Callback to resolve a cluster name or ID to a cluster ID.
+    Fetches all clusters and matches the name/ID.
+    """
+    try:
+        clusters_bundle: ClustersBundle = ClustersBundle(
+            get_config_from_ctx(ctx), get_app_state_from_ctx(ctx)
+        )
+        service: ClustersService = clusters_bundle.get_clusters_service()
+        clusters: List[Cluster] = service.list_clusters()
+        return resolve_resource_id(clusters, value, "cluster")
+    except (ResourceNotFoundError, AmbiguousResourceError) as e:
+        raise typer.BadParameter(str(e))
 
 
 @services_app.callback(invoke_without_command=True)
@@ -36,7 +60,11 @@ def _root(  # pyright: ignore[reportUnusedFunction]
 @handle_application_layer_errors(ServicesBundle)
 def list_services(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument(help="The ID of the cluster to list services of"),
+    cluster_id: str = typer.Argument(
+        help="The name or ID of the cluster to list services of",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
+    ),
 ):
     """
     List all services of a cluster.
@@ -58,7 +86,9 @@ def list_services(
 @handle_application_layer_errors(ServicesBundle)
 def get_service(
     ctx: typer.Context,
-    service_id: str = typer.Argument(help="The ID of the service to get"),
+    service_id: str = typer.Argument(
+        help="The ID of the service to get",
+    ),
 ):
     """
     Get a service of a cluster.
@@ -80,7 +110,9 @@ def get_service(
 @handle_application_layer_errors(ServicesBundle)
 def delete_service(
     ctx: typer.Context,
-    service_id: str = typer.Argument(help="The ID of the service to delete"),
+    service_id: str = typer.Argument(
+        help="The ID of the service to delete",
+    ),
 ):
     """
     Delete a service of a cluster.
