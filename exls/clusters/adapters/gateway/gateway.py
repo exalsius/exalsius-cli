@@ -54,12 +54,8 @@ class ClusterNodeRefResourcesData(BaseModel):
 
 
 class _ClusterLabels(StrEnum):
-    WORKLOAD_TYPE = "cluster.exalsius.ai/workload-type"
-
-
-class _ClusterLabelValuesWorkloadType(StrEnum):
-    VOLCANO = "volcano"
-    LLM_D = "llm-d"
+    VOLCANO_WORKOAD = "cluster.exalsius.ai/volcano-workload"
+    LLM_D_WORKLOAD = "cluster.exalsius.ai/llm-d-workload"
 
 
 def get_cluster_labels(
@@ -67,9 +63,9 @@ def get_cluster_labels(
 ) -> Dict[StrictStr, StrictStr]:
     labels: Dict[StrictStr, StrictStr] = {}
     if parameters.enable_multinode_training:
-        labels[_ClusterLabels.WORKLOAD_TYPE] = _ClusterLabelValuesWorkloadType.VOLCANO
+        labels[_ClusterLabels.VOLCANO_WORKOAD] = "true"
     if parameters.prepare_llm_inference_environment:
-        labels[_ClusterLabels.WORKLOAD_TYPE] = _ClusterLabelValuesWorkloadType.LLM_D
+        labels[_ClusterLabels.LLM_D_WORKLOAD] = "true"
     return labels
 
 
