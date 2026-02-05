@@ -290,10 +290,12 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         editor_render_bundle: WorkspaceEditorRenderBundle,
         huggingface_token: str,
         model_name: str,
+        workspace_name: str,
     ):
         super().__init__(editor_render_bundle)
         self._huggingface_token: str = huggingface_token
         self._model_name: str = model_name
+        self._workspace_name: str = workspace_name
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -331,6 +333,7 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         # Configure model artifacts
         if "ms" not in variables:
             variables["ms"] = {}
+        variables["ms"]["fullnameOverride"] = self._workspace_name
         if "modelArtifacts" not in variables["ms"]:
             variables["ms"]["modelArtifacts"] = {}
 

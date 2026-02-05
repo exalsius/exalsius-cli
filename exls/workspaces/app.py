@@ -465,13 +465,6 @@ def deploy_llm_inference_workspace(
         help="The Hugging Face model name (e.g., 'Qwen/Qwen3-1.7B', 'meta-llama/Llama-2-7b-hf')",
         callback=_validate_huggingface_model,
     ),
-    num_gpus: int = typer.Option(
-        1,
-        "--num-gpus",
-        "-g",
-        help="The number of GPUs to deploy the workspace with",
-        callback=_validate_num_gpus,
-    ),
     wait_for_ready: bool = typer.Option(
         False, "--wait-for-ready", "-w", help="Wait for the workspace to be ready"
     ),
@@ -502,7 +495,7 @@ def deploy_llm_inference_workspace(
     cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
 
     resources: WorkerResources = _get_resources_for_single_node_worker(
-        service, cluster.id, num_gpus
+        service, cluster.id, num_gpus=1
     )
 
     template: WorkspaceTemplate = _get_workspace_template(
@@ -514,6 +507,7 @@ def deploy_llm_inference_workspace(
         ),
         huggingface_token=huggingface_token,
         model_name=model_name,
+        workspace_name=name,
     )
     try:
         template_variables: Dict[str, Any] = configurator.configure_and_validate(
@@ -529,7 +523,7 @@ def deploy_llm_inference_workspace(
         template_id=template.id_name,
         template_variables=template_variables,
         resources=resources,
-        description=f"LLM inference workspace for {model_name} with {num_gpus} GPUs",
+        description=f"LLM inference workspace for {model_name}",
     )
 
     io_facade.display_data(
