@@ -291,11 +291,15 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         huggingface_token: str,
         model_name: str,
         workspace_name: str,
+        num_gpus: int,
+        gpu_vendor: Optional[WorkspaceGPUVendor] = None,
     ):
         super().__init__(editor_render_bundle)
         self._huggingface_token: str = huggingface_token
         self._model_name: str = model_name
         self._workspace_name: str = workspace_name
+        self._num_gpus: int = num_gpus
+        self._gpu_vendor: Optional[WorkspaceGPUVendor] = gpu_vendor
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -364,6 +368,22 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
             "llm-d.ai/inferenceServing"
         ] = "true"
+
+        # Set tensor parallelism to num_gpus (ms.decode.parallelism.tensor)
+        if "decode" not in variables["ms"]:
+            variables["ms"]["decode"] = {}
+        if "parallelism" not in variables["ms"]["decode"]:
+            variables["ms"]["decode"]["parallelism"] = {}
+        variables["ms"]["decode"]["parallelism"]["tensor"] = self._num_gpus
+
+        # Set accelerator type from resolved GPU vendor (AMD or NVIDIA)
+        if "accelerator" not in variables["ms"]:
+            variables["ms"]["accelerator"] = {}
+        if self._gpu_vendor == WorkspaceGPUVendor.AMD:
+            variables["ms"]["accelerator"]["type"] = "amd"
+        else:
+            # Default to nvidia for NVIDIA, NO_GPU, UNKNOWN, or None
+            variables["ms"]["accelerator"]["type"] = "nvidia"
 
         return super().configure_and_validate(variables, io_facade)
 
