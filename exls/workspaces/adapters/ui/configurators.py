@@ -337,10 +337,13 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         # Configure model artifacts
         if "ms" not in variables:
             variables["ms"] = {}
-        variables["ms"]["fullnameOverride"] = self._workspace_name
+        variables["ms"]["fullnameOverride"] = f"{self._workspace_name}-ms"
         if "modelArtifacts" not in variables["ms"]:
             variables["ms"]["modelArtifacts"] = {}
 
+        variables["ms"]["modelArtifacts"][
+            "authSecretName"
+        ] = f"{self._workspace_name}-hf-token"
         variables["ms"]["modelArtifacts"]["uri"] = f"hf://{self._model_name}"
         variables["ms"]["modelArtifacts"]["name"] = self._model_name
 
