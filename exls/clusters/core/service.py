@@ -10,6 +10,7 @@ from exls.clusters.core.domain import (
     ClusterNodeRole,
     ClusterNodeStatus,
     ClusterStatus,
+    ClusterSummary,
 )
 from exls.clusters.core.ports.operations import ClusterOperations
 from exls.clusters.core.ports.provider import (
@@ -52,9 +53,10 @@ class ClustersService:
         self._file_write_adapter: FileWritePort[str] = file_write_adapter
 
     @handle_service_layer_errors("listing clusters")
-    def list_clusters(self, status: Optional[ClusterStatus] = None) -> List[Cluster]:
-        clusters: List[Cluster] = self._clusters_repository.list(status=status)
-        return clusters
+    def list_clusters(
+        self, status: Optional[ClusterStatus] = None
+    ) -> List[ClusterSummary]:
+        return self._clusters_repository.list(status=status)
 
     @handle_service_layer_errors("getting cluster")
     def get_cluster(self, cluster_id: str) -> Cluster:
@@ -353,7 +355,7 @@ class ClustersService:
             deployed_cluster=cluster_with_nodes, issues=all_issues
         )
 
-    def _validate_cluster_status(self, cluster: Cluster) -> None:
+    def _validate_cluster_status(self, cluster: ClusterSummary) -> None:
         if cluster.status == ClusterStatus.READY:
             return
         if cluster.status == ClusterStatus.DEPLOYING:

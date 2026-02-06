@@ -101,7 +101,7 @@ class ClusterStatus(StrEnum):
             return cls.UNKNOWN
 
 
-class Cluster(BaseModel):
+class ClusterSummary(BaseModel):
     id: StrictStr = Field(..., description="The ID of the cluster")
     name: StrictStr = Field(..., description="The name of the cluster")
     status: ClusterStatus = Field(..., description="The status of the cluster")
@@ -110,4 +110,7 @@ class Cluster(BaseModel):
     updated_at: Optional[datetime] = Field(
         ..., description="The last update date of the cluster"
     )
+
+
+class Cluster(ClusterSummary):
     nodes: List[ClusterNode] = Field(..., description="The nodes of the cluster")
