@@ -337,7 +337,6 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         # Configure model artifacts
         if "ms" not in variables:
             variables["ms"] = {}
-        variables["ms"]["fullnameOverride"] = f"{self._workspace_name}-ms"
         if "modelArtifacts" not in variables["ms"]:
             variables["ms"]["modelArtifacts"] = {}
 
