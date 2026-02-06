@@ -95,7 +95,7 @@ class AuthService:
                     f"failed to refresh access token. Please log in again. Error: {str(e)}"
                 ) from e
         else:
-            user: User = self._auth_operations.validate_token(
+            user: User = self._auth_operations.decode_user_from_token(
                 id_token=loaded_token.id_token
             )
             return AuthSession(user=user, token=loaded_token)

@@ -33,6 +33,9 @@ class AuthOperations(ABC):
     def validate_token(self, id_token: str) -> User: ...
 
     @abstractmethod
+    def decode_user_from_token(self, id_token: str) -> User: ...
+
+    @abstractmethod
     def refresh_access_token(self, refresh_token: str) -> Token: ...
 
     @abstractmethod

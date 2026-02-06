@@ -150,6 +150,37 @@ class ValidateTokenCommand(BaseCommand[ValidatedAuthUserResponse]):
             ) from e
 
 
+class DecodeUserFromTokenCommand(BaseCommand[ValidatedAuthUserResponse]):
+    def __init__(
+        self,
+        id_token: str,
+        deserializer: PydanticDeserializer[
+            ValidatedAuthUserResponse
+        ] = PydanticDeserializer(),
+    ):
+        self.id_token: str = id_token
+        self.deserializer: PydanticDeserializer[ValidatedAuthUserResponse] = (
+            deserializer
+        )
+
+    def execute(self) -> ValidatedAuthUserResponse:
+        try:
+            decoded_token = jwt.decode(
+                self.id_token, options={"verify_signature": False}
+            )
+            return self.deserializer.deserialize(
+                decoded_token, ValidatedAuthUserResponse
+            )
+        except DeserializationError as e:
+            raise Auth0TokenError(
+                message=f"error while deserializing decoded token: {e}",
+            ) from e
+        except Exception as e:
+            raise Auth0TokenError(
+                message=f"unexpected error while decoding user from token: {e}",
+            ) from e
+
+
 class Auth0RefreshTokenCommand(PostRequestWithResponseCommand[Auth0TokenResponse]):
     def __init__(self, request: RefreshTokenRequest):
         super().__init__(model=Auth0TokenResponse)

@@ -5,6 +5,7 @@ from exls.auth.adapters.auth0.commands import (
     Auth0GetTokenFromDeviceCodeCommand,
     Auth0RefreshTokenCommand,
     Auth0RevokeTokenCommand,
+    DecodeUserFromTokenCommand,
     LoadTokenExpiryMetadataCommand,
     ValidateTokenCommand,
 )
@@ -171,6 +172,18 @@ class Auth0Adapter(AuthOperations):
         except CommandError as e:
             raise AuthError(
                 f"failed to validate token: {str(e)}",
+            ) from e
+
+    def decode_user_from_token(self, id_token: str) -> User:
+        command: DecodeUserFromTokenCommand = DecodeUserFromTokenCommand(
+            id_token=id_token
+        )
+        try:
+            response: ValidatedAuthUserResponse = command.execute()
+            return _user_from_response(response=response)
+        except CommandError as e:
+            raise AuthError(
+                f"failed to decode user from token: {str(e)}",
             ) from e
 
     def refresh_access_token(self, refresh_token: str) -> Token:
