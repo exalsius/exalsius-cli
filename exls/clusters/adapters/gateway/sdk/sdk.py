@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.cluster import Cluster
@@ -53,8 +53,10 @@ from exls.clusters.adapters.gateway.sdk.commands import (
     GetKubeconfigSdkCommand,
     ListClustersSdkCommand,
     RemoveNodeSdkCommand,
+    StreamClusterLogsSdkCommand,
 )
 from exls.clusters.core.domain import (
+    ClusterEvent,
     ClusterStatus,
     ClusterType,
 )
@@ -124,8 +126,15 @@ def _cluster_node_ref_resources_data_from_sdk_model(
 
 
 class SdkClustersGateway(ClustersGateway):
-    def __init__(self, clusters_api: ClustersApi):
+    def __init__(
+        self,
+        clusters_api: ClustersApi,
+        base_url: str = "",
+        access_token: str = "",
+    ):
         self._clusters_api = clusters_api
+        self._base_url: str = base_url
+        self._access_token: str = access_token
 
     def list(self, status: Optional[ClusterStatus]) -> List[ClusterData]:
         command: ListClustersSdkCommand = ListClustersSdkCommand(
@@ -250,3 +259,14 @@ class SdkClustersGateway(ClustersGateway):
         )
         response: ClusterDashboardUrlResponse = command.execute()
         return response.url
+
+    def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
+        command: StreamClusterLogsSdkCommand = StreamClusterLogsSdkCommand(
+            base_url=self._base_url,
+            cluster_id=cluster_id,
+            access_token=self._access_token,
+        )
+        try:
+            yield from command.execute()
+        finally:
+            command.close()

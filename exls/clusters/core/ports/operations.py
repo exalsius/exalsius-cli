@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Iterator, List
 
-from exls.clusters.core.domain import ClusterNode
+from exls.clusters.core.domain import ClusterEvent, ClusterNode
 from exls.clusters.core.results import ClusterScaleResult
 
 
@@ -24,3 +24,6 @@ class ClusterOperations(ABC):
 
     @abstractmethod
     def get_dashboard_url(self, cluster_id: str) -> str: ...
+
+    @abstractmethod
+    def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]: ...
