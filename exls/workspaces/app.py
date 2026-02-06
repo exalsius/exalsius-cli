@@ -433,7 +433,7 @@ def deploy_jupyter_workspace(
 
 
 @workspaces_deploy_app.command(
-    "llm-inference", help="Deploy an LLM inference workspace"
+    "llm-inference", help="Deploy an LLM inference workspace (experimental feature)"
 )
 @handle_application_layer_errors(WorkspacesBundle)
 def deploy_llm_inference_workspace(
@@ -469,7 +469,7 @@ def deploy_llm_inference_workspace(
         1,
         "--num-gpus",
         "-g",
-        help="The number of GPUs (sets vLLM tensor parallelism)",
+        help="The number of GPUs (sets vLLM tensor parallelism for multi-GPU inference; please make sure your model supports this particular tensor parallelism configuration)",
         callback=_validate_num_gpus,
     ),
     wait_for_ready: bool = typer.Option(
