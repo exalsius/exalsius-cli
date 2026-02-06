@@ -348,9 +348,6 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         if "labels" not in variables["ms"]["modelArtifacts"]:
             variables["ms"]["modelArtifacts"]["labels"] = {}
         variables["ms"]["modelArtifacts"]["labels"]["llm-d.ai/model"] = model_short_name
-        variables["ms"]["modelArtifacts"]["labels"][
-            "llm-d.ai/inferenceServing"
-        ] = "true"
 
         # Configure inference pool model server labels
         if "ip" not in variables:
@@ -365,9 +362,6 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
             "llm-d.ai/model"
         ] = model_short_name
-        variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
-            "llm-d.ai/inferenceServing"
-        ] = "true"
 
         # Set tensor parallelism to num_gpus (ms.decode.parallelism.tensor)
         if "decode" not in variables["ms"]:
