@@ -111,3 +111,36 @@ class Cluster(BaseModel):
         ..., description="The last update date of the cluster"
     )
     nodes: List[ClusterNode] = Field(..., description="The nodes of the cluster")
+
+
+########################################################
+# Cluster Event Domain Objects (Logs Streaming)
+########################################################
+
+
+class ClusterEventInvolvedObject(BaseModel):
+    kind: StrictStr = Field(..., description="The kind of the involved object")
+    name: StrictStr = Field(..., description="The name of the involved object")
+    namespace: StrictStr = Field(
+        ..., description="The namespace of the involved object"
+    )
+
+
+class ClusterEvent(BaseModel):
+    watch_event_type: StrictStr = Field(
+        ..., description="The type of the watch event (e.g. ADDED, MODIFIED)"
+    )
+    namespace: StrictStr = Field(..., description="The namespace of the cluster event")
+    involved_object: ClusterEventInvolvedObject = Field(
+        ..., description="The involved Kubernetes object"
+    )
+    type: Optional[StrictStr] = Field(
+        default=None, description="The event type (e.g. Normal, Warning)"
+    )
+    reason: Optional[StrictStr] = Field(
+        default=None, description="The reason for the event"
+    )
+    message: Optional[StrictStr] = Field(default=None, description="The event message")
+    timestamp: Optional[datetime] = Field(
+        default=None, description="The timestamp of the event"
+    )
