@@ -3,6 +3,7 @@ from exalsius_api_client.api.clusters_api import ClustersApi
 from exls.clusters.adapters.adapter import ClusterAdapter
 from exls.clusters.adapters.gateway.sdk.sdk import SdkClustersGateway
 from exls.clusters.adapters.provider.nodes import NodesDomainProvider
+from exls.clusters.adapters.ui.display.log_renderer import ClusterLogRenderer
 from exls.clusters.adapters.ui.flows.cluster_deploy import DeployClusterFlow
 from exls.clusters.core.ports.provider import NodesProvider
 from exls.clusters.core.service import ClustersService
@@ -22,7 +23,9 @@ class ClustersBundle(BaseBundle):
     def get_clusters_service(self) -> ClustersService:
         clusters_api: ClustersApi = ClustersApi(api_client=self.create_api_client())
         clusters_gateway: SdkClustersGateway = SdkClustersGateway(
-            clusters_api=clusters_api
+            clusters_api=clusters_api,
+            base_url=self.config.backend_host,
+            access_token=self.access_token,
         )
         nodes_provider: NodesProvider = NodesDomainProvider(
             nodes_service=self._nodes_bundle.get_nodes_service()
@@ -40,3 +43,6 @@ class ClustersBundle(BaseBundle):
 
     def get_deploy_cluster_flow(self) -> DeployClusterFlow:
         return DeployClusterFlow(service=self.get_clusters_service())
+
+    def get_log_renderer(self) -> ClusterLogRenderer:
+        return ClusterLogRenderer()

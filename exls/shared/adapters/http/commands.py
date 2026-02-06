@@ -143,7 +143,7 @@ class StreamingGetRequestCommand(BaseCommand[Iterator[T_SerOutput]]):
             try:
                 error_body = e.response.json()
             except requests.exceptions.JSONDecodeError:
-                pass
+                logger.debug("failed to parse error response body as JSON for %s", url)
             raise HTTPCommandError(
                 message=f"error making streaming GET request to {url}: {e}",
                 endpoint=url,

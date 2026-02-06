@@ -1,9 +1,11 @@
+import contextlib
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 import typer
 
 from exls.clusters.adapters.bundle import ClustersBundle
+from exls.clusters.adapters.ui.display.log_renderer import ClusterLogRenderer
 from exls.clusters.adapters.ui.display.render import (
     CLUSTER_DETAIL_VIEW,
     CLUSTER_LIST_VIEW,
@@ -18,6 +20,7 @@ from exls.clusters.adapters.ui.flows.cluster_deploy import (
 )
 from exls.clusters.core.domain import (
     Cluster,
+    ClusterEvent,
     ClusterStatus,
     ClusterType,
 )
@@ -64,6 +67,26 @@ def _resolve_cluster_id_callback(ctx: typer.Context, value: str) -> str:
         return resolve_resource_id(clusters, value, "cluster")
     except (ResourceNotFoundError, AmbiguousResourceError) as e:
         raise typer.BadParameter(str(e))
+
+
+def _stream_logs_to_console(
+    events: Iterator[ClusterEvent],
+    renderer: ClusterLogRenderer,
+    cluster_name: str,
+    json_output: bool = False,
+) -> None:
+    """Shared helper to stream cluster log events to the console."""
+    if not json_output:
+        renderer.render_header(cluster_name)
+    try:
+        with contextlib.closing(events):  # type: ignore[arg-type]
+            for event in events:
+                if json_output:
+                    typer.echo(event.model_dump_json())
+                else:
+                    renderer.render_event(event)
+    except KeyboardInterrupt:
+        pass  # Allow users to stop log streaming with Ctrl+C without showing a traceback
 
 
 @clusters_app.callback(invoke_without_command=True)
@@ -219,6 +242,12 @@ def deploy_cluster(
         "--interactive",
         help="Enable interactive mode to create the cluster",
     ),
+    follow: bool = typer.Option(
+        False,
+        "--follow",
+        "-f",
+        help="Stream cluster logs after deployment starts",
+    ),
 ):
     """
     Create a cluster.
@@ -306,6 +335,17 @@ def deploy_cluster(
             data=result.issues,
             output_format=bundle.object_output_format,
             view_context=CLUSTER_NODE_ISSUE_VIEW,
+        )
+
+    if follow and result.is_success:
+        assert result.deployed_cluster is not None
+        events: Iterator[ClusterEvent] = service.stream_cluster_logs(
+            cluster_id=result.deployed_cluster.id
+        )
+        _stream_logs_to_console(
+            events=events,
+            renderer=bundle.get_log_renderer(),
+            cluster_name=result.deployed_cluster.name,
         )
 
 
@@ -512,4 +552,36 @@ def import_kubeconfig(
     io_facade.display_success_message(
         message=f"Kubeconfig from cluster '{cluster.name}' successfully imported to {kubeconfig_path}.",
         output_format=bundle.message_output_format,
+    )
+
+
+@clusters_app.command("logs", help="Stream logs for a cluster")
+@handle_application_layer_errors(ClustersBundle)
+def cluster_logs(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to stream logs for",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output raw NDJSON instead of formatted display",
+    ),
+):
+    """
+    Stream real-time Kubernetes events for a cluster.
+    """
+    bundle: ClustersBundle = _get_bundle(ctx)
+    service: ClustersService = bundle.get_clusters_service()
+
+    cluster: Cluster = service.get_cluster(cluster_id)
+    events: Iterator[ClusterEvent] = service.stream_cluster_logs(cluster_id)
+    _stream_logs_to_console(
+        events=events,
+        renderer=bundle.get_log_renderer(),
+        cluster_name=cluster.name,
+        json_output=json_output,
     )
