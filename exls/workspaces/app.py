@@ -482,7 +482,7 @@ def deploy_llm_inference_workspace(
     This workspace uses llm-d for efficient model serving with vLLM backend.
     Requires a Hugging Face token and model name.
     """
-    bundle = WorkspacesBundle(ctx)
+    bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
