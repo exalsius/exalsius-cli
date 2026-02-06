@@ -81,6 +81,9 @@ class WorkspaceTemplate(BaseModel):
 class WorkspaceAccessInformation(BaseModel):
     access_type: WorkspaceAccessType = Field(..., description="The access type")
     access_protocol: StrictStr = Field(..., description="The access protocol")
+    access_description: Optional[StrictStr] = Field(
+        None, description="The access description"
+    )
     external_ips: List[StrictStr] = Field(
         default_factory=list, description="The external IPs"
     )
@@ -88,13 +91,16 @@ class WorkspaceAccessInformation(BaseModel):
 
     @property
     def formatted_access_information(self) -> str:
+        suffix: str = (
+            "" if not self.access_description else f" ({self.access_description})"
+        )
         if not self.external_ips:
             return "<pending>"
         if self.access_protocol.lower() == "ssh":
             if self.port_number != 22:
-                return f"ssh -p {self.port_number} dev@{self.external_ips[0]}"
-            return f"ssh dev@{self.external_ips[0]}"
-        return f"{self.access_protocol.lower()}://{self.external_ips[0]}:{self.port_number}"
+                return f"ssh -p {self.port_number} dev@{self.external_ips[0]}{suffix}"
+            return f"ssh dev@{self.external_ips[0]}{suffix}"
+        return f"{self.access_protocol.lower()}://{self.external_ips[0]}:{self.port_number}{suffix}"
 
 
 class Workspace(BaseModel):

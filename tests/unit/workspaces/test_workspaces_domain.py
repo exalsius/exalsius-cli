@@ -403,33 +403,39 @@ class TestWorkspaceValueObjects:
         wai = WorkspaceAccessInformation(
             access_type=WorkspaceAccessType.NODE_PORT,
             access_protocol="ssh",
+            access_description="ssh endpoint",
             external_ips=["1.2.3.4"],
             port_number=22,
         )
-        assert wai.formatted_access_information == "ssh dev@1.2.3.4"
+        assert wai.formatted_access_information == "ssh dev@1.2.3.4 (ssh endpoint)"
 
         # Case 2: SSH non-standard port
         wai = WorkspaceAccessInformation(
             access_type=WorkspaceAccessType.NODE_PORT,
             access_protocol="ssh",
+            access_description="ssh endpoint",
             external_ips=["1.2.3.4"],
             port_number=2222,
         )
-        assert wai.formatted_access_information == "ssh -p 2222 dev@1.2.3.4"
+        assert (
+            wai.formatted_access_information == "ssh -p 2222 dev@1.2.3.4 (ssh endpoint)"
+        )
 
     def test_formatted_access_info_http(self):
         wai = WorkspaceAccessInformation(
             access_type=WorkspaceAccessType.INGRESS,
             access_protocol="http",
+            access_description="http endpoint",
             external_ips=["1.2.3.4"],
             port_number=80,
         )
-        assert wai.formatted_access_information == "http://1.2.3.4:80"
+        assert wai.formatted_access_information == "http://1.2.3.4:80 (http endpoint)"
 
     def test_formatted_access_info_pending(self):
         wai = WorkspaceAccessInformation(
             access_type=WorkspaceAccessType.INGRESS,
             access_protocol="http",
+            access_description="http endpoint",
             external_ips=[],
             port_number=80,
         )
