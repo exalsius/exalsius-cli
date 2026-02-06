@@ -30,6 +30,7 @@ class IntegratedWorkspaceTemplates(StrEnum):
     MARIMO = "marimo-workspace-template"
     DEV_POD = "vscode-devcontainer-template"
     DIST_TRAINING = "diloco-training-template"
+    LLM_D = "llm-d-model-template"
     OTHER = "other"
 
     @classmethod
@@ -281,6 +282,106 @@ class DevPodConfigurator(BaseWorkspaceConfigurator):
             variables["sshPublicKey"] = ""
 
         return edited_variables
+
+
+class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
+    def __init__(
+        self,
+        editor_render_bundle: WorkspaceEditorRenderBundle,
+        huggingface_token: str,
+        model_name: str,
+        workspace_name: str,
+        num_gpus: int,
+        gpu_vendor: Optional[WorkspaceGPUVendor] = None,
+    ):
+        super().__init__(editor_render_bundle)
+        self._huggingface_token: str = huggingface_token
+        self._model_name: str = model_name
+        self._workspace_name: str = workspace_name
+        self._num_gpus: int = num_gpus
+        self._gpu_vendor: Optional[WorkspaceGPUVendor] = gpu_vendor
+
+    @property
+    def template_id(self) -> IntegratedWorkspaceTemplates:
+        return IntegratedWorkspaceTemplates.LLM_D
+
+    def _extract_model_short_name(self, full_model_name: str) -> str:
+        """
+        Extract short model name from full HuggingFace model path.
+        Example: "Qwen/Qwen3-1.7B" -> "Qwen3-1.7B"
+        """
+        if "/" in full_model_name:
+            return full_model_name.split("/")[-1]
+        return full_model_name
+
+    def _validate(
+        self,
+        ref_variables: Dict[str, Any],
+        edited_variables: Dict[str, Any],
+        parent_keys: Optional[List[str]] = None,
+    ) -> None:
+        # Note: We don't validate huggingfaceToken here because it's set programmatically
+        # in configure_and_validate() and we trust that value. We only validate the
+        # structural elements that come from the template.
+        super()._validate(ref_variables, edited_variables, parent_keys=parent_keys)
+
+    def configure_and_validate(
+        self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
+    ) -> Dict[str, Any]:
+        # Set the Hugging Face token - this will be preserved through editing
+        variables["huggingfaceToken"] = self._huggingface_token
+
+        # Extract model short name
+        model_short_name = self._extract_model_short_name(self._model_name)
+
+        # Configure model artifacts
+        if "ms" not in variables:
+            variables["ms"] = {}
+        if "modelArtifacts" not in variables["ms"]:
+            variables["ms"]["modelArtifacts"] = {}
+
+        variables["ms"]["modelArtifacts"][
+            "authSecretName"
+        ] = f"{self._workspace_name}-hf-token"
+        variables["ms"]["modelArtifacts"]["uri"] = f"hf://{self._model_name}"
+        variables["ms"]["modelArtifacts"]["name"] = self._model_name
+
+        # Set model labels
+        if "labels" not in variables["ms"]["modelArtifacts"]:
+            variables["ms"]["modelArtifacts"]["labels"] = {}
+        variables["ms"]["modelArtifacts"]["labels"]["llm-d.ai/model"] = model_short_name
+
+        # Configure inference pool model server labels
+        if "ip" not in variables:
+            variables["ip"] = {}
+        if "inferencePool" not in variables["ip"]:
+            variables["ip"]["inferencePool"] = {}
+        if "modelServers" not in variables["ip"]["inferencePool"]:
+            variables["ip"]["inferencePool"]["modelServers"] = {}
+        if "matchLabels" not in variables["ip"]["inferencePool"]["modelServers"]:
+            variables["ip"]["inferencePool"]["modelServers"]["matchLabels"] = {}
+
+        variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
+            "llm-d.ai/model"
+        ] = model_short_name
+
+        # Set tensor parallelism to num_gpus (ms.decode.parallelism.tensor)
+        if "decode" not in variables["ms"]:
+            variables["ms"]["decode"] = {}
+        if "parallelism" not in variables["ms"]["decode"]:
+            variables["ms"]["decode"]["parallelism"] = {}
+        variables["ms"]["decode"]["parallelism"]["tensor"] = self._num_gpus
+
+        # Set accelerator type from resolved GPU vendor (AMD or NVIDIA)
+        if "accelerator" not in variables["ms"]:
+            variables["ms"]["accelerator"] = {}
+        if self._gpu_vendor == WorkspaceGPUVendor.AMD:
+            variables["ms"]["accelerator"]["type"] = "amd"
+        else:
+            # Default to nvidia for NVIDIA, NO_GPU, UNKNOWN, or None
+            variables["ms"]["accelerator"]["type"] = "nvidia"
+
+        return super().configure_and_validate(variables, io_facade)
 
 
 class DistributedTrainingModels(StrEnum):

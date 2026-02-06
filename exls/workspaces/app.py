@@ -35,6 +35,7 @@ from exls.workspaces.adapters.ui.configurators import (
     IntegratedWorkspaceTemplates,
     InvalidWorkspaceConfiguration,
     JupyterConfigurator,
+    LLMInferenceConfigurator,
     MarimoConfigurator,
 )
 from exls.workspaces.adapters.ui.display.render import (
@@ -234,6 +235,34 @@ def _validate_num_gpus(x: int) -> int:
     return x
 
 
+def _validate_huggingface_model(x: str) -> str:
+    if len(x) == 0:
+        raise ValueError("Hugging Face model name must be non-empty")
+
+    # Validate format: <repo>/<model-name>
+    if "/" not in x:
+        raise ValueError(
+            "Hugging Face model name must follow the format '<repo>/<model-name>' "
+            "(e.g., 'Qwen/Qwen3-1.7B', 'meta-llama/Llama-2-7b-hf')"
+        )
+
+    parts = x.split("/")
+    if len(parts) != 2:
+        raise ValueError(
+            "Hugging Face model name must contain exactly one '/' separator. "
+            "Format: '<repo>/<model-name>'"
+        )
+
+    repo, model = parts
+    if not repo or not model:
+        raise ValueError(
+            "Both repository and model name must be non-empty. "
+            "Format: '<repo>/<model-name>'"
+        )
+
+    return x
+
+
 # TODO: Move this to a better place
 def _get_cluster_id(
     service: WorkspacesService, io_facade: IOBaseModelFacade
@@ -396,6 +425,133 @@ def deploy_jupyter_workspace(
 
     io_facade.display_success_message(
         f"Workspace {workspace.name} deployed successfully.",
+        bundle.message_output_format,
+    )
+    io_facade.display_data(
+        workspace, bundle.object_output_format, view_context=WORKSPACE_LIST_VIEW
+    )
+
+
+@workspaces_deploy_app.command(
+    "llm-inference", help="Deploy an LLM inference workspace (experimental feature)"
+)
+@handle_application_layer_errors(WorkspacesBundle)
+def deploy_llm_inference_workspace(
+    ctx: typer.Context,
+    cluster_id: Optional[str] = typer.Argument(
+        help="The ID of the cluster to deploy the workspace to",
+        show_default=False,
+        default=None,
+    ),
+    name: str = typer.Option(
+        generate_random_name(prefix="llm-inference"),
+        "--name",
+        "-n",
+        help="The name of the workspace to deploy",
+    ),
+    huggingface_token: str = typer.Option(
+        ...,
+        "--huggingface-token",
+        "--hf-token",
+        "-t",
+        envvar=["HUGGINGFACE_TOKEN", "HF_TOKEN"],
+        help="The Hugging Face token for model access",
+        callback=_validate_api_token_non_empty,
+    ),
+    model_name: str = typer.Option(
+        ...,
+        "--model-name",
+        "-m",
+        help="The Hugging Face model name (e.g., 'Qwen/Qwen3-1.7B', 'meta-llama/Llama-2-7b-hf')",
+        callback=_validate_huggingface_model,
+    ),
+    num_gpus: int = typer.Option(
+        1,
+        "--num-gpus",
+        "-g",
+        help="The number of GPUs (sets vLLM tensor parallelism for multi-GPU inference; please make sure your model supports this particular tensor parallelism configuration)",
+        callback=_validate_num_gpus,
+    ),
+    wait_for_ready: bool = typer.Option(
+        False, "--wait-for-ready", "-w", help="Wait for the workspace to be ready"
+    ),
+):
+    """
+    Deploy an LLM inference workspace for serving large language models.
+
+    This workspace uses llm-d for efficient model serving with vLLM backend.
+    Requires a Hugging Face token and model name.
+    """
+    bundle: WorkspacesBundle = _get_bundle(ctx)
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
+    service: WorkspacesService = bundle.get_workspaces_service()
+
+    valid_cluster_id: str
+    if not cluster_id:
+        loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
+        if not loaded_cluster_id:
+            io_facade.display_error_message(
+                "No cluster found. Deploy a cluster first using 'exls clusters deploy'.",
+                bundle.message_output_format,
+            )
+            raise typer.Exit(0)
+        valid_cluster_id = loaded_cluster_id
+    else:
+        valid_cluster_id = cluster_id
+
+    cluster: WorkspaceCluster = service.get_cluster(valid_cluster_id)
+
+    resources: WorkerResources = _get_resources_for_single_node_worker(
+        service, cluster.id, num_gpus
+    )
+
+    template: WorkspaceTemplate = _get_workspace_template(
+        service, IntegratedWorkspaceTemplates.LLM_D
+    )
+    configurator: LLMInferenceConfigurator = LLMInferenceConfigurator(
+        editor_render_bundle=bundle.get_editor_render_bundle(
+            IntegratedWorkspaceTemplates.LLM_D
+        ),
+        huggingface_token=huggingface_token,
+        model_name=model_name,
+        workspace_name=name,
+        num_gpus=num_gpus,
+        gpu_vendor=resources.gpu_vendor,
+    )
+    try:
+        template_variables: Dict[str, Any] = configurator.configure_and_validate(
+            template.variables, io_facade
+        )
+    except InvalidWorkspaceConfiguration as e:
+        io_facade.display_error_message(str(e), bundle.message_output_format)
+        raise typer.Exit(1)
+
+    request = DeployWorkspaceRequest(
+        cluster_id=cluster.id,
+        workspace_name=name,
+        template_id=template.id_name,
+        template_variables=template_variables,
+        resources=resources,
+        description=f"LLM inference workspace for {model_name} with {num_gpus} GPU(s)",
+    )
+
+    io_facade.display_data(
+        request,
+        bundle.object_output_format,
+        view_context=DEPLOY_WORKSPACE_REQUEST_VIEW,
+    )
+    if not io_facade.ask_confirm(
+        message="Do you want to deploy the LLM inference workspace?",
+        default=False,
+    ):
+        raise UserCancellationException("User cancelled the workspace deployment")
+
+    workspace: Workspace = service.deploy_workspace(
+        request=request, wait_for_ready=wait_for_ready
+    )
+
+    io_facade.display_success_message(
+        f"LLM inference workspace {workspace.name} deployed successfully.",
         bundle.message_output_format,
     )
     io_facade.display_data(
