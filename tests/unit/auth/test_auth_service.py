@@ -93,7 +93,7 @@ def test_poll_for_authentication_success(
 
     mock_auth_operations.poll_for_authentication.return_value = token
     mock_auth_operations.validate_token.return_value = user
-    mock_auth_operations.load_token_expiry_metadata.return_value = token_metadata
+    mock_auth_operations.decode_token_expiry_metadata.return_value = token_metadata
 
     session = auth_service.poll_for_authentication(device_code)
 
@@ -104,7 +104,7 @@ def test_poll_for_authentication_success(
 
     mock_auth_operations.poll_for_authentication.assert_called_once_with(device_code)
     mock_auth_operations.validate_token.assert_called_once_with(token.id_token)
-    mock_auth_operations.load_token_expiry_metadata.assert_called_once_with(
+    mock_auth_operations.decode_token_expiry_metadata.assert_called_once_with(
         token=token.id_token
     )
     mock_token_repository.store.assert_called_once()
