@@ -37,7 +37,7 @@ class AuthService:
             token: Token = self._auth_operations.poll_for_authentication(device_code)
             user: User = self._auth_operations.validate_token(token.id_token)
             token_expiry_metadata: TokenExpiryMetadata = (
-                self._auth_operations.load_token_expiry_metadata(token=token.id_token)
+                self._auth_operations.decode_token_expiry_metadata(token=token.id_token)
             )
             token.expires_in = token_expiry_metadata.expires_in
 
@@ -95,7 +95,7 @@ class AuthService:
                     f"failed to refresh access token. Please log in again. Error: {str(e)}"
                 ) from e
         else:
-            user: User = self._auth_operations.validate_token(
+            user: User = self._auth_operations.decode_user_from_token(
                 id_token=loaded_token.id_token
             )
             return AuthSession(user=user, token=loaded_token)

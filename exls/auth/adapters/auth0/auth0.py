@@ -5,7 +5,6 @@ from exls.auth.adapters.auth0.commands import (
     Auth0GetTokenFromDeviceCodeCommand,
     Auth0RefreshTokenCommand,
     Auth0RevokeTokenCommand,
-    LoadTokenExpiryMetadataCommand,
     ValidateTokenCommand,
 )
 from exls.auth.adapters.auth0.config import Auth0Config
@@ -20,7 +19,6 @@ from exls.auth.adapters.auth0.responses import (
     Auth0DeviceCodeResponse,
     Auth0HTTPErrorResponse,
     Auth0TokenResponse,
-    TokenExpiryMetadataResponse,
     ValidatedAuthUserResponse,
 )
 from exls.auth.core.domain import (
@@ -31,6 +29,7 @@ from exls.auth.core.domain import (
 )
 from exls.auth.core.ports.operations import AuthError, AuthOperations
 from exls.shared.adapters.http.commands import HTTPCommandError
+from exls.shared.adapters.jwt.commands import DecodeTokenMetadataCommand
 from exls.shared.core.ports.command import CommandError
 
 
@@ -51,15 +50,6 @@ def _token_from_response(client_id: str, response: Auth0TokenResponse) -> Token:
         token_type=response.token_type,
         refresh_token=response.refresh_token,
         expires_in=response.expires_in,
-    )
-
-
-def _token_expiry_metadata_from_response(
-    response: TokenExpiryMetadataResponse,
-) -> TokenExpiryMetadata:
-    return TokenExpiryMetadata(
-        iat=response.iat,
-        exp=response.exp,
     )
 
 
@@ -147,15 +137,27 @@ class Auth0Adapter(AuthOperations):
             except CommandError as e:
                 raise AuthError(f"failed to authenticate: {str(e)}") from e
 
-    def load_token_expiry_metadata(self, token: str) -> TokenExpiryMetadata:
-        command: LoadTokenExpiryMetadataCommand = LoadTokenExpiryMetadataCommand(
-            token=token
+    def decode_token_expiry_metadata(self, token: str) -> TokenExpiryMetadata:
+        command: DecodeTokenMetadataCommand[TokenExpiryMetadata] = (
+            DecodeTokenMetadataCommand(
+                token=token,
+                model=TokenExpiryMetadata,
+            )
         )
         try:
-            response: TokenExpiryMetadataResponse = command.execute()
-            return _token_expiry_metadata_from_response(response=response)
+            return command.execute()
         except CommandError as e:
             raise AuthError(f"failed to decode token: {str(e)}") from e
+
+    def decode_user_from_token(self, id_token: str) -> User:
+        command: DecodeTokenMetadataCommand[User] = DecodeTokenMetadataCommand(
+            token=id_token,
+            model=User,
+        )
+        try:
+            return command.execute()
+        except CommandError as e:
+            raise AuthError(f"failed to decode user from token: {str(e)}") from e
 
     def validate_token(self, id_token: str) -> User:
         request: ValidateTokenRequest = ValidateTokenRequest(

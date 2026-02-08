@@ -93,7 +93,7 @@ def test_poll_for_authentication_success(
 
     mock_auth_operations.poll_for_authentication.return_value = token
     mock_auth_operations.validate_token.return_value = user
-    mock_auth_operations.load_token_expiry_metadata.return_value = token_metadata
+    mock_auth_operations.decode_token_expiry_metadata.return_value = token_metadata
 
     session = auth_service.poll_for_authentication(device_code)
 
@@ -104,7 +104,7 @@ def test_poll_for_authentication_success(
 
     mock_auth_operations.poll_for_authentication.assert_called_once_with(device_code)
     mock_auth_operations.validate_token.assert_called_once_with(token.id_token)
-    mock_auth_operations.load_token_expiry_metadata.assert_called_once_with(
+    mock_auth_operations.decode_token_expiry_metadata.assert_called_once_with(
         token=token.id_token
     )
     mock_token_repository.store.assert_called_once()
@@ -171,22 +171,22 @@ def test_acquire_access_token_success_valid_token(
 
     mock_auth_operations.get_client_id.return_value = client_id
     mock_token_repository.load.return_value = loaded_token
-    mock_auth_operations.validate_token.return_value = user
+    mock_auth_operations.decode_user_from_token.return_value = user
 
     session: AuthSession = auth_service.acquire_access_token()
 
     assert session.user == user
     assert session.token == loaded_token
     mock_token_repository.load.assert_called_once_with(client_id=client_id)
-    mock_auth_operations.validate_token.assert_called_once_with(
+    mock_auth_operations.decode_user_from_token.assert_called_once_with(
         id_token=loaded_token.id_token
     )
 
 
-def test_acquire_access_token_validation_failure(
+def test_acquire_access_token_decode_failure(
     auth_service: AuthService, mock_auth_operations: Mock, mock_token_repository: Mock
 ):
-    """Test when a stored token loads but fails remote validation."""
+    """Test when a stored token loads but fails local decoding."""
     client_id = "client-id"
     # Token valid for 1 hour
     loaded_token = LoadedToken(
@@ -198,8 +198,10 @@ def test_acquire_access_token_validation_failure(
 
     mock_auth_operations.get_client_id.return_value = client_id
     mock_token_repository.load.return_value = loaded_token
-    # Simulate remote validation failure
-    mock_auth_operations.validate_token.side_effect = AuthError("User banned")
+    # Simulate local decode failure
+    mock_auth_operations.decode_user_from_token.side_effect = AuthError(
+        "Malformed token"
+    )
 
     with pytest.raises(ServiceError, match="acquiring access token"):
         auth_service.acquire_access_token()
