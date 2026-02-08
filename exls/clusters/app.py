@@ -19,6 +19,7 @@ from exls.clusters.adapters.ui.flows.cluster_deploy import (
 from exls.clusters.core.domain import (
     Cluster,
     ClusterStatus,
+    ClusterSummary,
     ClusterType,
 )
 from exls.clusters.core.requests import ClusterDeployRequest
@@ -60,7 +61,7 @@ def _resolve_cluster_id_callback(ctx: typer.Context, value: str) -> str:
     try:
         bundle: ClustersBundle = _get_bundle(ctx)
         service: ClustersService = bundle.get_clusters_service()
-        clusters: List[Cluster] = service.list_clusters()
+        clusters: List[ClusterSummary] = service.list_clusters()
         return resolve_resource_id(clusters, value, "cluster")
     except (ResourceNotFoundError, AmbiguousResourceError) as e:
         raise typer.BadParameter(str(e))
@@ -93,7 +94,7 @@ def list_clusters(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    clusters_domain: List[Cluster] = service.list_clusters(status=status)
+    clusters_domain: List[ClusterSummary] = service.list_clusters(status=status)
     io_facade.display_data(
         clusters_domain, bundle.object_output_format, view_context=CLUSTER_LIST_VIEW
     )
