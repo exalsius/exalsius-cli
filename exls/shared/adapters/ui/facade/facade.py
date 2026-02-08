@@ -3,6 +3,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterator,
     Optional,
     Sequence,
     TypeVar,
@@ -55,6 +56,24 @@ class IOBaseModelFacade(IOFacade[BaseModel]):
                 if view_context
                 else None
             ),  # type: ignore
+        )
+
+    def display_stream(
+        self,
+        stream: Iterator[BaseModel],
+        output_format: OutputFormat,
+        view_context: Optional[ViewContext] = None,
+        header: Optional[str] = None,
+    ):
+        self.output_manager.display_stream(
+            stream,
+            output_format=output_format,  # type: ignore
+            render_context=(
+                view_context.get_context_for_format(output_format)
+                if view_context
+                else None
+            ),  # type: ignore
+            header=header,
         )
 
     def display_info_message(self, message: str, output_format: OutputFormat):

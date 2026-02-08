@@ -1,14 +1,13 @@
-import contextlib
 from pathlib import Path
 from typing import Iterator, List, Optional
 
 import typer
 
 from exls.clusters.adapters.bundle import ClustersBundle
-from exls.clusters.adapters.ui.display.log_renderer import ClusterLogRenderer
 from exls.clusters.adapters.ui.display.render import (
     CLUSTER_DETAIL_VIEW,
     CLUSTER_LIST_VIEW,
+    CLUSTER_LOG_TEXT_VIEW,
     CLUSTER_NODE_ISSUE_VIEW,
     CLUSTER_NODE_LIST_VIEW,
     CLUSTER_NODE_RESOURCES_VIEW,
@@ -30,6 +29,7 @@ from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
+from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
     get_app_state_from_ctx,
@@ -67,26 +67,6 @@ def _resolve_cluster_id_callback(ctx: typer.Context, value: str) -> str:
         return resolve_resource_id(clusters, value, "cluster")
     except (ResourceNotFoundError, AmbiguousResourceError) as e:
         raise typer.BadParameter(str(e))
-
-
-def _stream_logs_to_console(
-    events: Iterator[ClusterEvent],
-    renderer: ClusterLogRenderer,
-    cluster_name: str,
-    json_output: bool = False,
-) -> None:
-    """Shared helper to stream cluster log events to the console."""
-    if not json_output:
-        renderer.render_header(cluster_name)
-    try:
-        with contextlib.closing(events):  # type: ignore[arg-type]
-            for event in events:
-                if json_output:
-                    typer.echo(event.model_dump_json())
-                else:
-                    renderer.render_event(event)
-    except KeyboardInterrupt:
-        pass  # Allow users to stop log streaming with Ctrl+C without showing a traceback
 
 
 @clusters_app.callback(invoke_without_command=True)
@@ -342,10 +322,11 @@ def deploy_cluster(
         events: Iterator[ClusterEvent] = service.stream_cluster_logs(
             cluster_id=result.deployed_cluster.id
         )
-        _stream_logs_to_console(
-            events=events,
-            renderer=bundle.get_log_renderer(),
-            cluster_name=result.deployed_cluster.name,
+        io_facade.display_stream(
+            stream=events,
+            output_format=bundle.object_output_format,
+            view_context=CLUSTER_LOG_TEXT_VIEW,
+            header=f"Streaming logs for cluster {result.deployed_cluster.name}...",
         )
 
 
@@ -575,13 +556,15 @@ def cluster_logs(
     Stream real-time Kubernetes events for a cluster.
     """
     bundle: ClustersBundle = _get_bundle(ctx)
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
     cluster: Cluster = service.get_cluster(cluster_id)
     events: Iterator[ClusterEvent] = service.stream_cluster_logs(cluster_id)
-    _stream_logs_to_console(
-        events=events,
-        renderer=bundle.get_log_renderer(),
-        cluster_name=cluster.name,
-        json_output=json_output,
+
+    io_facade.display_stream(
+        stream=events,
+        output_format=OutputFormat.JSON if json_output else OutputFormat.TEXT,
+        view_context=CLUSTER_LOG_TEXT_VIEW,
+        header=f"Streaming logs for cluster {cluster.name}...",
     )

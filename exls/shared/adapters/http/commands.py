@@ -175,6 +175,8 @@ class StreamingGetRequestCommand(BaseCommand[Iterator[T_SerOutput]]):
         ) as e:
             logger.debug("stream ended: %s", e)
             return
+        finally:
+            self.close()
 
     def close(self) -> None:
         if self._response is not None:

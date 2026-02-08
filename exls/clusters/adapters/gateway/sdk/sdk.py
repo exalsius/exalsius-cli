@@ -125,6 +125,8 @@ def _cluster_node_ref_resources_data_from_sdk_model(
     )
 
 
+# TODO: Would be better to use the ClustersAPI's URL and token utilities instead
+#       of reimplementing the logic but it's ok for now.
 class SdkClustersGateway(ClustersGateway):
     def __init__(
         self,
