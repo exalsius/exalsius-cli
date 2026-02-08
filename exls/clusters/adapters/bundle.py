@@ -22,7 +22,9 @@ class ClustersBundle(BaseBundle):
     def get_clusters_service(self) -> ClustersService:
         clusters_api: ClustersApi = ClustersApi(api_client=self.create_api_client())
         clusters_gateway: SdkClustersGateway = SdkClustersGateway(
-            clusters_api=clusters_api
+            clusters_api=clusters_api,
+            base_url=self.config.backend_host,
+            access_token=self.access_token,
         )
         nodes_provider: NodesProvider = NodesDomainProvider(
             nodes_service=self._nodes_bundle.get_nodes_service()

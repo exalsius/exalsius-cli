@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,
     Generic,
+    Iterator,
     Literal,
     Optional,
     Sequence,
@@ -88,6 +89,15 @@ class IObjectOutputManager(
         data: Sequence[T_Input_Cov] | T_Input_Cov,
         output_format: OutputFormat,
         render_context: Optional[BaseRenderContext] = None,
+    ) -> None: ...
+
+    @abstractmethod
+    def display_stream(
+        self,
+        stream: Iterator[T_Input_Cov],
+        output_format: OutputFormat,
+        render_context: Optional[BaseRenderContext] = None,
+        header: Optional[str] = None,
     ) -> None: ...
 
 

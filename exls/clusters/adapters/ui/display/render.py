@@ -1,12 +1,14 @@
-from typing import Dict, cast
+from typing import Any, Dict, cast
 
 from exls.clusters.adapters.ui.flows.cluster_deploy import FlowClusterNodeDTO
-from exls.clusters.core.domain import ClusterNode
+from exls.clusters.core.domain import ClusterEvent, ClusterNode
+from exls.shared.adapters.ui.output.render.json import JsonRenderContext
 from exls.shared.adapters.ui.output.render.service import (
     format_datetime,
     format_datetime_humanized,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
+from exls.shared.adapters.ui.output.render.text import TextRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
 
 # -----------------------------------------------------------------------------
@@ -166,3 +168,44 @@ _ADD_NODES_REQUEST_COLUMNS: Dict[str, Column] = {
 }
 
 ADD_NODES_REQUEST_VIEW = ViewContext.from_table_columns(_ADD_NODES_REQUEST_COLUMNS)
+
+
+# -----------------------------------------------------------------------------
+# LOG STREAMING VIEWS
+# -----------------------------------------------------------------------------
+
+
+def _text_format_cluster_event(event: Any) -> str:
+    if not isinstance(event, ClusterEvent):
+        return str(event)
+
+    timestamp: str = (
+        event.timestamp.strftime("%H:%M:%S") if event.timestamp else "--------"
+    )
+    event_type: str = event.type or ""
+    kind: str = event.involved_object.kind
+    name: str = event.involved_object.name
+    reason: str = event.reason or ""
+    message: str = (event.message or "").replace("\n", " ")
+
+    style: str = "yellow" if event_type == "Warning" else "dim"
+
+    # We return the string with Rich markup.
+    # The Generic Text Renderer will wrap this, but since we don't set a color in the context,
+    # it won't interfere with our internal markup.
+    return f"[{style}]{timestamp}  {event_type:<8}  {kind}/{name}  {reason}  {message}[/{style}]"
+
+
+CLUSTER_LOG_TEXT_VIEW = ViewContext(
+    ctx_text=TextRenderContext(
+        color="white",  # Default base color
+        bold=False,
+        dim=False,
+        italic=False,
+        underline=False,
+        blink=False,
+        bgcolor=None,
+        value_formatter=_text_format_cluster_event,
+    ),
+    ctx_json=JsonRenderContext(indent=2),
+)

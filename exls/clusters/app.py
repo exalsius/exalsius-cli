@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterator, List, Optional
 
 import typer
 
@@ -7,6 +7,7 @@ from exls.clusters.adapters.bundle import ClustersBundle
 from exls.clusters.adapters.ui.display.render import (
     CLUSTER_DETAIL_VIEW,
     CLUSTER_LIST_VIEW,
+    CLUSTER_LOG_TEXT_VIEW,
     CLUSTER_NODE_ISSUE_VIEW,
     CLUSTER_NODE_LIST_VIEW,
     CLUSTER_NODE_RESOURCES_VIEW,
@@ -18,6 +19,7 @@ from exls.clusters.adapters.ui.flows.cluster_deploy import (
 )
 from exls.clusters.core.domain import (
     Cluster,
+    ClusterEvent,
     ClusterStatus,
     ClusterType,
 )
@@ -27,6 +29,7 @@ from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
 from exls.shared.adapters.ui.flow.flow import FlowContext
+from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (
     called_with_any_user_input,
     get_app_state_from_ctx,
@@ -219,6 +222,12 @@ def deploy_cluster(
         "--interactive",
         help="Enable interactive mode to create the cluster",
     ),
+    follow: bool = typer.Option(
+        False,
+        "--follow",
+        "-f",
+        help="Stream cluster logs after deployment starts",
+    ),
 ):
     """
     Create a cluster.
@@ -306,6 +315,18 @@ def deploy_cluster(
             data=result.issues,
             output_format=bundle.object_output_format,
             view_context=CLUSTER_NODE_ISSUE_VIEW,
+        )
+
+    if follow and result.is_success:
+        assert result.deployed_cluster is not None
+        events: Iterator[ClusterEvent] = service.stream_cluster_logs(
+            cluster_id=result.deployed_cluster.id
+        )
+        io_facade.display_stream(
+            stream=events,
+            output_format=bundle.object_output_format,
+            view_context=CLUSTER_LOG_TEXT_VIEW,
+            header=f"Streaming logs for cluster {result.deployed_cluster.name}...",
         )
 
 
@@ -512,4 +533,38 @@ def import_kubeconfig(
     io_facade.display_success_message(
         message=f"Kubeconfig from cluster '{cluster.name}' successfully imported to {kubeconfig_path}.",
         output_format=bundle.message_output_format,
+    )
+
+
+@clusters_app.command("logs", help="Stream logs for a cluster")
+@handle_application_layer_errors(ClustersBundle)
+def cluster_logs(
+    ctx: typer.Context,
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to stream logs for",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output raw NDJSON instead of formatted display",
+    ),
+):
+    """
+    Stream real-time Kubernetes events for a cluster.
+    """
+    bundle: ClustersBundle = _get_bundle(ctx)
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
+    service: ClustersService = bundle.get_clusters_service()
+
+    cluster: Cluster = service.get_cluster(cluster_id)
+    events: Iterator[ClusterEvent] = service.stream_cluster_logs(cluster_id)
+
+    io_facade.display_stream(
+        stream=events,
+        output_format=OutputFormat.JSON if json_output else OutputFormat.TEXT,
+        view_context=CLUSTER_LOG_TEXT_VIEW,
+        header=f"Streaming logs for cluster {cluster.name}...",
     )
