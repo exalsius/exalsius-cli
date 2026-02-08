@@ -1,7 +1,6 @@
 from enum import StrEnum
 from typing import Any, Dict
 
-import jwt
 from auth0.authentication.token_verifier import (
     AsymmetricSignatureVerifier,
     TokenVerifier,
@@ -18,7 +17,6 @@ from exls.auth.adapters.auth0.requests import (
 from exls.auth.adapters.auth0.responses import (
     Auth0DeviceCodeResponse,
     Auth0TokenResponse,
-    TokenExpiryMetadataResponse,
     ValidatedAuthUserResponse,
 )
 from exls.shared.adapters.deserializer import (
@@ -85,31 +83,6 @@ class Auth0GetTokenFromDeviceCodeCommand(
         }
 
 
-# This is not the exact right place for this command since it depends on
-# jwt and not the auth0 specific logic. But its fine for now.
-class LoadTokenExpiryMetadataCommand(BaseCommand[TokenExpiryMetadataResponse]):
-    def __init__(self, token: str):
-        self.token: str = token
-        self.deserializer: PydanticDeserializer[TokenExpiryMetadataResponse] = (
-            PydanticDeserializer()
-        )
-
-    def execute(self) -> TokenExpiryMetadataResponse:
-        try:
-            decoded_token = jwt.decode(self.token, options={"verify_signature": False})
-            return self.deserializer.deserialize(
-                decoded_token, TokenExpiryMetadataResponse
-            )
-        except DeserializationError as e:
-            raise Auth0TokenError(
-                message=f"error while deserializing decoded token: {e}",
-            ) from e
-        except Exception as e:
-            raise Auth0TokenError(
-                message=f"unexpected error while validating token: {e}",
-            ) from e
-
-
 class ValidateTokenCommand(BaseCommand[ValidatedAuthUserResponse]):
     def __init__(
         self,
@@ -147,37 +120,6 @@ class ValidateTokenCommand(BaseCommand[ValidatedAuthUserResponse]):
         except Exception as e:
             raise Auth0TokenError(
                 message=f"unexpected error while validating token: {e}",
-            ) from e
-
-
-class DecodeUserFromTokenCommand(BaseCommand[ValidatedAuthUserResponse]):
-    def __init__(
-        self,
-        id_token: str,
-        deserializer: PydanticDeserializer[
-            ValidatedAuthUserResponse
-        ] = PydanticDeserializer(),
-    ):
-        self.id_token: str = id_token
-        self.deserializer: PydanticDeserializer[ValidatedAuthUserResponse] = (
-            deserializer
-        )
-
-    def execute(self) -> ValidatedAuthUserResponse:
-        try:
-            decoded_token = jwt.decode(
-                self.id_token, options={"verify_signature": False}
-            )
-            return self.deserializer.deserialize(
-                decoded_token, ValidatedAuthUserResponse
-            )
-        except DeserializationError as e:
-            raise Auth0TokenError(
-                message=f"error while deserializing decoded token: {e}",
-            ) from e
-        except Exception as e:
-            raise Auth0TokenError(
-                message=f"unexpected error while decoding user from token: {e}",
             ) from e
 
 

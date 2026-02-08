@@ -37,7 +37,7 @@ class AuthService:
             token: Token = self._auth_operations.poll_for_authentication(device_code)
             user: User = self._auth_operations.validate_token(token.id_token)
             token_expiry_metadata: TokenExpiryMetadata = (
-                self._auth_operations.load_token_expiry_metadata(token=token.id_token)
+                self._auth_operations.decode_token_expiry_metadata(token=token.id_token)
             )
             token.expires_in = token_expiry_metadata.expires_in
 
