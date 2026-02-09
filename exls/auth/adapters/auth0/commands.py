@@ -1,11 +1,13 @@
 from enum import StrEnum
 from typing import Any, Dict
 
+from auth0.authentication.exceptions import (  # type: ignore[reportMissingTypeStubs]
+    TokenValidationError,
+)
 from auth0.authentication.token_verifier import (
     AsymmetricSignatureVerifier,
     TokenVerifier,
 )
-from auth0.exceptions import TokenValidationError
 
 from exls.auth.adapters.auth0.requests import (
     AuthenticationRequest,
