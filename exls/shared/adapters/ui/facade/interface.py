@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, Optional, Sequence, TypeVar, Union
+from typing import Generic, Iterator, Optional, Sequence, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -23,4 +23,13 @@ class IOFacade(
         data: Union[T, Sequence[T]],
         output_format: OutputFormat,
         view_context: Optional[ViewContext] = None,
+    ) -> None: ...
+
+    @abstractmethod
+    def display_stream(
+        self,
+        stream: Iterator[T],
+        output_format: OutputFormat,
+        view_context: Optional[ViewContext] = None,
+        header: Optional[str] = None,
     ) -> None: ...

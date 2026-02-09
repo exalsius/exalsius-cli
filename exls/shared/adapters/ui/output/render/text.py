@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, TypeVar
+from typing import Any, Callable, List, Optional, Sequence, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -61,6 +61,9 @@ class TextRenderContext(BaseRenderContext):
     italic: bool = Field(..., description="Whether to italic the text")
     underline: bool = Field(..., description="Whether to underline the text")
     blink: bool = Field(..., description="Whether to blink the text")
+    value_formatter: Optional[Callable[[Any], str]] = Field(
+        default=None, description="Function to format the value as string"
+    )
 
 
 class _BaseRichTextRenderer:
@@ -134,7 +137,12 @@ class RichTextItemRenderer(_BaseRichTextRenderer, ISingleItemRenderer[T, str]):
         self, data: T, render_context: Optional[BaseRenderContext] = None
     ) -> str:
         validated_render_context = self.resolve_context(render_context)
-        return self._get_styled_text(str(data), validated_render_context)
+        text_content = (
+            validated_render_context.value_formatter(data)
+            if validated_render_context.value_formatter
+            else str(data)
+        )
+        return self._get_styled_text(text_content, validated_render_context)
 
 
 class RichTextInfoMessageRenderer(RichTextItemRenderer[TextMessageItem]):

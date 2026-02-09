@@ -1,11 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from pydantic import StrictStr
 
 from exls.clusters.core.domain import (
     Cluster,
+    ClusterEvent,
     ClusterNode,
     ClusterNodeRole,
     ClusterNodeStatus,
@@ -456,6 +457,10 @@ class ClustersService:
         self._validate_cluster_status(cluster=cluster)
 
         return self._clusters_operations.get_dashboard_url(cluster_id=cluster_id)
+
+    @handle_service_layer_errors("streaming cluster logs")
+    def stream_cluster_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
+        return self._clusters_operations.stream_logs(cluster_id=cluster_id)
 
     def list_available_nodes(self) -> List[ClusterNode]:
         return self._nodes_provider.list_available_nodes()

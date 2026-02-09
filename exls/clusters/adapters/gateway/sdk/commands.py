@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Dict, Literal, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
@@ -22,6 +22,8 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
 
+from exls.clusters.core.domain import ClusterEvent
+from exls.shared.adapters.http.commands import StreamingGetRequestCommand
 from exls.shared.adapters.sdk.command import (
     ExalsiusSdkCommand,
     UnexpectedSdkCommandResponseError,
@@ -185,3 +187,20 @@ class GetDashboardUrlSdkCommand(BaseClustersSdkCommand[ClusterDashboardUrlRespon
             cluster_id=self._cluster_id
         )
         return response
+
+
+class StreamClusterLogsSdkCommand(StreamingGetRequestCommand[ClusterEvent]):
+    def __init__(self, base_url: str, cluster_id: str, access_token: str):
+        super().__init__(model=ClusterEvent)
+        self._base_url: str = base_url
+        self._cluster_id: str = cluster_id
+        self._access_token: str = access_token
+
+    def _get_url(self) -> str:
+        return f"{self._base_url}/cluster/{self._cluster_id}/logs"
+
+    def _get_headers(self) -> Dict[str, str]:
+        return {
+            "Authorization": f"Bearer {self._access_token}",
+            "Accept": "application/x-ndjson",
+        }

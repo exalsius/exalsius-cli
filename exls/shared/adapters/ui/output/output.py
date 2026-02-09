@@ -1,5 +1,7 @@
+import contextlib
 from typing import (
     Generic,
+    Iterator,
     Literal,
     Optional,
     Sequence,
@@ -143,6 +145,25 @@ class TyperConsoleOutputManager(
                 self._get_item_renderer(output_format)
             )
             self.console.print(single_item_renderer.render(data, render_context))
+
+    def display_stream(
+        self,
+        stream: Iterator[T],
+        output_format: OutputFormat,
+        render_context: Optional[BaseRenderContext] = None,
+        header: Optional[str] = None,
+    ) -> None:
+        if header and output_format != OutputFormat.JSON:
+            self.console.print(header)
+            self.console.print("[dim]Press Ctrl+C to stop[/dim]\n")
+
+        try:
+            with contextlib.closing(stream):  # type: ignore[arg-type]
+                for item in stream:
+                    # Reuse the existing single-item display logic
+                    self.display(item, output_format, render_context)  # type: ignore
+        except KeyboardInterrupt:
+            pass
 
     def display_info_message(self, message: str, output_format: OutputFormat):
         item = TextMessageItem(message=message)

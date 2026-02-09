@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional
 
 from exls.clusters.adapters.gateway.gateway import (
     ClusterData,
@@ -10,6 +10,7 @@ from exls.clusters.adapters.gateway.gateway import (
 )
 from exls.clusters.core.domain import (
     Cluster,
+    ClusterEvent,
     ClusterNode,
     ClusterNodeResources,
     ClusterNodeRole,
@@ -271,3 +272,6 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
 
     def get_dashboard_url(self, cluster_id: str) -> str:
         return self._cluster_gateway.get_dashboard_url(cluster_id=cluster_id)
+
+    def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
+        return self._cluster_gateway.stream_logs(cluster_id=cluster_id)

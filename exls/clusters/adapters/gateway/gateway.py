@@ -1,11 +1,12 @@
 import datetime
 from abc import ABC, abstractmethod
 from enum import StrEnum
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional
 
 from pydantic import BaseModel, Field, StrictInt, StrictStr
 
 from exls.clusters.core.domain import (
+    ClusterEvent,
     ClusterStatus,
     ClusterType,
 )
@@ -116,4 +117,8 @@ class ClustersGateway(ABC):
 
     @abstractmethod
     def get_dashboard_url(self, cluster_id: str) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
         raise NotImplementedError
