@@ -31,6 +31,7 @@ def _workspace_from_sdk(sdk_model: SdkWorkspace) -> Workspace:
         WorkspaceAccessInformation(
             access_type=WorkspaceAccessType.from_str(access_information.access_type),
             access_protocol=access_information.access_protocol,
+            access_description=access_information.access_description,
             external_ips=access_information.external_ips or [],
             port_number=access_information.port_number,
         )
