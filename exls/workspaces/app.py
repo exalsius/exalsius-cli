@@ -237,25 +237,25 @@ def _validate_num_gpus(x: int) -> int:
 
 def _validate_huggingface_model(x: str) -> str:
     if len(x) == 0:
-        raise ValueError("Hugging Face model name must be non-empty")
+        raise typer.BadParameter("Hugging Face model name must be non-empty")
 
     # Validate format: <repo>/<model-name>
     if "/" not in x:
-        raise ValueError(
+        raise typer.BadParameter(
             "Hugging Face model name must follow the format '<repo>/<model-name>' "
             "(e.g., 'Qwen/Qwen3-1.7B', 'meta-llama/Llama-2-7b-hf')"
         )
 
     parts = x.split("/")
     if len(parts) != 2:
-        raise ValueError(
+        raise typer.BadParameter(
             "Hugging Face model name must contain exactly one '/' separator. "
             "Format: '<repo>/<model-name>'"
         )
 
     repo, model = parts
     if not repo or not model:
-        raise ValueError(
+        raise typer.BadParameter(
             "Both repository and model name must be non-empty. "
             "Format: '<repo>/<model-name>'"
         )
