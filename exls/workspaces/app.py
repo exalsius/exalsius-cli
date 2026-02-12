@@ -439,9 +439,11 @@ def deploy_jupyter_workspace(
 def deploy_llm_inference_workspace(
     ctx: typer.Context,
     cluster_id: Optional[str] = typer.Argument(
-        help="The ID of the cluster to deploy the workspace to",
+        None,
+        help="The name or ID of the cluster to deploy the workspace to",
+        metavar="CLUSTER_NAME_OR_ID",
         show_default=False,
-        default=None,
+        callback=_resolve_cluster_id_callback,
     ),
     name: str = typer.Option(
         generate_random_name(prefix="llm-inference"),
