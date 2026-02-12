@@ -328,59 +328,34 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
     def configure_and_validate(
         self, variables: Dict[str, Any], io_facade: IOBaseModelFacade
     ) -> Dict[str, Any]:
-        # Set the Hugging Face token - this will be preserved through editing
-        variables["huggingfaceToken"] = self._huggingface_token
-
-        # Extract model short name
         model_short_name = self._extract_model_short_name(self._model_name)
+        # Default to nvidia for NVIDIA, NO_GPU, UNKNOWN, or None
+        accelerator_type = (
+            "amd" if self._gpu_vendor == WorkspaceGPUVendor.AMD else "nvidia"
+        )
 
-        # Configure model artifacts
-        if "ms" not in variables:
-            variables["ms"] = {}
-        if "modelArtifacts" not in variables["ms"]:
-            variables["ms"]["modelArtifacts"] = {}
+        overrides: Dict[str, Any] = {
+            "huggingfaceToken": self._huggingface_token,
+            "ms": {
+                "modelArtifacts": {
+                    "authSecretName": f"{self._workspace_name}-hf-token",
+                    "uri": f"hf://{self._model_name}",
+                    "name": self._model_name,
+                    "labels": {"llm-d.ai/model": model_short_name},
+                },
+                "decode": {"parallelism": {"tensor": self._num_gpus}},
+                "accelerator": {"type": accelerator_type},
+            },
+            "ip": {
+                "inferencePool": {
+                    "modelServers": {
+                        "matchLabels": {"llm-d.ai/model": model_short_name},
+                    }
+                }
+            },
+        }
 
-        variables["ms"]["modelArtifacts"][
-            "authSecretName"
-        ] = f"{self._workspace_name}-hf-token"
-        variables["ms"]["modelArtifacts"]["uri"] = f"hf://{self._model_name}"
-        variables["ms"]["modelArtifacts"]["name"] = self._model_name
-
-        # Set model labels
-        if "labels" not in variables["ms"]["modelArtifacts"]:
-            variables["ms"]["modelArtifacts"]["labels"] = {}
-        variables["ms"]["modelArtifacts"]["labels"]["llm-d.ai/model"] = model_short_name
-
-        # Configure inference pool model server labels
-        if "ip" not in variables:
-            variables["ip"] = {}
-        if "inferencePool" not in variables["ip"]:
-            variables["ip"]["inferencePool"] = {}
-        if "modelServers" not in variables["ip"]["inferencePool"]:
-            variables["ip"]["inferencePool"]["modelServers"] = {}
-        if "matchLabels" not in variables["ip"]["inferencePool"]["modelServers"]:
-            variables["ip"]["inferencePool"]["modelServers"]["matchLabels"] = {}
-
-        variables["ip"]["inferencePool"]["modelServers"]["matchLabels"][
-            "llm-d.ai/model"
-        ] = model_short_name
-
-        # Set tensor parallelism to num_gpus (ms.decode.parallelism.tensor)
-        if "decode" not in variables["ms"]:
-            variables["ms"]["decode"] = {}
-        if "parallelism" not in variables["ms"]["decode"]:
-            variables["ms"]["decode"]["parallelism"] = {}
-        variables["ms"]["decode"]["parallelism"]["tensor"] = self._num_gpus
-
-        # Set accelerator type from resolved GPU vendor (AMD or NVIDIA)
-        if "accelerator" not in variables["ms"]:
-            variables["ms"]["accelerator"] = {}
-        if self._gpu_vendor == WorkspaceGPUVendor.AMD:
-            variables["ms"]["accelerator"]["type"] = "amd"
-        else:
-            # Default to nvidia for NVIDIA, NO_GPU, UNKNOWN, or None
-            variables["ms"]["accelerator"]["type"] = "nvidia"
-
+        variables = deep_merge(variables, overrides)
         return super().configure_and_validate(variables, io_facade)
 
 
