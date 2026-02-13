@@ -237,19 +237,19 @@ def _validate_num_gpus(x: int) -> int:
 
 def _validate_huggingface_model(x: str) -> str:
     if len(x) == 0:
-        raise typer.BadParameter("Hugging Face model name must be non-empty")
+        raise typer.BadParameter("HuggingFace model name must be non-empty")
 
     # Validate format: <repo>/<model-name>
     if "/" not in x:
         raise typer.BadParameter(
-            "Hugging Face model name must follow the format '<repo>/<model-name>' "
+            "HuggingFace model name must follow the format '<repo>/<model-name>' "
             "(e.g., 'Qwen/Qwen3-1.7B', 'meta-llama/Llama-2-7b-hf')"
         )
 
     parts = x.split("/")
     if len(parts) != 2:
         raise typer.BadParameter(
-            "Hugging Face model name must contain exactly one '/' separator. "
+            "HuggingFace model name must contain exactly one '/' separator. "
             "Format: '<repo>/<model-name>'"
         )
 
@@ -452,20 +452,24 @@ def deploy_llm_inference_workspace(
         help="The name of the workspace to deploy",
     ),
     huggingface_token: str = typer.Option(
-        ...,
+        None,
         "--huggingface-token",
         "--hf-token",
         "-t",
         envvar=["HUGGINGFACE_TOKEN", "HF_TOKEN"],
-        help="The Hugging Face token for model access",
+        help="The API token to use for HuggingFace",
         callback=_validate_api_token_non_empty,
+        prompt="Enter your HuggingFace API token for model access",
+        show_default=False,
     ),
     model_name: str = typer.Option(
-        ...,
+        None,
         "--model-name",
         "-m",
-        help="The Hugging Face model name (e.g., 'Qwen/Qwen3-1.7B', 'meta-llama/Llama-2-7b-hf')",
+        help="The HuggingFace model name to deploy. Format: <repo>/<model-name> (e.g., 'Qwen/Qwen3-1.7B')",
+        prompt="Enter the name of the HuggingFace model you want to deploy in format <repo>/<model-name> (e.g., 'Qwen/Qwen3-1.7B')",
         callback=_validate_huggingface_model,
+        show_default=False,
     ),
     num_gpus: int = typer.Option(
         1,
@@ -482,7 +486,7 @@ def deploy_llm_inference_workspace(
     Deploy an LLM inference workspace for serving large language models.
 
     This workspace uses llm-d for efficient model serving with vLLM backend.
-    Requires a Hugging Face token and model name.
+    Requires a HuggingFace token and model name.
     """
     bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
@@ -849,7 +853,7 @@ def deploy_distributed_training_workspace(
         None,
         "--hf-token",
         "-t",
-        help="The API token to use for Hugging Face",
+        help="The API token to use for HuggingFace",
         callback=_validate_api_token_non_empty,
         prompt=True,
         show_default=False,
