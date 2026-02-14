@@ -9,6 +9,7 @@ from exls.clusters.core.domain import (
     ClusterNodeRole,
     ClusterNodeStatus,
     ClusterStatus,
+    ClusterSummary,
     ClusterType,
 )
 from exls.clusters.core.ports.operations import ClusterOperations
@@ -66,6 +67,15 @@ class TestClustersService(unittest.TestCase):
             occupied_resources=self.resources,
         )
 
+        self.cluster_summary1 = ClusterSummary(
+            id="cluster-1",
+            name="test-cluster",
+            status=ClusterStatus.READY,
+            type=ClusterType.REMOTE,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
         self.cluster1 = Cluster(
             id="cluster-1",
             name="test-cluster",
@@ -77,11 +87,11 @@ class TestClustersService(unittest.TestCase):
         )
 
     def test_list_clusters(self):
-        self.mock_repo.list.return_value = [self.cluster1]
+        self.mock_repo.list.return_value = [self.cluster_summary1]
 
         result = self.service.list_clusters()
 
-        self.assertEqual(result, [self.cluster1])
+        self.assertEqual(result, [self.cluster_summary1])
         self.mock_repo.list.assert_called_once_with(status=None)
 
     def test_get_cluster(self):

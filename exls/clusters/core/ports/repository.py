@@ -4,7 +4,12 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, StrictStr
 
-from exls.clusters.core.domain import Cluster, ClusterStatus, ClusterType
+from exls.clusters.core.domain import (
+    Cluster,
+    ClusterStatus,
+    ClusterSummary,
+    ClusterType,
+)
 
 
 class ClusterCreateParameters(BaseModel):
@@ -36,7 +41,7 @@ class ClusterCreateParameters(BaseModel):
 
 class ClusterRepository(ABC):
     @abstractmethod
-    def list(self, status: Optional[ClusterStatus]) -> List[Cluster]: ...
+    def list(self, status: Optional[ClusterStatus]) -> List[ClusterSummary]: ...
 
     @abstractmethod
     def get(self, cluster_id: str) -> Cluster: ...

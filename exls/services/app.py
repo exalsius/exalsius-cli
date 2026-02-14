@@ -3,7 +3,7 @@ from typing import List
 import typer
 
 from exls.clusters.adapters.bundle import ClustersBundle
-from exls.clusters.core.domain import Cluster
+from exls.clusters.core.domain import ClusterSummary
 from exls.clusters.core.service import ClustersService
 from exls.services.adapters.bundle import ServicesBundle
 from exls.services.adapters.ui.display.render import SERVICE_VIEW
@@ -40,7 +40,7 @@ def _resolve_cluster_id_callback(ctx: typer.Context, value: str) -> str:
             get_config_from_ctx(ctx), get_app_state_from_ctx(ctx)
         )
         service: ClustersService = clusters_bundle.get_clusters_service()
-        clusters: List[Cluster] = service.list_clusters()
+        clusters: List[ClusterSummary] = service.list_clusters()
         return resolve_resource_id(clusters, value, "cluster")
     except (ResourceNotFoundError, AmbiguousResourceError) as e:
         raise typer.BadParameter(str(e))

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from exls.clusters.core.domain import Cluster
+from exls.clusters.core.domain import Cluster, ClusterSummary
 from exls.clusters.core.service import ClustersService
 from exls.workspaces.core.domain import (
     AvailableClusterNodeResources,
@@ -16,7 +16,7 @@ class ClustersDomainProvider(ClustersProvider):
         self.clusters_service: ClustersService = clusters_service
 
     def list_clusters(self) -> List[WorkspaceCluster]:
-        clusters: List[Cluster] = self.clusters_service.list_clusters()
+        clusters: List[ClusterSummary] = self.clusters_service.list_clusters()
         return [
             WorkspaceCluster(
                 id=cluster.id,
