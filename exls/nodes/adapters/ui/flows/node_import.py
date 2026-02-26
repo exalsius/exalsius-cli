@@ -167,7 +167,7 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
                 FloatInputStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="price_per_hour",
                     message="Price per hour for this node (enter 0.0 for self-managed nodes):",
-                    default="0.0",
+                    default=0.0,
                     validator=positive_float_validator,
                 ),
                 SelectRequiredStep[

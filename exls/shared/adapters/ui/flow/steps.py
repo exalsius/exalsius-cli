@@ -92,7 +92,7 @@ class FloatInputStep(FlowStep[T_Model]):
         self,
         key: str,
         message: str,
-        default: Optional[str] = None,
+        default: Optional[float] = None,
         validator: Optional[Callable[[str], bool | str]] = None,
     ):
         self.key = key
