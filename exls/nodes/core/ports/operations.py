@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List
 
-from pydantic import BaseModel, Field, StrictStr, NonNegativeFloat
+from pydantic import BaseModel, Field, NonNegativeFloat, StrictStr
 
 from exls.nodes.core.requests import (
     ImportCloudNodeRequest,

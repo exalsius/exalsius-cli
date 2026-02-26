@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence, Union
 
-from pydantic import BaseModel, Field, StrictStr, NonNegativeFloat
+from pydantic import BaseModel, Field, NonNegativeFloat, StrictStr
 
 from exls.nodes.adapters.ui.flows.ports import (
     FlowNodesSshKeySpecification,
@@ -19,12 +19,12 @@ from exls.shared.adapters.ui.flow.flow import FlowContext, FlowStep, SequentialF
 from exls.shared.adapters.ui.flow.steps import (
     ChoicesSpec,
     ConditionalStep,
+    FloatInputStep,
     ListBuilderStep,
     SelectRequiredStep,
     SubModelStep,
     TextInputStep,
     UpdateLastChoiceStep,
-    FloatInputStep,
 )
 from exls.shared.adapters.ui.input.service import (
     ipv4_address_validator,

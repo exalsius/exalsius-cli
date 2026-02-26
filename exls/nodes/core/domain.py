@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Optional
 
-from pydantic import BaseModel, Field, StrictInt, StrictStr, NonNegativeFloat
+from pydantic import BaseModel, Field, NonNegativeFloat, StrictInt, StrictStr
 
 
 class NodeStatus(StrEnum):

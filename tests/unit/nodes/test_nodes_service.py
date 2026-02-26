@@ -89,7 +89,7 @@ def sample_cloud_node(sample_resources: NodeResources) -> CloudNode:
         resources=sample_resources,
         provider="aws",
         instance_type="p3.2xlarge",
-        price_per_hour="3.06",
+        price_per_hour=3.06,
     )
 
 

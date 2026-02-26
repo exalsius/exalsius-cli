@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Union
 
-from pydantic import BaseModel, Field, PositiveInt, StrictStr, NonNegativeFloat
+from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt, StrictStr
 
 from exls.nodes.core.domain import NodeStatus
 
