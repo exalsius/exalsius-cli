@@ -37,10 +37,10 @@ class IInputManager(ABC):
 
     @abstractmethod
     def ask_float(
-            self,
-            message: str,
-            default: Optional[float] = None,
-            validator: Optional[Callable[[str], bool | str]] = None,
+        self,
+        message: str,
+        default: Optional[float] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
     ) -> float: ...
 
     @abstractmethod

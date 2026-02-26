@@ -87,6 +87,7 @@ class TextInputStep(FlowStep[T_Model]):
 
         setattr(model, self.key, result)
 
+
 class FloatInputStep(FlowStep[T_Model]):
     def __init__(
         self,

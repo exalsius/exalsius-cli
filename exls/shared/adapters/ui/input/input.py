@@ -71,8 +71,6 @@ class ConsoleInputManager(IInputManager):
             raise UserCancellationException("User cancelled the text input")
         return float(result)
 
-
-
     def ask_password(
         self,
         message: str,

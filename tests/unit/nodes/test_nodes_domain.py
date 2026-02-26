@@ -182,7 +182,7 @@ class TestSelfManagedNode:
             ssh_key_name="my-key",
             username="ubuntu",
             endpoint="192.168.1.100",
-            price_per_hour=3.0
+            price_per_hour=3.0,
         )
 
         assert node.id == "local-node-1"
@@ -212,7 +212,7 @@ class TestSelfManagedNode:
             resources=resources,
             ssh_key_id="key-xyz",
             username="ubuntu",
-            price_per_hour=2.1
+            price_per_hour=2.1,
             # ssh_key_name and endpoint omitted
         )
 

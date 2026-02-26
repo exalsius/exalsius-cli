@@ -42,7 +42,9 @@ class BaseNode(BaseModel):
     )
     status: NodeStatus = Field(..., description="The status of the node")
     resources: NodeResources = Field(..., description="The resources of the node")
-    price_per_hour: NonNegativeFloat = Field(..., description="The price per hour of the node")
+    price_per_hour: NonNegativeFloat = Field(
+        ..., description="The price per hour of the node"
+    )
 
     @property
     def name(self) -> str:

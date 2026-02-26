@@ -23,12 +23,14 @@ from exls.shared.adapters.ui.flow.steps import (
     SelectRequiredStep,
     SubModelStep,
     TextInputStep,
-    UpdateLastChoiceStep, FloatInputStep,
+    UpdateLastChoiceStep,
+    FloatInputStep,
 )
 from exls.shared.adapters.ui.input.service import (
     ipv4_address_validator,
     kubernetes_name_validator,
-    non_empty_string_validator, positive_float_validator,
+    non_empty_string_validator,
+    positive_float_validator,
 )
 from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
@@ -44,7 +46,9 @@ class FlowSelfmanagedNodeSpecificationDTO(BaseModel):
     hostname: StrictStr = Field(default="", description="The hostname of the node")
     endpoint: StrictStr = Field(default="", description="The endpoint of the node")
     username: StrictStr = Field(default="", description="The username of the node")
-    price_per_hour: NonNegativeFloat = Field(default=0.0, description="The price per hour to use")
+    price_per_hour: NonNegativeFloat = Field(
+        default=0.0, description="The price per hour to use"
+    )
     ssh_key: Optional[Union[NodeSshKey, FlowNodesSshKeySpecification]] = Field(
         default=None, description="The SSH key to use"
     )
@@ -171,7 +175,6 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
                     validator=positive_float_validator,
                 ),
                 SelectRequiredStep[
-                    
                     FlowSelfmanagedNodeSpecificationDTO,
                     _SSH_KEY_CHOICE,
                 ](

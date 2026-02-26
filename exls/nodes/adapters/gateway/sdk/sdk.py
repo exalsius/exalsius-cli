@@ -151,7 +151,7 @@ class SdkNodesGateway(NodesGateway):
             endpoint=parameters.endpoint,
             username=parameters.username,
             ssh_key_id=parameters.ssh_key_id,
-            price_per_hour=parameters.price_per_hour
+            price_per_hour=parameters.price_per_hour,
         )
         cmd_node_import_ssh: ImportSSHNodeSdkCommand = ImportSSHNodeSdkCommand(
             self._nodes_api,

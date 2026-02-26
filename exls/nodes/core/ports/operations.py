@@ -18,7 +18,9 @@ class ImportSelfmanagedNodeParameters(BaseModel):
     endpoint: StrictStr = Field(..., description="The endpoint of the node")
     username: StrictStr = Field(..., description="The username of the node")
     ssh_key_id: StrictStr = Field(..., description="The ID of the SSH key to use")
-    price_per_hour: NonNegativeFloat = Field(..., description="The price per hour to use")
+    price_per_hour: NonNegativeFloat = Field(
+        ..., description="The price per hour to use"
+    )
 
     @classmethod
     def from_request(
@@ -30,7 +32,7 @@ class ImportSelfmanagedNodeParameters(BaseModel):
             endpoint=request.endpoint,
             username=request.username,
             ssh_key_id=request.ssh_key,
-            price_per_hour=request.price_per_hour
+            price_per_hour=request.price_per_hour,
         )
 
     @classmethod
@@ -42,7 +44,7 @@ class ImportSelfmanagedNodeParameters(BaseModel):
             endpoint=parameters.endpoint,
             username=parameters.username,
             ssh_key=parameters.ssh_key_id,
-            price_per_hour=parameters.price_per_hour
+            price_per_hour=parameters.price_per_hour,
         )
 
 
