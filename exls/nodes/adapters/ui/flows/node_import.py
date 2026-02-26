@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Sequence, Union
 
-from pydantic import BaseModel, Field, StrictStr
+from pydantic import BaseModel, Field, StrictStr, NonNegativeFloat
 
 from exls.nodes.adapters.ui.flows.ports import (
     FlowNodesSshKeySpecification,
@@ -23,12 +23,12 @@ from exls.shared.adapters.ui.flow.steps import (
     SelectRequiredStep,
     SubModelStep,
     TextInputStep,
-    UpdateLastChoiceStep,
+    UpdateLastChoiceStep, FloatInputStep,
 )
 from exls.shared.adapters.ui.input.service import (
     ipv4_address_validator,
     kubernetes_name_validator,
-    non_empty_string_validator,
+    non_empty_string_validator, positive_float_validator,
 )
 from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
@@ -44,6 +44,7 @@ class FlowSelfmanagedNodeSpecificationDTO(BaseModel):
     hostname: StrictStr = Field(default="", description="The hostname of the node")
     endpoint: StrictStr = Field(default="", description="The endpoint of the node")
     username: StrictStr = Field(default="", description="The username of the node")
+    price_per_hour: NonNegativeFloat = Field(default=0.0, description="The price per hour to use")
     ssh_key: Optional[Union[NodeSshKey, FlowNodesSshKeySpecification]] = Field(
         default=None, description="The SSH key to use"
     )
@@ -64,6 +65,7 @@ class FlowSelfmanagedNodeSpecificationDTO(BaseModel):
             hostname=self.hostname,
             endpoint=self.endpoint,
             username=self.username,
+            price_per_hour=self.price_per_hour,
             ssh_key=ssh_key_val,
         )
 
@@ -162,7 +164,14 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
                     default="",
                     validator=non_empty_string_validator,
                 ),
+                FloatInputStep[FlowSelfmanagedNodeSpecificationDTO](
+                    key="price_per_hour",
+                    message="Price per hour for this node (enter 0.0 for self-managed nodes):",
+                    default="0.0",
+                    validator=positive_float_validator,
+                ),
                 SelectRequiredStep[
+                    
                     FlowSelfmanagedNodeSpecificationDTO,
                     _SSH_KEY_CHOICE,
                 ](

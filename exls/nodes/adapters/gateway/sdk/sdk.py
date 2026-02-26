@@ -85,7 +85,7 @@ def _(sdk_model: SdkCloudNode) -> CloudNode:
         status=NodeStatus.from_str(sdk_model.node_status),
         provider=sdk_model.provider,
         instance_type=sdk_model.instance_type,
-        price_per_hour=f"{float(sdk_model.price_per_hour):.2f}",
+        price_per_hour=sdk_model.price_per_hour,
         resources=_map_node_resources_from_sdk_model(sdk_model),
     )
 
@@ -101,6 +101,7 @@ def _(sdk_model: SdkSelfManagedNode) -> SelfManagedNode:
         endpoint=sdk_model.endpoint,
         ssh_key_id=sdk_model.ssh_key_id,
         username=sdk_model.username,
+        price_per_hour=sdk_model.price_per_hour,
         resources=_map_node_resources_from_sdk_model(sdk_model),
     )
 
@@ -150,6 +151,7 @@ class SdkNodesGateway(NodesGateway):
             endpoint=parameters.endpoint,
             username=parameters.username,
             ssh_key_id=parameters.ssh_key_id,
+            price_per_hour=parameters.price_per_hour
         )
         cmd_node_import_ssh: ImportSSHNodeSdkCommand = ImportSSHNodeSdkCommand(
             self._nodes_api,

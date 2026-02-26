@@ -105,6 +105,16 @@ class IOBaseModelFacade(IOFacade[BaseModel]):
             message=message, default=default, validator=validator
         )
 
+    def ask_float(
+        self,
+        message: str,
+        default: Optional[float] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ) -> float:
+        return self.input_manager.ask_float(
+            message=message, default=default, validator=validator
+        )
+
     def ask_password(
         self,
         message: str,

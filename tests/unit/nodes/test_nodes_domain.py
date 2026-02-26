@@ -98,7 +98,7 @@ class TestCloudNode:
             resources=resources,
             provider="aws",
             instance_type="p4d.24xlarge",
-            price_per_hour="32.77",
+            price_per_hour=32.77,
         )
 
         assert node.id == "node-123"
@@ -108,7 +108,7 @@ class TestCloudNode:
         assert node.resources == resources
         assert node.provider == "aws"
         assert node.instance_type == "p4d.24xlarge"
-        assert node.price_per_hour == "32.77"
+        assert node.price_per_hour == 32.77
 
     def test_missing_required_fields(self):
         """Test that validation fails when required fields are missing."""
@@ -154,7 +154,7 @@ class TestCloudNode:
             resources=resources,
             provider="aws",
             instance_type="p4d.24xlarge",
-            price_per_hour="32.77",
+            price_per_hour=32.77,
         )
         assert node.import_time is None
 
@@ -182,6 +182,7 @@ class TestSelfManagedNode:
             ssh_key_name="my-key",
             username="ubuntu",
             endpoint="192.168.1.100",
+            price_per_hour=3.0
         )
 
         assert node.id == "local-node-1"
@@ -211,6 +212,7 @@ class TestSelfManagedNode:
             resources=resources,
             ssh_key_id="key-xyz",
             username="ubuntu",
+            price_per_hour=2.1
             # ssh_key_name and endpoint omitted
         )
 

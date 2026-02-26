@@ -87,6 +87,34 @@ class TextInputStep(FlowStep[T_Model]):
 
         setattr(model, self.key, result)
 
+class FloatInputStep(FlowStep[T_Model]):
+    def __init__(
+        self,
+        key: str,
+        message: str,
+        default: Optional[str] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ):
+        self.key = key
+        self.message = message
+        self.default = default
+        self.validator = validator
+
+    def execute(
+        self, model: T_Model, context: FlowContext, io_facade: IOFacade[BaseModel]
+    ) -> None:
+        try:
+            result: float = io_facade.ask_float(
+                message=self.message,
+                default=self.default,
+                validator=self.validator,
+            )
+
+        except UserCancellationException as e:
+            raise FlowCancelationByUserException(e) from e
+
+        setattr(model, self.key, result)
+
 
 class PathInputStep(FlowStep[T_Model]):
     def __init__(
@@ -316,7 +344,7 @@ class SubModelStep(FlowStep[T_Model], Generic[T_Model, T_ChildModel]):
     ) -> None:
         child_model: T_ChildModel = self.child_model_class()
 
-        # Create a new context for the sub-model, linking to parent
+        # Create a new context for the sub-model, linking to parent.
         sub_context = context.model_copy()
         sub_context.parent = model
         try:
