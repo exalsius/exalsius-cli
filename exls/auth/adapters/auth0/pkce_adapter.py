@@ -1,8 +1,8 @@
 """Auth0 PKCE authentication adapter."""
 
 import logging
+import subprocess
 import threading
-import webbrowser
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -67,10 +67,20 @@ class Auth0PkceAdapter(PkceOperations):
         return f"https://{self._config.domain}/authorize?{urlencode(params)}"
 
     def open_browser(self, url: str) -> bool:
+        def _open() -> None:
+            try:
+                subprocess.Popen(
+                    ["xdg-open", url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except FileNotFoundError:
+                import webbrowser
+
+                webbrowser.open(url)
+
         try:
-            # Run in a thread: some Linux browser launchers (xdg-open)
-            # block until the browser process exits.
-            thread = threading.Thread(target=webbrowser.open, args=(url,), daemon=True)
+            thread = threading.Thread(target=_open, daemon=True)
             thread.start()
             thread.join(timeout=5)
             return True
