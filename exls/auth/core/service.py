@@ -62,7 +62,7 @@ class AuthService:
     def _initiate_pkce(self) -> PkceLoginState:
         assert self._pkce_operations is not None
         port = self._pkce_operations.start_callback_server()
-        redirect_uri = f"http://localhost:{port}/callback"
+        redirect_uri = f"http://127.0.0.1:{port}/callback"
         session = self._pkce_operations.generate_pkce_session(redirect_uri)
         auth_url = self._pkce_operations.build_authorization_url(session)
         return PkceLoginState(auth_url=auth_url, session=session)
