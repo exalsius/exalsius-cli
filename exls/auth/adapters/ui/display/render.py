@@ -5,8 +5,15 @@ from exls.shared.adapters.ui.output.view import ViewContext
 
 _USER_COLUMNS: Dict[str, Column] = {
     "email": TableRenderContext.get_column("Email"),
-    "nickname": TableRenderContext.get_column("Username"),
-    "sub": TableRenderContext.get_column("Subject"),
+    "org_name": TableRenderContext.get_column(
+        "Organization", value_formatter=lambda v: v or "-"
+    ),
+    "roles": TableRenderContext.get_column(
+        "Roles", value_formatter=lambda v: ", ".join(v) if v else "-"
+    ),
+    "groups": TableRenderContext.get_column(
+        "Groups", value_formatter=lambda v: ", ".join(v) if v else "-"
+    ),
 }
 
 USER_VIEW = ViewContext.from_table_columns(_USER_COLUMNS)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
 
@@ -64,6 +64,9 @@ class User(BaseModel):
     email: StrictStr = Field(..., description="The email")
     nickname: StrictStr = Field(..., description="The nickname")
     sub: StrictStr = Field(..., description="The subject")
+    org_name: Optional[str] = Field(default=None, description="The organization name")
+    roles: Optional[List[str]] = Field(default=None, description="The user roles")
+    groups: Optional[List[str]] = Field(default=None, description="The user groups")
 
 
 class AuthSession(BaseModel):
