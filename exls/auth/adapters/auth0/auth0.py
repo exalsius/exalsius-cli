@@ -40,6 +40,9 @@ def _user_from_response(response: ValidatedAuthUserResponse) -> User:
         email=response.email,
         nickname=response.nickname,
         sub=response.sub,
+        org_name=response.org_name,
+        roles=response.roles,
+        groups=response.groups,
     )
 
 
@@ -154,12 +157,15 @@ class Auth0Adapter(AuthOperations, DeviceCodeOperations):
             raise AuthError(f"failed to decode token: {str(e)}") from e
 
     def decode_user_from_token(self, id_token: str) -> User:
-        command: DecodeTokenMetadataCommand[User] = DecodeTokenMetadataCommand(
-            token=id_token,
-            model=User,
+        command: DecodeTokenMetadataCommand[ValidatedAuthUserResponse] = (
+            DecodeTokenMetadataCommand(
+                token=id_token,
+                model=ValidatedAuthUserResponse,
+            )
         )
         try:
-            return command.execute()
+            response = command.execute()
+            return _user_from_response(response)
         except CommandError as e:
             raise AuthError(f"failed to decode user from token: {str(e)}") from e
 

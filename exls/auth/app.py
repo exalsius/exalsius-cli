@@ -76,7 +76,8 @@ def login(
             auth_session = auth_service.complete_login(fallback_state)
 
         io_facade.display_success_message(
-            "Logged in successfully!", output_format=bundle.message_output_format
+            f"Welcome, {auth_session.user.nickname}!",
+            output_format=bundle.message_output_format,
         )
         io_facade.display_data(
             auth_session.user,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
 
@@ -46,5 +46,14 @@ class ValidatedAuthUserResponse(BaseModel):
     email: StrictStr = Field(..., description="The email")
     nickname: StrictStr = Field(..., description="The nickname")
     sub: StrictStr = Field(..., description="The subject")
+    org_name: Optional[str] = Field(
+        default=None, alias="https://api.exalsius.ai/org_name"
+    )
+    roles: Optional[List[str]] = Field(
+        default=None, alias="https://api.exalsius.ai/roles"
+    )
+    groups: Optional[List[str]] = Field(
+        default=None, alias="https://api.exalsius.ai/groups"
+    )
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "allow", "populate_by_name": True}
