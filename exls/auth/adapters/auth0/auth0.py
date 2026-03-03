@@ -1,4 +1,5 @@
 from time import sleep, time
+from typing import Optional
 
 from exls.auth.adapters.auth0.commands import (
     Auth0FetchDeviceCodeCommand,
@@ -71,13 +72,15 @@ class Auth0Adapter(AuthOperations, DeviceCodeOperations):
     def get_client_id(self) -> str:
         return self._config.client_id
 
-    def fetch_device_code(self) -> DeviceCode:
+    def fetch_device_code(self, organization: Optional[str] = None) -> DeviceCode:
+        resolved_org = organization or self._config.organization
         request: FetchDeviceCodeRequest = FetchDeviceCodeRequest(
             client_id=self._config.client_id,
             domain=self._config.domain,
             audience=self._config.audience,
             scope=self._config.scope,
             algorithms=self._config.algorithms,
+            organization=resolved_org,
         )
         command: Auth0FetchDeviceCodeCommand = Auth0FetchDeviceCodeCommand(request)
         try:

@@ -13,6 +13,9 @@ class FetchDeviceCodeRequest(BaseAuthRequest):
     audience: StrictStr = Field(..., description="The audience")
     scope: List[StrictStr] = Field(..., description="The scope")
     algorithms: List[StrictStr] = Field(..., description="The algorithms")
+    organization: Optional[StrictStr] = Field(
+        default=None, description="Auth0 organization ID or name"
+    )
 
 
 class AuthenticationRequest(BaseAuthRequest):
