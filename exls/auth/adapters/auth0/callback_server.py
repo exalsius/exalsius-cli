@@ -1,0 +1,237 @@
+"""OAuth callback HTTP server with port fallback."""
+
+import logging
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from queue import Empty, Queue
+from typing import List, Optional
+from urllib.parse import parse_qs, urlparse
+
+from pydantic import BaseModel
+
+from exls.auth.core.ports.operations import AuthError
+
+logger = logging.getLogger(__name__)
+
+_LOGO_SVG = (
+    '<svg width="136" height="110" viewBox="0 0 272 220" fill="none"'
+    ' xmlns="http://www.w3.org/2000/svg">'
+    '<path d="M4.80835 185.734L41.3518 167.2V166.676L4.80835 148.841V142.284'
+    "L47.6464 163.266V170.61L4.80835 192.291V185.734ZM74.2221 184.248V156.797"
+    "L82.2651 148.754H104.209L112.339 156.797V172.446H80.6915V182.237L85.0627"
+    " 186.521H101.411L105.782 182.237V178.915H112.252V184.248L104.209 192.291"
+    "H82.2651L74.2221 184.248ZM105.87 166.85V158.807L101.499 154.524H85.0627"
+    "L80.6915 158.807V166.85H105.87ZM147.737 192.291L135.41 175.156L123.084"
+    " 192.291H115.827L131.826 170.173L116.264 148.754H123.521L135.41 165.277"
+    "L147.3 148.754H154.556L139.082 170.347L154.993 192.291H147.737ZM161.575"
+    " 129.87H168.044V192.291H161.575V129.87ZM177.257 185.122V179.702H183.726"
+    "V183.286L187.223 186.696H203.309L206.806 183.286V176.555L203.309 173.058"
+    "H184.513L177.606 166.151V155.922L184.775 148.754H205.233L212.401 155.922"
+    "V161.343H205.932V157.758L202.435 154.349H187.573L184.076 157.758V164.14"
+    "L187.573 167.637H206.107L213.276 174.806V185.122L206.107 192.291H184.426"
+    'L177.257 185.122ZM234.595 193.165H271.488V198.76H234.595V193.165Z"'
+    ' fill="#F26922"/>'
+    '<path d="M137.249 0.85832L152.368 9.5899L153.857 10.4511V31.3476L135.757'
+    " 41.7958L135.742 41.7842L128.288 46.0845V62.765L135.731 67.0595L135.76"
+    " 67.0449L135.798 67.0653L143.24 62.765V43.2389L144.73 42.3777L144.733"
+    " 42.3748L144.727 42.369L162.894 31.8771V23.0321L157.398 19.8577L157.395"
+    " 16.4157V13.5062L157.398 10.0671L160.375 8.34752L162.894 6.89274L165.877"
+    " 5.17319L174.355 10.07V19.8577L171.376 21.5773L168.856 23.0321H168.853"
+    "V35.3191L167.363 36.1804L151.777 45.1796L151.78 45.1883L149.199 46.678"
+    "V51.0569H157.29V49.5323L165.769 44.6384L168.748 46.358L171.268 47.8128"
+    "L174.247 49.5323V59.323L165.769 64.2169L162.79 62.4973L160.27 61.0425"
+    "L157.29 59.323V57.0157H149.199V62.2849L172.528 75.7533L174.018 76.6145"
+    "V95.288L179.517 98.4653V108.253L176.537 109.975L174.018 111.43L171.038"
+    " 113.15L162.56 108.253L162.557 104.814V101.904L162.56 98.4624L165.536"
+    " 96.7428L168.056 95.288L168.059 95.2851V80.0565L146.639 67.6851L141.756"
+    " 70.5044L141.762 70.5073L135.739 73.9464L135.728 73.9406L133.452 75.2528"
+    "L130.648 76.856L130.653 76.8676L118.579 83.8447V103.682L135.76 113.604"
+    "L152.941 103.682L152.938 83.8418L144.349 78.8839L141.748 77.3797L147.738"
+    " 73.9581L157.41 79.5444L158.897 80.4056L158.899 82.1252L158.897 105.405"
+    "L158.899 107.124L135.76 120.482L134.27 119.624L114.11 107.982L112.62"
+    " 107.124V80.4027L129.769 70.5015L125.073 67.7898L103.461 80.2718V95.288"
+    "L105.98 96.7428L108.96 98.4624V104.814L108.957 108.253L100.478 113.15"
+    "L97.4991 111.43L94.9794 109.975L92 108.253V98.4653L97.502 95.2851V76.8298"
+    "L98.9917 75.9686L122.329 62.4944V57.0157H114.601V59.323L111.622 61.0425"
+    "L109.102 62.4973L106.12 64.2169L97.6416 59.323V52.9714L97.6445 49.5323"
+    "L100.621 47.8128L103.141 46.358L106.12 44.6384L114.599 49.5323V51.0569"
+    "H122.329V46.4569L104.36 36.0843L102.87 35.226V23.0786L102.786 23.0321"
+    "L100.266 21.5773L97.2867 19.8577V13.5091L97.2838 10.07L105.765 5.17319"
+    "L108.745 6.89274L111.264 8.34752L114.244 10.0671V19.8577L108.829 22.9826"
+    "V31.784L124.989 41.1121L129.781 38.3451L129.769 38.3392L135.742 34.9089"
+    "L135.757 34.9176L147.898 27.9056V13.8873L135.76 6.8782L123.618 13.8902"
+    "V27.9056L129.813 31.4814L123.854 34.9234L119.149 32.2088L117.659 31.3505"
+    "V10.4482L135.76 0L137.249 0.85832ZM97.9588 101.904V104.814L100.478"
+    " 106.269L102.998 104.814V101.904L100.478 100.45L97.9588 101.904ZM168.518"
+    " 101.904V104.814L171.038 106.269L173.558 104.814V101.904L171.038 100.45"
+    "L168.518 101.904ZM103.603 52.9743V55.8839L106.123 57.3387L108.643 55.8839"
+    "V52.9743L106.123 51.5195L103.603 52.9743ZM163.249 52.9743V55.8839L165.769"
+    " 57.3387L168.289 55.8839V52.9743L165.769 51.5195L163.249 52.9743ZM103.245"
+    " 13.5091V16.4186L105.765 17.8734L108.285 16.4186V13.5091L105.765 12.0543"
+    "L103.245 13.5091ZM163.357 13.5091V16.4186L165.877 17.8734L168.396 16.4186"
+    'V13.5091L165.877 12.0543L163.357 13.5091Z" fill="#F26922"/>'
+    "</svg>"
+)
+
+_PAGE_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap"
+      rel="stylesheet">
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{
+    font-family: 'Chakra Petch', sans-serif;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }}
+  .card {{
+    text-align: center;
+    padding: 3rem 2.5rem;
+    max-width: 420px;
+  }}
+  .logo {{ margin-bottom: 2rem; }}
+  h1 {{
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: {heading_color};
+    margin-bottom: 0.75rem;
+  }}
+  p {{
+    font-size: 0.95rem;
+    color: #999;
+    line-height: 1.5;
+  }}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">{logo}</div>
+  <h1>{heading}</h1>
+  <p>{message}</p>
+</div>
+</body>
+</html>"""
+
+_SUCCESS_HTML = _PAGE_TEMPLATE.format(
+    title="exalsius – Authenticated",
+    logo=_LOGO_SVG,
+    heading_color="#F26922",
+    heading="Authentication Successful",
+    message="You can close this window and return to the CLI.",
+)
+
+_ERROR_HTML = _PAGE_TEMPLATE.format(
+    title="exalsius – Authentication Failed",
+    logo=_LOGO_SVG,
+    heading_color="#e05252",
+    heading="Authentication Failed",
+    message="__ERROR__: __DESCRIPTION__<br>You can close this window.",
+)
+
+
+class CallbackResult(BaseModel):
+    """Result from OAuth callback."""
+
+    code: Optional[str] = None
+    state: Optional[str] = None
+    error: Optional[str] = None
+    error_description: Optional[str] = None
+
+
+def _make_handler(result_queue: "Queue[CallbackResult]") -> type:
+    """Factory to create handler class with bound queue (avoids mutable class attribute)."""
+
+    class OAuthCallbackHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+
+            result = CallbackResult(
+                code=params.get("code", [None])[0],
+                state=params.get("state", [None])[0],
+                error=params.get("error", [None])[0],
+                error_description=params.get("error_description", [None])[0],
+            )
+
+            if result.error:
+                body = _ERROR_HTML.replace("__ERROR__", result.error).replace(
+                    "__DESCRIPTION__", result.error_description or ""
+                )
+                self.send_response(400)
+            else:
+                body = _SUCCESS_HTML
+                self.send_response(200)
+
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(body.encode("utf-8"))
+
+            result_queue.put(result)
+
+        def log_message(self, format: str, *args: object) -> None:
+            """Route to debug logger instead of stderr."""
+            logger.debug(format, *args)
+
+    return OAuthCallbackHandler
+
+
+class OAuthCallbackServer:
+    """Thread-safe HTTP server for receiving OAuth callbacks."""
+
+    def __init__(self, ports: Optional[List[int]] = None):
+        self._ports = ports or [8999, 9000, 9001, 9002]
+        self._result_queue: Queue[CallbackResult] = Queue()
+        self._server: Optional[HTTPServer] = None
+        self._thread: Optional[threading.Thread] = None
+
+    def start(self) -> int:
+        """Start server on first available port. Returns actual port."""
+        handler_class = _make_handler(self._result_queue)
+
+        for port in self._ports:
+            try:
+                self._server = HTTPServer(("127.0.0.1", port), handler_class)
+                self._thread = threading.Thread(
+                    target=self._server.serve_forever, daemon=True
+                )
+                self._thread.start()
+                logger.debug("Callback server started on port %d", port)
+                return port
+            except OSError:
+                logger.debug("Port %d unavailable", port)
+                continue
+
+        raise AuthError(f"All callback ports unavailable: {self._ports}")
+
+    def wait_for_callback(self, timeout: int = 300) -> CallbackResult:
+        """Block until callback received or timeout."""
+        logger.debug("Waiting for callback (timeout: %ds)", timeout)
+        try:
+            result: CallbackResult = self._result_queue.get(timeout=timeout)
+            logger.debug("Callback received")
+            return result
+        except Empty:
+            raise AuthError(
+                "PKCE authentication timed out waiting for browser callback"
+            )
+
+    def shutdown(self) -> None:
+        """Stop server and join thread."""
+        if self._server:
+            self._server.shutdown()
+            if self._thread:
+                self._thread.join(timeout=5)
+                self._thread = None
+            self._server.server_close()
+            self._server = None
+            logger.debug("Callback server shut down")

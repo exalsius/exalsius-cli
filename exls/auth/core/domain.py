@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from enum import StrEnum
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, PositiveInt, StrictStr
 
@@ -68,3 +69,36 @@ class User(BaseModel):
 class AuthSession(BaseModel):
     user: User
     token: LoadedToken
+
+
+class AuthFlowType(StrEnum):
+    """Authentication flow types."""
+
+    PKCE = "pkce"
+    DEVICE_CODE = "device_code"
+    AUTO = "auto"
+
+
+class PkceSession(BaseModel):
+    """PKCE session state (in-memory, not persisted)."""
+
+    code_verifier: StrictStr
+    state: StrictStr
+    nonce: StrictStr
+    redirect_uri: StrictStr
+
+
+class PkceLoginState(BaseModel):
+    """Intermediate state returned by initiate_login() for PKCE flow."""
+
+    auth_url: StrictStr
+    session: PkceSession
+
+
+class DeviceCodeLoginState(BaseModel):
+    """Intermediate state returned by initiate_login() for device code flow."""
+
+    device_code: DeviceCode
+
+
+LoginFlowState = Union[PkceLoginState, DeviceCodeLoginState]

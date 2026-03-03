@@ -1,10 +1,14 @@
 from typing import List
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Auth0Config(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="EXLS_AUTH0_",
+        extra="ignore",
+    )
     domain: str = Field(
         default="exalsius.eu.auth0.com",
         description="The Auth0 domain",
@@ -53,4 +57,20 @@ class Auth0Config(BaseSettings):
     leeway: int = Field(
         default=3600,
         description="The leeway in seconds to validate the token",
+    )
+    pkce_code_challenge_method: str = Field(
+        default="S256",
+        description="PKCE code challenge method",
+    )
+    pkce_code_verifier_length: int = Field(
+        default=64,
+        description="PKCE code verifier length (43-128, RFC 7636)",
+    )
+    pkce_callback_timeout_seconds: int = Field(
+        default=300,
+        description="Timeout in seconds waiting for PKCE browser callback",
+    )
+    pkce_callback_port: int = Field(
+        default=8999,
+        description="Primary local port for PKCE callback server",
     )
