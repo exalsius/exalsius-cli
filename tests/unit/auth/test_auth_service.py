@@ -5,21 +5,25 @@ import pytest
 
 from exls.auth.core.domain import (
     AuthSession,
-    DeviceCode,
     LoadedToken,
     Token,
-    TokenExpiryMetadata,
     User,
 )
+from exls.auth.core.ports.device_code_operations import DeviceCodeOperations
 from exls.auth.core.ports.operations import AuthError, AuthOperations
 from exls.auth.core.ports.repository import TokenRepository, TokenRepositoryError
 from exls.auth.core.service import AuthService, NotLoggedInWarning
-from exls.shared.core.exceptions import ServiceError, ServiceWarning
+from exls.shared.core.exceptions import ServiceError
 
 
 @pytest.fixture
 def mock_auth_operations() -> Mock:
     return Mock(spec=AuthOperations)
+
+
+@pytest.fixture
+def mock_device_code_operations() -> Mock:
+    return Mock(spec=DeviceCodeOperations)
 
 
 @pytest.fixture
@@ -29,130 +33,15 @@ def mock_token_repository() -> Mock:
 
 @pytest.fixture
 def auth_service(
-    mock_auth_operations: Mock, mock_token_repository: Mock
+    mock_auth_operations: Mock,
+    mock_device_code_operations: Mock,
+    mock_token_repository: Mock,
 ) -> AuthService:
-    return AuthService(mock_auth_operations, mock_token_repository)
-
-
-def test_initiate_device_code_login(
-    auth_service: AuthService, mock_auth_operations: Mock
-):
-    expected_device_code: DeviceCode = DeviceCode(
-        verification_uri="http://verify",
-        verification_uri_complete="http://verify/complete",
-        user_code="ABCD-1234",
-        device_code="device-code-123",
-        expires_in=900,
+    return AuthService(
+        mock_auth_operations,
+        mock_token_repository,
+        device_code_operations=mock_device_code_operations,
     )
-    mock_auth_operations.fetch_device_code.return_value = expected_device_code
-
-    result = auth_service.initiate_device_code_login()
-
-    assert result == expected_device_code
-    mock_auth_operations.fetch_device_code.assert_called_once()
-
-
-def test_initiate_device_code_login_failure(
-    auth_service: AuthService, mock_auth_operations: Mock
-):
-    """Test that the decorator converts unexpected errors to ServiceError."""
-    mock_auth_operations.fetch_device_code.side_effect = Exception("Network error")
-
-    with pytest.raises(ServiceError, match="logging in"):
-        auth_service.initiate_device_code_login()
-
-
-def test_poll_for_authentication_success(
-    auth_service: AuthService, mock_auth_operations: Mock, mock_token_repository: Mock
-):
-    device_code: DeviceCode = DeviceCode(
-        verification_uri="http://verify",
-        verification_uri_complete="http://verify/complete",
-        user_code="ABCD-1234",
-        device_code="device-code-123",
-        expires_in=900,
-    )
-
-    token = Token(
-        client_id="client-id",
-        access_token="access-token",
-        id_token="id-token",
-        scope="scope",
-        token_type="Bearer",
-        refresh_token="refresh-token",
-        expires_in=3600,
-    )
-
-    user = User(email="test@example.com", nickname="testuser", sub="user-123")
-
-    expiry_time = datetime.now(timezone.utc) + timedelta(seconds=3600)
-    token_metadata = TokenExpiryMetadata(
-        iat=datetime.now(timezone.utc),
-        exp=expiry_time,
-    )
-
-    mock_auth_operations.poll_for_authentication.return_value = token
-    mock_auth_operations.validate_token.return_value = user
-    mock_auth_operations.decode_token_expiry_metadata.return_value = token_metadata
-
-    session = auth_service.poll_for_authentication(device_code)
-
-    assert isinstance(session, AuthSession)
-    assert session.user == user
-    assert session.token.access_token == token.access_token
-    assert session.token.expiry == expiry_time
-
-    mock_auth_operations.poll_for_authentication.assert_called_once_with(device_code)
-    mock_auth_operations.validate_token.assert_called_once_with(token.id_token)
-    mock_auth_operations.decode_token_expiry_metadata.assert_called_once_with(
-        token=token.id_token
-    )
-    mock_token_repository.store.assert_called_once()
-
-
-def test_poll_for_authentication_validation_failure(
-    auth_service: AuthService, mock_auth_operations: Mock
-):
-    """Test behavior when polling succeeds but token validation fails."""
-    device_code = DeviceCode(
-        verification_uri="uri",
-        verification_uri_complete="uri_c",
-        user_code="user",
-        device_code="dev",
-        expires_in=900,
-    )
-    token = Token(
-        client_id="cid",
-        access_token="acc",
-        id_token="id",
-        scope="scope",
-        token_type="Bearer",
-        refresh_token="ref",
-        expires_in=3600,
-    )
-
-    mock_auth_operations.poll_for_authentication.return_value = token
-    # Simulate validation failure
-    mock_auth_operations.validate_token.side_effect = AuthError("Invalid signature")
-
-    with pytest.raises(ServiceError, match="polling for authentication"):
-        auth_service.poll_for_authentication(device_code)
-
-
-def test_poll_for_authentication_keyboard_interrupt(
-    auth_service: AuthService, mock_auth_operations: Mock
-):
-    device_code: DeviceCode = DeviceCode(
-        verification_uri="http://verify",
-        verification_uri_complete="http://verify/complete",
-        user_code="ABCD-1234",
-        device_code="device-code-123",
-        expires_in=900,
-    )
-    mock_auth_operations.poll_for_authentication.side_effect = KeyboardInterrupt
-
-    with pytest.raises(ServiceWarning, match="User cancelled authentication polling"):
-        auth_service.poll_for_authentication(device_code)
 
 
 def test_acquire_access_token_success_valid_token(
