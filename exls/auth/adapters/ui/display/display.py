@@ -151,6 +151,28 @@ class IOAuthFacade(IOBaseModelFacade):
             "Press Ctrl+C to cancel", output_format=OutputFormat.TEXT
         )
 
+    def display_pkce_browser_opening(
+        self, auth_url: str, output_format: OutputFormat
+    ) -> None:
+        """Display message when opening browser for PKCE."""
+        self.display_info_message(
+            "Opening browser for authentication...\n"
+            f"If it doesn't open automatically, visit:\n{auth_url}",
+            output_format=output_format,
+        )
+        self.display_info_message(
+            "Waiting for authentication in browser...",
+            output_format=output_format,
+        )
+        self.display_info_message("Press Ctrl+C to cancel", output_format=output_format)
+
+    def display_pkce_timeout_with_fallback(self, output_format: OutputFormat) -> None:
+        """Display timeout message suggesting device code fallback."""
+        self.display_error_message(
+            "Browser authentication timed out. Falling back to device code flow...",
+            output_format=output_format,
+        )
+
     def display_auth_poling(self, device_code: DeviceCode):
         # Display the device code to the user and wait for them to authenticate.
         # The CLI will poll for the authentication response.
