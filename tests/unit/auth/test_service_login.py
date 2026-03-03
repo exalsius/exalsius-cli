@@ -88,7 +88,7 @@ def pkce_session() -> PkceSession:
         code_verifier="a" * 64,
         state="test-state",
         nonce="test-nonce",
-        redirect_uri="http://localhost:8999/callback",
+        redirect_uri="http://127.0.0.1:8999/callback",
     )
 
 
@@ -137,7 +137,7 @@ class TestInitiateLogin:
         assert state.session == pkce_session
         mock_pkce_operations.start_callback_server.assert_called_once()
         mock_pkce_operations.generate_pkce_session.assert_called_once_with(
-            "http://localhost:8999/callback"
+            "http://127.0.0.1:8999/callback"
         )
 
     def test_returns_device_code_state_when_no_pkce(
@@ -243,7 +243,7 @@ class TestInitiateLogin:
         service.initiate_login()
 
         mock_pkce_operations.generate_pkce_session.assert_called_once_with(
-            "http://localhost:9001/callback"
+            "http://127.0.0.1:9001/callback"
         )
 
 

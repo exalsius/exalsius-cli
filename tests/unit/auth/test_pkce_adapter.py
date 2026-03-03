@@ -36,7 +36,7 @@ def session() -> PkceSession:
         code_verifier="a" * 64,
         state="test-state",
         nonce="test-nonce",
-        redirect_uri="http://localhost:8999/callback",
+        redirect_uri="http://127.0.0.1:8999/callback",
     )
 
 
@@ -47,18 +47,18 @@ def _inject_mock_server(adapter: Auth0PkceAdapter, mock_server: MagicMock) -> No
 
 class TestGeneratePkceSession:
     def test_uses_provided_redirect_uri(self, adapter: Auth0PkceAdapter):
-        session = adapter.generate_pkce_session("http://localhost:9001/callback")
-        assert session.redirect_uri == "http://localhost:9001/callback"
+        session = adapter.generate_pkce_session("http://127.0.0.1:9001/callback")
+        assert session.redirect_uri == "http://127.0.0.1:9001/callback"
 
     def test_generates_non_empty_fields(self, adapter: Auth0PkceAdapter):
-        session = adapter.generate_pkce_session("http://localhost:8999/callback")
+        session = adapter.generate_pkce_session("http://127.0.0.1:8999/callback")
         assert len(session.code_verifier) == 64
         assert len(session.state) > 0
         assert len(session.nonce) > 0
 
     def test_sessions_are_unique(self, adapter: Auth0PkceAdapter):
-        s1 = adapter.generate_pkce_session("http://localhost:8999/callback")
-        s2 = adapter.generate_pkce_session("http://localhost:8999/callback")
+        s1 = adapter.generate_pkce_session("http://127.0.0.1:8999/callback")
+        s2 = adapter.generate_pkce_session("http://127.0.0.1:8999/callback")
         assert s1.code_verifier != s2.code_verifier
         assert s1.state != s2.state
 
