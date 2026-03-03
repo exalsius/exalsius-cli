@@ -180,6 +180,47 @@ class TestInitiateLogin:
         assert isinstance(state, DeviceCodeLoginState)
         mock_pkce_operations.start_callback_server.assert_not_called()
 
+    def test_passes_organization_to_device_code_flow(
+        self,
+        mock_auth_operations: Mock,
+        mock_token_repository: Mock,
+        mock_device_code_operations: Mock,
+        device_code: DeviceCode,
+    ):
+        mock_device_code_operations.fetch_device_code.return_value = device_code
+
+        service = _make_service(
+            mock_auth_operations,
+            mock_token_repository,
+            mock_device_code_operations,
+        )
+        state = service.initiate_login(organization="my-org")
+
+        assert isinstance(state, DeviceCodeLoginState)
+        mock_device_code_operations.fetch_device_code.assert_called_once_with(
+            organization="my-org"
+        )
+
+    def test_organization_none_by_default(
+        self,
+        mock_auth_operations: Mock,
+        mock_token_repository: Mock,
+        mock_device_code_operations: Mock,
+        device_code: DeviceCode,
+    ):
+        mock_device_code_operations.fetch_device_code.return_value = device_code
+
+        service = _make_service(
+            mock_auth_operations,
+            mock_token_repository,
+            mock_device_code_operations,
+        )
+        service.initiate_login()
+
+        mock_device_code_operations.fetch_device_code.assert_called_once_with(
+            organization=None
+        )
+
     def test_uses_actual_port_for_redirect_uri(
         self,
         mock_auth_operations: Mock,

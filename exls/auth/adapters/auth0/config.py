@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -73,4 +73,8 @@ class Auth0Config(BaseSettings):
     pkce_callback_port: int = Field(
         default=8999,
         description="Primary local port for PKCE callback server",
+    )
+    organization: Optional[str] = Field(
+        default=None,
+        description="Auth0 organization ID or name for org-scoped logins",
     )

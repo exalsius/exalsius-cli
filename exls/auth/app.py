@@ -45,6 +45,11 @@ def login(
         "--auth-flow",
         help="Authentication flow: pkce, device_code, auto (default: auto-detect)",
     ),
+    organization: Optional[str] = typer.Option(
+        None,
+        "--organization",
+        help="Auth0 organization ID or name for org-scoped logins",
+    ),
 ):
     """
     Authenticate and store credentials.
@@ -57,14 +62,16 @@ def login(
     auth_service: AuthService = bundle.get_auth_service(auth_flow_override=auth_flow)
 
     try:
-        state = auth_service.initiate_login()
+        state = auth_service.initiate_login(organization=organization)
         _display_flow_state(io_facade, state, bundle.message_output_format)
 
         try:
             auth_session = auth_service.complete_login(state)
         except PkceTimeoutError:
             io_facade.display_pkce_timeout_with_fallback(bundle.message_output_format)
-            fallback_state = auth_service.initiate_login(force_device_code=True)
+            fallback_state = auth_service.initiate_login(
+                force_device_code=True, organization=organization
+            )
             _display_flow_state(io_facade, fallback_state, bundle.message_output_format)
             auth_session = auth_service.complete_login(fallback_state)
 

@@ -59,12 +59,15 @@ class Auth0FetchDeviceCodeCommand(
         return f"https://{self.request.domain}/oauth/device/code"
 
     def _get_payload(self) -> Dict[str, Any]:
-        return {
+        payload: Dict[str, Any] = {
             "client_id": self.request.client_id,
             "audience": self.request.audience,
             "scope": " ".join(self.request.scope),
             "algorithms": self.request.algorithms,
         }
+        if self.request.organization:
+            payload["organization"] = self.request.organization
+        return payload
 
 
 class Auth0GetTokenFromDeviceCodeCommand(

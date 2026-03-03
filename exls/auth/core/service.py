@@ -49,11 +49,15 @@ class AuthService:
     # --- Unified login flow ---
 
     @handle_service_layer_errors("initiating login")
-    def initiate_login(self, force_device_code: bool = False) -> LoginFlowState:
+    def initiate_login(
+        self,
+        force_device_code: bool = False,
+        organization: Optional[str] = None,
+    ) -> LoginFlowState:
         """Start login flow. Returns intermediate state for app layer to render."""
         if self._pkce_operations and not force_device_code:
             return self._initiate_pkce()
-        return self._initiate_device_code()
+        return self._initiate_device_code(organization=organization)
 
     def _initiate_pkce(self) -> PkceLoginState:
         assert self._pkce_operations is not None
@@ -63,8 +67,12 @@ class AuthService:
         auth_url = self._pkce_operations.build_authorization_url(session)
         return PkceLoginState(auth_url=auth_url, session=session)
 
-    def _initiate_device_code(self) -> DeviceCodeLoginState:
-        device_code = self._device_code_operations.fetch_device_code()
+    def _initiate_device_code(
+        self, organization: Optional[str] = None
+    ) -> DeviceCodeLoginState:
+        device_code = self._device_code_operations.fetch_device_code(
+            organization=organization
+        )
         return DeviceCodeLoginState(device_code=device_code)
 
     @handle_service_layer_errors("completing login")
