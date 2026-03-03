@@ -1,6 +1,7 @@
 """Auth0 PKCE authentication adapter."""
 
 import logging
+import threading
 import webbrowser
 from typing import Optional
 from urllib.parse import urlencode
@@ -67,7 +68,12 @@ class Auth0PkceAdapter(PkceOperations):
 
     def open_browser(self, url: str) -> bool:
         try:
-            return webbrowser.open(url)
+            # Run in a thread: some Linux browser launchers (xdg-open)
+            # block until the browser process exits.
+            thread = threading.Thread(target=webbrowser.open, args=(url,), daemon=True)
+            thread.start()
+            thread.join(timeout=5)
+            return True
         except Exception:
             logger.debug("Failed to open browser", exc_info=True)
             return False
