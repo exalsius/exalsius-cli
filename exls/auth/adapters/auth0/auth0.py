@@ -27,6 +27,7 @@ from exls.auth.core.domain import (
     TokenExpiryMetadata,
     User,
 )
+from exls.auth.core.ports.device_code_operations import DeviceCodeOperations
 from exls.auth.core.ports.operations import AuthError, AuthOperations
 from exls.shared.adapters.http.commands import HTTPCommandError
 from exls.shared.adapters.jwt.commands import DecodeTokenMetadataCommand
@@ -63,7 +64,7 @@ def _device_code_from_response(response: Auth0DeviceCodeResponse) -> DeviceCode:
     )
 
 
-class Auth0Adapter(AuthOperations):
+class Auth0Adapter(AuthOperations, DeviceCodeOperations):
     def __init__(self, config: Auth0Config):
         self._config: Auth0Config = config
 

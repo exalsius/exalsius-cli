@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 from exls.auth.core.domain import (
-    DeviceCode,
     Token,
     TokenExpiryMetadata,
     User,
@@ -16,15 +15,6 @@ class AuthError(ExalsiusError):
 class AuthOperations(ABC):
     @abstractmethod
     def get_client_id(self) -> str: ...
-
-    @abstractmethod
-    def fetch_device_code(self) -> DeviceCode: ...
-
-    @abstractmethod
-    def poll_for_authentication(
-        self,
-        device_code: DeviceCode,
-    ) -> Token: ...
 
     @abstractmethod
     def decode_token_expiry_metadata(self, token: str) -> TokenExpiryMetadata: ...
