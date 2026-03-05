@@ -172,6 +172,10 @@ def import_selfmanaged_node(
     ),
     endpoint: str = typer.Option(help="The endpoint of the node to import"),
     username: str = typer.Option(help="The username of the node to import"),
+    price_per_hour: float = typer.Option(
+        0.0,
+        help="The price per hour to use for this node in USD (0.0 for self-managed nodes)",
+    ),
     ssh_key_id: Optional[str] = typer.Option(
         None,
         "--ssh-key-id",
@@ -216,6 +220,7 @@ def import_selfmanaged_node(
                 hostname=hostname,
                 endpoint=endpoint,
                 username=username,
+                price_per_hour=price_per_hour,
                 ssh_key=final_ssh_key,
             )
         ]
@@ -228,6 +233,7 @@ def import_selfmanaged_node(
 @handle_application_layer_errors(NodesBundle)
 def import_nodes(ctx: typer.Context):
     """Import nodes using interactive mode."""
+
     bundle: NodesBundle = _get_bundle(ctx)
     node_service: NodesService = bundle.get_nodes_service()
     io_facade: IOBaseModelFacade = bundle.get_io_facade()

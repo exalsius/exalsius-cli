@@ -50,3 +50,12 @@ def positive_integer_validator(text: str) -> bool | str:
     except ValueError:
         return "Please enter a valid integer."
     return True if int(text) > 0 else "Please enter a positive integer."
+
+
+def non_negative_float_validator(text: str) -> bool | str:
+    """Validator for positive integers."""
+    try:
+        float(text)
+    except ValueError:
+        return "Please enter a valid float, e.g. 2.5."
+    return True if float(text) >= 0.0 else "Please enter a positive float."

@@ -54,6 +54,23 @@ class ConsoleInputManager(IInputManager):
             raise UserCancellationException("User cancelled the text input")
         return result
 
+    def ask_float(
+        self,
+        message: str,
+        default: Optional[float] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ) -> float:
+        """Ask a free-form text question."""
+
+        result: Optional[StrictStr] = questionary.text(
+            message,
+            default=str(default) if default is not None else "0.0",
+            validate=validator,
+        ).ask(kbi_msg="")
+        if result is None:
+            raise UserCancellationException("User cancelled the text input")
+        return float(result)
+
     def ask_password(
         self,
         message: str,

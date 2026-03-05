@@ -36,6 +36,14 @@ class IInputManager(ABC):
     ) -> str: ...
 
     @abstractmethod
+    def ask_float(
+        self,
+        message: str,
+        default: Optional[float] = None,
+        validator: Optional[Callable[[str], bool | str]] = None,
+    ) -> float: ...
+
+    @abstractmethod
     def ask_password(
         self,
         message: str,

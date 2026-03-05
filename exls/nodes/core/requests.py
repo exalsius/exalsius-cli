@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Union
 
-from pydantic import BaseModel, Field, PositiveInt, StrictStr
+from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt, StrictStr
 
 from exls.nodes.core.domain import NodeStatus
 
@@ -33,6 +33,9 @@ class ImportSelfmanagedNodeRequest(BaseModel):
     hostname: StrictStr = Field(..., description="The hostname of the node")
     endpoint: StrictStr = Field(..., description="The endpoint of the node")
     username: StrictStr = Field(..., description="The username of the node")
+    price_per_hour: NonNegativeFloat = Field(
+        ..., description="The price per hour to use"
+    )
     ssh_key: Union[StrictStr, NodesSshKeySpecification] = Field(
         ..., description="The SSH key to use"
     )

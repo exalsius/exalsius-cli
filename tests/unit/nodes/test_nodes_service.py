@@ -75,6 +75,7 @@ def sample_self_managed_node(sample_resources: NodeResources) -> SelfManagedNode
         ssh_key_id="key-1",
         username="user",
         endpoint="1.2.3.4",
+        price_per_hour=2.1,
     )
 
 
@@ -88,7 +89,7 @@ def sample_cloud_node(sample_resources: NodeResources) -> CloudNode:
         resources=sample_resources,
         provider="aws",
         instance_type="p3.2xlarge",
-        price_per_hour="3.06",
+        price_per_hour=3.06,
     )
 
 
@@ -262,6 +263,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key="key-1",
+            price_per_hour=2.1,
         )
         mock_ssh_key_provider.list_keys.return_value = [sample_ssh_key]
         mock_nodes_operations.import_selfmanaged_node.return_value = "node-1"
@@ -292,6 +294,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key=key_spec,
+            price_per_hour=2.1,
         )
 
         # Initial list keys (empty or irrelevant)
@@ -329,6 +332,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key="invalid-key-id",
+            price_per_hour=2.1,
         )
         mock_ssh_key_provider.list_keys.return_value = []
 
@@ -354,6 +358,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key=key_spec,
+            price_per_hour=2.1,
         )
         mock_ssh_key_provider.list_keys.return_value = []
         mock_ssh_key_provider.import_key.side_effect = Exception("Key import failed")
@@ -381,6 +386,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key="key-1",
+            price_per_hour=2.1,
         )
         mock_ssh_key_provider.list_keys.return_value = [sample_ssh_key]
         mock_nodes_operations.import_selfmanaged_node.return_value = "node-1"
@@ -418,6 +424,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key="key-1",
+            price_per_hour=2.1,
         )
         mock_ssh_key_provider.list_keys.return_value = [sample_ssh_key]
         mock_nodes_operations.import_selfmanaged_node.return_value = "node-1"
@@ -451,6 +458,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key="key-1",
+            price_per_hour=2.1,
         )
         mock_ssh_key_provider.list_keys.return_value = [sample_ssh_key]
         mock_nodes_operations.import_selfmanaged_node.return_value = "node-1"
@@ -489,6 +497,7 @@ class TestNodesService:
             endpoint="1.2.3.4",
             username="user",
             ssh_key=key_spec,
+            price_per_hour=2.1,
         )
 
         mock_nodes_operations.import_selfmanaged_node.return_value = "node-1"
