@@ -64,7 +64,7 @@ class ConsoleInputManager(IInputManager):
 
         result: Optional[StrictStr] = questionary.text(
             message,
-            default=str(default) or "0.0",
+            default=str(default) if default is not None else "0.0",
             validate=validator,
         ).ask(kbi_msg="")
         if result is None:

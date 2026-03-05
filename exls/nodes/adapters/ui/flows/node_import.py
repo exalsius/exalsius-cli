@@ -30,7 +30,7 @@ from exls.shared.adapters.ui.input.service import (
     ipv4_address_validator,
     kubernetes_name_validator,
     non_empty_string_validator,
-    positive_float_validator,
+    non_negative_float_validator,
 )
 from exls.shared.adapters.ui.input.values import (
     DisplayChoice,
@@ -172,7 +172,7 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
                     key="price_per_hour",
                     message="Price per hour for this node (enter 0.0 for self-managed nodes):",
                     default=0.0,
-                    validator=positive_float_validator,
+                    validator=non_negative_float_validator,
                 ),
                 SelectRequiredStep[
                     FlowSelfmanagedNodeSpecificationDTO,

@@ -173,7 +173,8 @@ def import_selfmanaged_node(
     endpoint: str = typer.Option(help="The endpoint of the node to import"),
     username: str = typer.Option(help="The username of the node to import"),
     price_per_hour: float = typer.Option(
-        help="The price per hour to use for this node (0.0 for self-managed nodes)",
+        0.0,
+        help="The price per hour to use for this node in USD (0.0 for self-managed nodes)",
     ),
     ssh_key_id: Optional[str] = typer.Option(
         None,
