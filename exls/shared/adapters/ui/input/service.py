@@ -24,23 +24,40 @@ def kubernetes_name_validator(text: str) -> bool | str:
     return True
 
 
-def ipv4_address_validator(text: str) -> bool | str:
-    """Validator for IPv4 addresses with an optional port."""
+def endpoint_validator(text: str) -> bool | str:
+    """Validator for endpoints: IPv4 address or hostname, with an optional port."""
     if not text:
         return "The value cannot be empty."
-    match = re.match(
-        r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?::(\d{1,5}))?$",
-        text,
-    )
-    if not match:
-        return "Please enter a valid IPv4 address, with an optional port."
 
-    if (port_str := match.group(1)) is not None:
-        port = int(port_str)
+    # Split host and optional port
+    if text.count(":") == 1:
+        host, port_str = text.rsplit(":", 1)
+        try:
+            port = int(port_str)
+        except ValueError:
+            return "Port must be a number."
         if not 0 <= port <= 65535:
             return f"Port number must be between 0 and 65535, but got {port}."
+    else:
+        host = text
 
-    return True
+    # Validate as IPv4
+    ipv4_match = re.match(
+        r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+        host,
+    )
+    if ipv4_match:
+        return True
+
+    # Validate as hostname (RFC 1123)
+    hostname_match = re.match(
+        r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\.[a-zA-Z0-9-]{1,63})*$",
+        host,
+    )
+    if hostname_match:
+        return True
+
+    return "Please enter a valid IPv4 address or hostname, with an optional port."
 
 
 def positive_integer_validator(text: str) -> bool | str:

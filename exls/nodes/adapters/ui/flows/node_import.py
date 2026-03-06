@@ -27,7 +27,7 @@ from exls.shared.adapters.ui.flow.steps import (
     UpdateLastChoiceStep,
 )
 from exls.shared.adapters.ui.input.service import (
-    ipv4_address_validator,
+    endpoint_validator,
     kubernetes_name_validator,
     non_empty_string_validator,
     non_negative_float_validator,
@@ -160,7 +160,7 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
                 TextInputStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="endpoint",
                     message="Endpoint (IP address or hostname and port, e.g. 192.168.1.1:22):",
-                    validator=ipv4_address_validator,
+                    validator=endpoint_validator,
                 ),
                 TextInputStep[FlowSelfmanagedNodeSpecificationDTO](
                     key="username",
