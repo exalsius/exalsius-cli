@@ -1,5 +1,5 @@
 import webbrowser
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 import typer
 
@@ -82,15 +82,18 @@ def called_with_any_user_input(
 ) -> bool:
     """
     Return True if the command was invoked with ANY non-default option/argument.
+
+    Uses Click's parameter source tracking to distinguish user-provided values
+    from defaults.
     """
+    import click
+
     for param in ctx.command.params:
         name: Optional[str] = param.name
         if name is None:
             continue
-        actual_value: Optional[Any] = ctx.params.get(name, None)
-        if actual_value is None:
-            continue
-
-        return True
+        source = ctx.get_parameter_source(name)
+        if source == click.core.ParameterSource.COMMANDLINE:
+            return True
 
     return False

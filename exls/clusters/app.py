@@ -237,7 +237,7 @@ def deploy_cluster(
     service: ClustersService = bundle.get_clusters_service()
 
     deploy_cluster_request: ClusterDeployRequest
-    if interactive or called_with_any_user_input(ctx):
+    if interactive or not called_with_any_user_input(ctx):
         cluster_deploy_request_dto: FlowDeployClusterRequestDTO = (
             FlowDeployClusterRequestDTO()
         )
