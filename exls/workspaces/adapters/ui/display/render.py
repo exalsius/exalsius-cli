@@ -22,6 +22,7 @@ _WORKSPACE_LIST_COLUMNS: Dict[str, Column] = {
         "Created At", value_formatter=format_datetime_humanized
     ),
     "cluster_id": TableRenderContext.get_column("Cluster ID"),
+    "owner_username": TableRenderContext.get_column("Creator"),
     "access_information.formatted_access_information": TableRenderContext.get_column(
         "Access", value_formatter=format_list
     ),
@@ -43,6 +44,12 @@ _WORKSPACE_DETAIL_COLUMNS: Dict[str, Column] = {
         "Created At", value_formatter=format_datetime
     ),
     "cluster_id": TableRenderContext.get_column("Cluster ID"),
+    "owner_username": TableRenderContext.get_column("Creator"),
+    "owner_org_name": TableRenderContext.get_column("Organization"),
+    "owner_org_id": TableRenderContext.get_column("Org ID"),
+    "owner_teams": TableRenderContext.get_column(
+        "Teams", value_formatter=lambda teams: ", ".join(teams) if teams else ""
+    ),
     "access_information.formatted_access_information": TableRenderContext.get_column(
         "Access", value_formatter=format_list
     ),
