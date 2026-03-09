@@ -118,6 +118,18 @@ class Workspace(BaseModel):
         default_factory=lambda: cast(List[WorkspaceAccessInformation], []),
         description="The access information of the workspace",
     )
+    owner_username: Optional[StrictStr] = Field(
+        None, description="The username of the workspace creator"
+    )
+    owner_org_id: Optional[StrictStr] = Field(
+        None, description="The organization ID of the workspace creator"
+    )
+    owner_org_name: Optional[StrictStr] = Field(
+        None, description="The organization name of the workspace creator"
+    )
+    owner_teams: Optional[List[StrictStr]] = Field(
+        None, description="The teams of the workspace creator"
+    )
 
 
 class WorkerResources(BaseModel):

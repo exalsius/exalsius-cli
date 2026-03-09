@@ -111,6 +111,18 @@ class Cluster(BaseModel):
         ..., description="The last update date of the cluster"
     )
     nodes: List[ClusterNode] = Field(..., description="The nodes of the cluster")
+    owner_username: Optional[StrictStr] = Field(
+        None, description="The username of the cluster creator"
+    )
+    owner_org_id: Optional[StrictStr] = Field(
+        None, description="The organization ID of the cluster creator"
+    )
+    owner_org_name: Optional[StrictStr] = Field(
+        None, description="The organization name of the cluster creator"
+    )
+    owner_teams: Optional[List[StrictStr]] = Field(
+        None, description="The teams of the cluster creator"
+    )
 
 
 ########################################################
