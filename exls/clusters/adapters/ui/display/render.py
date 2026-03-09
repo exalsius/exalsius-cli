@@ -25,6 +25,7 @@ _CLUSTER_LIST_COLUMNS: Dict[str, Column] = {
     "updated_at": TableRenderContext.get_column(
         "Updated At", value_formatter=format_datetime_humanized
     ),
+    "owner_username": TableRenderContext.get_column("Creator"),
 }
 
 CLUSTER_LIST_VIEW = ViewContext.from_table_columns(_CLUSTER_LIST_COLUMNS)
@@ -75,6 +76,12 @@ _CLUSTER_DETAIL_COLUMNS: Dict[str, Column] = {
     ),
     "updated_at": TableRenderContext.get_column(
         "Updated At", value_formatter=format_datetime
+    ),
+    "owner_username": TableRenderContext.get_column("Creator"),
+    "owner_org_name": TableRenderContext.get_column("Organization"),
+    "owner_org_id": TableRenderContext.get_column("Org ID"),
+    "owner_teams": TableRenderContext.get_column(
+        "Teams", value_formatter=lambda teams: ", ".join(teams) if teams else ""
     ),
 }
 
