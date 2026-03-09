@@ -27,6 +27,18 @@ class ClusterData(BaseModel):
     updated_at: Optional[datetime.datetime] = Field(
         default=None, description="The last update date of the cluster"
     )
+    owner_username: Optional[StrictStr] = Field(
+        None, description="The username of the cluster creator"
+    )
+    owner_org_id: Optional[StrictStr] = Field(
+        None, description="The organization ID of the cluster creator"
+    )
+    owner_org_name: Optional[StrictStr] = Field(
+        None, description="The organization name of the cluster creator"
+    )
+    owner_teams: Optional[List[StrictStr]] = Field(
+        None, description="The teams of the cluster creator"
+    )
 
 
 class ClusterNodeRefData(BaseModel):
