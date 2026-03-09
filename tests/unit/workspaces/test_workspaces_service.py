@@ -79,6 +79,10 @@ class TestWorkspacesService:
             template_name="jupyter",
             status=WorkspaceStatus.RUNNING,
             created_at=datetime.now(),
+            owner_username=None,
+            owner_org_id=None,
+            owner_org_name=None,
+            owner_teams=None,
         )
 
     @pytest.fixture
