@@ -109,6 +109,10 @@ def test_cluster_creation() -> None:
         created_at=now,
         updated_at=None,
         nodes=[node],
+        owner_username=None,
+        owner_org_id=None,
+        owner_org_name=None,
+        owner_teams=None,
     )
 
     assert cluster.id == "c-1"

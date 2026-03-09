@@ -74,6 +74,10 @@ class TestClustersService(unittest.TestCase):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             nodes=[self.node1],
+            owner_username=None,
+            owner_org_id=None,
+            owner_org_name=None,
+            owner_teams=None,
         )
 
     def test_list_clusters(self):
@@ -161,6 +165,10 @@ class TestClustersService(unittest.TestCase):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             nodes=[self.node1],
+            owner_username=None,
+            owner_org_id=None,
+            owner_org_name=None,
+            owner_teams=None,
         )
         self.mock_repo.get.return_value = deployed_cluster
 
@@ -220,6 +228,10 @@ class TestClustersService(unittest.TestCase):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             nodes=[imported_node],
+            owner_username=None,
+            owner_org_id=None,
+            owner_org_name=None,
+            owner_teams=None,
         )
         self.mock_repo.get.return_value = deployed_cluster
 
@@ -324,6 +336,10 @@ class TestClustersService(unittest.TestCase):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             nodes=[self.node1],
+            owner_username=None,
+            owner_org_id=None,
+            owner_org_name=None,
+            owner_teams=None,
         )
         self.mock_repo.get.return_value = deployed_cluster
 
@@ -372,6 +388,10 @@ class TestClustersService(unittest.TestCase):
             created_at=datetime.now(),
             updated_at=datetime.now(),
             nodes=[cp_node],
+            owner_username=None,
+            owner_org_id=None,
+            owner_org_name=None,
+            owner_teams=None,
         )
         self.mock_repo.get.return_value = deployed_cluster
 
