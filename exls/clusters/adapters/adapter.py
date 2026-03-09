@@ -186,6 +186,10 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
                     created_at=cluster_data.created_at,
                     updated_at=cluster_data.updated_at,
                     nodes=self._load_cluster_nodes(cluster_data=cluster_data),
+                    owner_username=cluster_data.owner_username,
+                    owner_org_id=cluster_data.owner_org_id,
+                    owner_org_name=cluster_data.owner_org_name,
+                    owner_teams=cluster_data.owner_teams,
                 )
             )
         if status:
@@ -204,6 +208,10 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
             created_at=cluster_data.created_at,
             updated_at=cluster_data.updated_at,
             nodes=nodes,
+            owner_username=cluster_data.owner_username,
+            owner_org_id=cluster_data.owner_org_id,
+            owner_org_name=cluster_data.owner_org_name,
+            owner_teams=cluster_data.owner_teams,
         )
 
     def create(self, parameters: ClusterCreateParameters) -> str:
