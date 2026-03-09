@@ -46,6 +46,10 @@ def _workspace_from_sdk(sdk_model: SdkWorkspace) -> Workspace:
         status=WorkspaceStatus.from_str(sdk_model.workspace_status or ""),
         created_at=sdk_model.created_at,
         access_information=workspace_access_informations,
+        owner_username=sdk_model.owner_username,
+        owner_org_id=sdk_model.owner_org_id,
+        owner_org_name=sdk_model.owner_org_name,
+        owner_teams=sdk_model.owner_teams,
     )
 
 

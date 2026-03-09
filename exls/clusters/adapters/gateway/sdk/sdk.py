@@ -72,6 +72,10 @@ def _cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
         type=ClusterType.from_str(sdk_model.cluster_type or ""),
         created_at=sdk_model.created_at,
         updated_at=sdk_model.updated_at,
+        owner_username=sdk_model.owner_username,
+        owner_org_id=sdk_model.owner_org_id,
+        owner_org_name=sdk_model.owner_org_name,
+        owner_teams=sdk_model.owner_teams,
     )
 
 
@@ -155,7 +159,6 @@ class SdkClustersGateway(ClustersGateway):
             self._clusters_api, cluster_id=cluster_id
         )
         response: ClusterResponse = command.execute()
-
         return _cluster_data_from_sdk_model(sdk_model=response.cluster)
 
     def delete(self, cluster_id: str) -> str:
