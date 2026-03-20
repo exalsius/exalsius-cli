@@ -4,15 +4,13 @@ import logging
 from typing import Iterator, List, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
+from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.models.cluster import Cluster
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import (
     ClusterCreateRequest as SdkClusterCreateRequest,
 )
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
-from exalsius_api_client.models.cluster_dashboard_url_response import (
-    ClusterDashboardUrlResponse,
-)
 from exalsius_api_client.models.cluster_delete_response import ClusterDeleteResponse
 from exalsius_api_client.models.cluster_deploy_response import ClusterDeployResponse
 from exalsius_api_client.models.cluster_kubeconfig_response import (
@@ -31,6 +29,9 @@ from exalsius_api_client.models.cluster_resources_list_response_resources_inner 
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
+from exalsius_api_client.models.dashboard_url_response import (
+    DashboardUrlResponse,
+)
 
 from exls.clusters.adapters.gateway.gateway import (
     ClusterCreateParameters,
@@ -135,10 +136,12 @@ class SdkClustersGateway(ClustersGateway):
     def __init__(
         self,
         clusters_api: ClustersApi,
+        management_api: ManagementApi,
         base_url: str = "",
         access_token: str = "",
     ):
         self._clusters_api = clusters_api
+        self._management_api = management_api
         self._base_url: str = base_url
         self._access_token: str = access_token
 
@@ -260,9 +263,9 @@ class SdkClustersGateway(ClustersGateway):
 
     def get_dashboard_url(self, cluster_id: str) -> str:
         command: GetDashboardUrlSdkCommand = GetDashboardUrlSdkCommand(
-            self._clusters_api, cluster_id
+            self._management_api
         )
-        response: ClusterDashboardUrlResponse = command.execute()
+        response: DashboardUrlResponse = command.execute()
         return response.url
 
     def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
