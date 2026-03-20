@@ -4,6 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, StrictStr
 
+from exls.management.core.domain import SshKeyScope
 from exls.shared.adapters.ui.facade.interface import IOFacade
 from exls.shared.adapters.ui.flow.flow import (
     FlowCancelationByUserException,
@@ -11,10 +12,16 @@ from exls.shared.adapters.ui.flow.flow import (
     FlowStep,
     SequentialFlow,
 )
-from exls.shared.adapters.ui.flow.steps import PathInputStep, TextInputStep
+from exls.shared.adapters.ui.flow.steps import (
+    ChoicesSpec,
+    PathInputStep,
+    SelectRequiredStep,
+    TextInputStep,
+)
 from exls.shared.adapters.ui.input.service import (
     non_empty_string_validator,
 )
+from exls.shared.adapters.ui.input.values import DisplayChoice
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.core.utils import generate_random_name
 
@@ -22,6 +29,10 @@ from exls.shared.core.utils import generate_random_name
 class FlowImportSshKeyRequestDTO(BaseModel):
     name: StrictStr = Field(default="", description="The name of the SSH key")
     key_path: Path = Field(default=Path(""), description="The path to the SSH key file")
+    scope: SshKeyScope = Field(
+        default=SshKeyScope.PRIVATE,
+        description="The visibility scope of the SSH key",
+    )
 
 
 class ImportSshKeyFlow(FlowStep[FlowImportSshKeyRequestDTO]):
@@ -47,6 +58,23 @@ class ImportSshKeyFlow(FlowStep[FlowImportSshKeyRequestDTO]):
                     message="Name of the SSH key:",
                     default=generate_random_name(prefix="ssh-key"),
                     validator=non_empty_string_validator,
+                ),
+                SelectRequiredStep[FlowImportSshKeyRequestDTO, SshKeyScope](
+                    key="scope",
+                    message="Select SSH key scope:",
+                    choices_spec=ChoicesSpec[SshKeyScope](
+                        choices=[
+                            DisplayChoice[SshKeyScope](
+                                title="Private", value=SshKeyScope.PRIVATE
+                            ),
+                            DisplayChoice[SshKeyScope](
+                                title="Organization", value=SshKeyScope.ORG
+                            ),
+                        ],
+                        default=DisplayChoice[SshKeyScope](
+                            title="Private", value=SshKeyScope.PRIVATE
+                        ),
+                    ),
                 ),
             ]
         )

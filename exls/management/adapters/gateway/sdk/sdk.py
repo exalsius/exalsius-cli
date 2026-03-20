@@ -44,6 +44,7 @@ from exls.management.core.domain import (
     Credentials,
     ServiceTemplate,
     SshKey,
+    SshKeyScope,
     WorkspaceTemplate,
 )
 
@@ -56,7 +57,8 @@ def _ssh_key_from_sdk_model(
     if sdk_model.id is None or sdk_model.name is None:
         logger.warning(f"Unexpected SSH key response: {sdk_model}")
         return None
-    return SshKey(id=sdk_model.id, name=sdk_model.name)
+    scope = SshKeyScope(sdk_model.scope) if sdk_model.scope else SshKeyScope.PRIVATE
+    return SshKey(id=sdk_model.id, name=sdk_model.name, scope=scope)
 
 
 def _cluster_template_from_sdk_model(
@@ -122,13 +124,16 @@ class ManagementGatewaySdk(ManagementGateway):
         command.execute()
         return ssh_key_id
 
-    def create_ssh_key(self, name: str, base64_key_content: str) -> str:
+    def create_ssh_key(
+        self, name: str, base64_key_content: str, scope: str = "private"
+    ) -> str:
         existing_ssh_keys: List[SshKey] = self.list_ssh_keys()
         if any(ssh_key.name == name for ssh_key in existing_ssh_keys):
             raise ValueError(f"SSH key with name {name} already exists")
         create_request: SshKeyCreateRequest = SshKeyCreateRequest(
             name=name,
             private_key_b64=base64_key_content,
+            scope=scope,
         )
         command: AddSshKeySdkCommand = AddSshKeySdkCommand(
             self._management_api, request=create_request

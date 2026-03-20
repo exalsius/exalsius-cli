@@ -32,11 +32,13 @@ DEFAULT_SERVICE_TEMPLATES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
 DEFAULT_SSH_KEYS_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
+    "scope": TableRenderContext.get_column("Scope"),
 }
 
 DEFAULT_ADD_SSH_KEY_REQUEST_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
     "name": TableRenderContext.get_column("Name"),
     "key_path": TableRenderContext.get_column("Key Path"),
+    "scope": TableRenderContext.get_column("Scope"),
 }
 
 DEFAULT_WORKSPACE_TEMPLATES_COLUMNS_RENDERING_MAP: Dict[str, Column] = {
