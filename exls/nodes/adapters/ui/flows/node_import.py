@@ -108,7 +108,14 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
         available_ssh_keys: Sequence[NodeSshKey] = self._get_available_ssh_keys()
 
         choices: List[DisplayChoice[_SSH_KEY_CHOICE]] = [
-            DisplayChoice[_SSH_KEY_CHOICE](title=ssh_key.name, value=ssh_key)
+            DisplayChoice[_SSH_KEY_CHOICE](
+                title=(
+                    f"{ssh_key.name} ({ssh_key.scope})"
+                    if ssh_key.scope != "private"
+                    else ssh_key.name
+                ),
+                value=ssh_key,
+            )
             for ssh_key in available_ssh_keys
         ]
         added_choices: Dict[str, _SSH_KEY_CHOICE] = {c.title: c.value for c in choices}

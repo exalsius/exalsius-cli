@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field, StrictStr
 class NodeSshKey(BaseModel):
     id: StrictStr = Field(..., description="The ID of the SSH key")
     name: StrictStr = Field(..., description="The name of the SSH key")
+    scope: StrictStr = Field(
+        default="private", description="The visibility scope of the SSH key"
+    )
 
 
 class SshKeyProvider(ABC):
