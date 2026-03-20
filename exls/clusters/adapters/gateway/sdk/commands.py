@@ -42,12 +42,14 @@ class ListClustersSdkCommand(BaseClustersSdkCommand[ClustersListResponse]):
     def __init__(
         self,
         api_client: ClustersApi,
-        status: Optional[Literal["PENDING", "DEPLOYING", "READY", "FAILED"]],
+        status: Optional[
+            Literal["PENDING", "DEPLOYING", "READY", "DELETING", "FAILED"]
+        ],
     ):
         super().__init__(api_client)
-        self._status: Optional[Literal["PENDING", "DEPLOYING", "READY", "FAILED"]] = (
-            status
-        )
+        self._status: Optional[
+            Literal["PENDING", "DEPLOYING", "READY", "DELETING", "FAILED"]
+        ] = status
 
     def _execute_api_call(self) -> ClustersListResponse:
         response: ClustersListResponse = self.api_client.list_clusters(

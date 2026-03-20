@@ -90,6 +90,7 @@ class ClusterStatus(StrEnum):
     PENDING = "PENDING"
     DEPLOYING = "DEPLOYING"
     READY = "READY"
+    DELETING = "DELETING"
     FAILED = "FAILED"
     UNKNOWN = "UNKNOWN"
 
