@@ -16,7 +16,9 @@ class ManagementDomainSshProvider(SshKeyProvider):
         ssh_keys: List[SshKey] = self.management_service.list_ssh_keys()
         node_ssh_keys: List[NodeSshKey] = []
         for ssh_key in ssh_keys:
-            node_ssh_keys.append(NodeSshKey(id=ssh_key.id, name=ssh_key.name))
+            node_ssh_keys.append(
+                NodeSshKey(id=ssh_key.id, name=ssh_key.name, scope=ssh_key.scope.value)
+            )
         return node_ssh_keys
 
     def get_key(self, id: str) -> Optional[NodeSshKey]:
@@ -30,4 +32,8 @@ class ManagementDomainSshProvider(SshKeyProvider):
         domain_ssh_key: SshKey = self.management_service.import_ssh_key(
             name=name, key_path=key_path
         )
-        return NodeSshKey(id=domain_ssh_key.id, name=domain_ssh_key.name)
+        return NodeSshKey(
+            id=domain_ssh_key.id,
+            name=domain_ssh_key.name,
+            scope=domain_ssh_key.scope.value,
+        )
