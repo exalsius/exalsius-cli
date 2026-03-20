@@ -44,10 +44,12 @@ class ManagementService:
         return self._management_repository.list_ssh_keys()
 
     @handle_service_layer_errors("importing ssh key")
-    def import_ssh_key(self, name: str, key_path: Path) -> SshKey:
+    def import_ssh_key(
+        self, name: str, key_path: Path, scope: str = "private"
+    ) -> SshKey:
         key_content_base64: str = self._file_read_adapter.read_file(file_path=key_path)
         ssh_key_id: str = self._management_repository.create_ssh_key(
-            name=name, base64_key_content=key_content_base64
+            name=name, base64_key_content=key_content_base64, scope=scope
         )
         ssh_keys: List[SshKey] = self._management_repository.list_ssh_keys()
         ssh_key: Optional[SshKey] = next(

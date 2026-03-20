@@ -13,6 +13,7 @@ from exls.management.core.domain import (
     Credentials,
     ServiceTemplate,
     SshKey,
+    SshKeyScope,
     WorkspaceTemplate,
 )
 from exls.management.core.service import ManagementService
@@ -172,6 +173,12 @@ def import_ssh_key(
     key_path: Optional[Path] = typer.Option(
         None, "--key-path", "-k", help="Path to the SSH private key file"
     ),
+    scope: str = typer.Option(
+        "private",
+        "--scope",
+        "-s",
+        help="Visibility scope of the SSH key ('private' or 'org')",
+    ),
 ):
     """Import a new SSH key to the management cluster."""
     bundle: ManagementBundle = _get_bundle(ctx)
@@ -192,9 +199,12 @@ def import_ssh_key(
 
         add_ssh_key_request.name = name
         add_ssh_key_request.key_path = key_path
+        add_ssh_key_request.scope = SshKeyScope(scope)
 
     domain_ssh_key: SshKey = service.import_ssh_key(
-        name=add_ssh_key_request.name, key_path=add_ssh_key_request.key_path
+        name=add_ssh_key_request.name,
+        key_path=add_ssh_key_request.key_path,
+        scope=add_ssh_key_request.scope.value,
     )
 
     io_facade.display_data(domain_ssh_key, output_format=bundle.object_output_format)
