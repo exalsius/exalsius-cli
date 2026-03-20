@@ -8,6 +8,7 @@ from exls.management.core.domain import (
     Credentials,
     ServiceTemplate,
     SshKey,
+    SshKeyScope,
     WorkspaceTemplate,
 )
 from exls.management.core.ports.ports import ManagementRepository
@@ -142,9 +143,33 @@ class TestManagementService:
         assert result == expected_key
         mock_file_read_adapter.read_file.assert_called_once_with(file_path=key_path)
         mock_management_repository.create_ssh_key.assert_called_once_with(
-            name=name, base64_key_content=file_content
+            name=name, base64_key_content=file_content, scope="private"
         )
         mock_management_repository.list_ssh_keys.assert_called_once()
+
+    def test_import_ssh_key_with_org_scope(
+        self,
+        service: ManagementService,
+        mock_management_repository: MagicMock,
+        mock_file_read_adapter: MagicMock,
+    ) -> None:
+        name = "org-key"
+        key_path = Path("/path/to/key.pub")
+        file_content = "ssh-rsa AAAA..."
+        new_key_id = "org-key-id"
+        expected_key = SshKey(id=new_key_id, name=name, scope=SshKeyScope.ORG)
+
+        mock_file_read_adapter.read_file.return_value = file_content
+        mock_management_repository.create_ssh_key.return_value = new_key_id
+        mock_management_repository.list_ssh_keys.return_value = [expected_key]
+
+        result = service.import_ssh_key(name=name, key_path=key_path, scope="org")
+
+        assert result == expected_key
+        assert result.scope == SshKeyScope.ORG
+        mock_management_repository.create_ssh_key.assert_called_once_with(
+            name=name, base64_key_content=file_content, scope="org"
+        )
 
     def test_import_ssh_key_failure_not_found(
         self,
@@ -170,7 +195,7 @@ class TestManagementService:
         assert f"SSH key {name} was not imported" in str(exc_info.value)
         mock_file_read_adapter.read_file.assert_called_once_with(file_path=key_path)
         mock_management_repository.create_ssh_key.assert_called_once_with(
-            name=name, base64_key_content=file_content
+            name=name, base64_key_content=file_content, scope="private"
         )
         mock_management_repository.list_ssh_keys.assert_called_once()
 
