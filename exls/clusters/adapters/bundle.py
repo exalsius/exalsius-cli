@@ -1,4 +1,5 @@
 from exalsius_api_client.api.clusters_api import ClustersApi
+from exalsius_api_client.api.management_api import ManagementApi
 
 from exls.clusters.adapters.adapter import ClusterAdapter
 from exls.clusters.adapters.gateway.sdk.sdk import SdkClustersGateway
@@ -20,9 +21,12 @@ class ClustersBundle(BaseBundle):
         self._nodes_bundle: NodesBundle = NodesBundle(app_config, app_state)
 
     def get_clusters_service(self) -> ClustersService:
-        clusters_api: ClustersApi = ClustersApi(api_client=self.create_api_client())
+        api_client = self.create_api_client()
+        clusters_api: ClustersApi = ClustersApi(api_client=api_client)
+        management_api: ManagementApi = ManagementApi(api_client=api_client)
         clusters_gateway: SdkClustersGateway = SdkClustersGateway(
             clusters_api=clusters_api,
+            management_api=management_api,
             base_url=self.config.backend_host,
             access_token=self.access_token,
         )
