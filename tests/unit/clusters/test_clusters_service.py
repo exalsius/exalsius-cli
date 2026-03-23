@@ -484,6 +484,95 @@ class TestClustersService(unittest.TestCase):
         self.assertIn("not found in available nodes", result.issues[0].error_message)
         self.mock_ops.scale_up.assert_not_called()
 
+    def test_scale_up_cluster_partial_success(self):
+        """Valid nodes are added while invalid ones are reported as issues."""
+        node2 = ClusterNode(
+            id="node-2",
+            role=ClusterNodeRole.WORKER,
+            hostname="host2",
+            username="user",
+            ssh_key_id="key2",
+            status=ClusterNodeStatus.AVAILABLE,
+            endpoint="1.2.3.5",
+            free_resources=self.resources,
+            occupied_resources=self.resources,
+        )
+        self.mock_repo.get.return_value = self.cluster1
+        self.mock_provider.list_available_nodes.return_value = [self.node1, node2]
+        self.mock_ops.scale_up.return_value = ClusterScaleResult(
+            nodes=[node2], issues=[]
+        )
+
+        result = self.service.scale_up_cluster(
+            "cluster-1", ["node-2", "nonexistent-node"]
+        )
+
+        self.assertEqual(len(result.nodes), 1)
+        self.assertEqual(result.nodes[0].id, "node-2")
+        self.assertEqual(len(result.issues), 1)
+        self.assertIn("nonexistent-node", result.issues[0].error_message)
+        self.mock_ops.scale_up.assert_called_once()
+
+    def test_scale_up_cluster_deploying_raises(self):
+        """Cannot scale up a cluster that is still deploying."""
+        deploying_cluster = self.cluster1.model_copy(
+            update={"status": ClusterStatus.DEPLOYING}
+        )
+        self.mock_repo.get.return_value = deploying_cluster
+
+        with self.assertRaises(ServiceError) as cm:
+            self.service.scale_up_cluster("cluster-1", ["node-1"])
+        self.assertIn("still deploying", str(cm.exception))
+        self.mock_ops.scale_up.assert_not_called()
+
+    def test_scale_up_cluster_failed_raises(self):
+        """Cannot scale up a cluster that has failed."""
+        failed_cluster = self.cluster1.model_copy(
+            update={"status": ClusterStatus.FAILED}
+        )
+        self.mock_repo.get.return_value = failed_cluster
+
+        with self.assertRaises(ServiceError) as cm:
+            self.service.scale_up_cluster("cluster-1", ["node-1"])
+        self.assertIn("failed", str(cm.exception))
+        self.mock_ops.scale_up.assert_not_called()
+
+    def test_scale_up_cluster_multiple_nodes(self):
+        """All valid nodes are added when multiple are requested."""
+        node2 = ClusterNode(
+            id="node-2",
+            role=ClusterNodeRole.WORKER,
+            hostname="host2",
+            username="user",
+            ssh_key_id="key2",
+            status=ClusterNodeStatus.AVAILABLE,
+            endpoint="1.2.3.5",
+            free_resources=self.resources,
+            occupied_resources=self.resources,
+        )
+        node3 = ClusterNode(
+            id="node-3",
+            role=ClusterNodeRole.WORKER,
+            hostname="host3",
+            username="user",
+            ssh_key_id="key3",
+            status=ClusterNodeStatus.AVAILABLE,
+            endpoint="1.2.3.6",
+            free_resources=self.resources,
+            occupied_resources=self.resources,
+        )
+        self.mock_repo.get.return_value = self.cluster1
+        self.mock_provider.list_available_nodes.return_value = [node2, node3]
+        self.mock_ops.scale_up.return_value = ClusterScaleResult(
+            nodes=[node2, node3], issues=[]
+        )
+
+        result = self.service.scale_up_cluster("cluster-1", ["node-2", "node-3"])
+
+        self.assertEqual(len(result.nodes), 2)
+        self.assertEqual(len(result.issues), 0)
+        self.mock_ops.scale_up.assert_called_once()
+
     def test_remove_nodes_from_cluster(self):
         self.mock_repo.get.return_value = self.cluster1
 
