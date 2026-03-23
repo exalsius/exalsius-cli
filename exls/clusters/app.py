@@ -13,6 +13,10 @@ from exls.clusters.adapters.ui.display.render import (
     CLUSTER_NODE_RESOURCES_VIEW,
     CLUSTER_WITH_NODES_VIEW,
 )
+from exls.clusters.adapters.ui.flows.add_nodes import (
+    AddNodesFlow,
+    FlowAddNodesRequestDTO,
+)
 from exls.clusters.adapters.ui.flows.cluster_deploy import (
     DeployClusterFlow,
     FlowDeployClusterRequestDTO,
@@ -24,7 +28,7 @@ from exls.clusters.core.domain import (
     ClusterType,
 )
 from exls.clusters.core.requests import ClusterDeployRequest
-from exls.clusters.core.results import DeployClusterResult
+from exls.clusters.core.results import ClusterScaleResult, DeployClusterResult
 from exls.clusters.core.service import ClustersService
 from exls.shared.adapters.decorators import handle_application_layer_errors
 from exls.shared.adapters.ui.facade.facade import IOBaseModelFacade
@@ -365,7 +369,12 @@ def list_nodes(
 @handle_application_layer_errors(ClustersBundle)
 def add_nodes(
     ctx: typer.Context,
-    cluster_id: str = typer.Argument("", help="The ID of the cluster to add a node to"),
+    cluster_id: str = typer.Argument(
+        ...,
+        help="The name or ID of the cluster to add nodes to",
+        metavar="CLUSTER_NAME_OR_ID",
+        callback=_resolve_cluster_id_callback,
+    ),
     worker_node_ids: List[str] = typer.Option(
         [],
         "--worker-nodes",
@@ -381,7 +390,40 @@ def add_nodes(
     """
     Add nodes to a cluster.
     """
-    raise NotImplementedError("Not implemented yet")
+    bundle: ClustersBundle = _get_bundle(ctx)
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
+    service: ClustersService = bundle.get_clusters_service()
+
+    if interactive or not worker_node_ids:
+        flow_model: FlowAddNodesRequestDTO = FlowAddNodesRequestDTO()
+        flow: AddNodesFlow = AddNodesFlow(service=service, cluster_id=cluster_id)
+        flow.execute(flow_model, FlowContext(), io_facade)
+        worker_node_ids = [node.id for node in flow_model.worker_node_ids]
+
+    cluster: Cluster = service.get_cluster(cluster_id)
+
+    scale_result: ClusterScaleResult = service.scale_up_cluster(
+        cluster_id=cluster_id,
+        node_ids=worker_node_ids,
+    )
+
+    if scale_result.issues:
+        io_facade.display_error_message(
+            message="Some nodes could not be added:",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=scale_result.issues,
+            output_format=bundle.object_output_format,
+            view_context=CLUSTER_NODE_ISSUE_VIEW,
+        )
+
+    if scale_result.nodes:
+        added_node_names: str = ", ".join(node.hostname for node in scale_result.nodes)
+        io_facade.display_success_message(
+            message=f"Following nodes added to cluster '{cluster.name}' successfully: {added_node_names}.",
+            output_format=bundle.message_output_format,
+        )
 
 
 @clusters_app.command("remove-nodes", help="Remove nodes from a cluster")
