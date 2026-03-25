@@ -451,13 +451,6 @@ class ClustersService:
             file_path=Path(kubeconfig_file_path), content=kubeconfig_content
         )
 
-    @handle_service_layer_errors("getting dashboard url")
-    def get_dashboard_url(self, cluster_id: str) -> str:
-        cluster: Cluster = self.get_cluster(cluster_id=cluster_id)
-        self._validate_cluster_status(cluster=cluster)
-
-        return self._clusters_operations.get_dashboard_url(cluster_id=cluster_id)
-
     @handle_service_layer_errors("streaming cluster logs")
     def stream_cluster_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
         return self._clusters_operations.stream_logs(cluster_id=cluster_id)

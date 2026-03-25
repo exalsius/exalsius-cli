@@ -25,6 +25,7 @@ from exls.shared.adapters.ui.utils import (
     get_app_state_from_ctx,
     get_config_from_ctx,
     help_if_no_subcommand,
+    open_url_in_browser,
 )
 from exls.shared.core.resolver import (
     AmbiguousResourceError,
@@ -76,6 +77,41 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     Manage the management resources.
     """
     help_if_no_subcommand(ctx)
+
+
+@management_app.command("get-dashboard-url", help="Get the Grafana dashboard URL")
+@handle_application_layer_errors(ManagementBundle)
+def get_dashboard_url(
+    ctx: typer.Context,
+    open_browser: bool = typer.Option(
+        False,
+        "--open",
+        help="Open the dashboard URL in the default browser",
+    ),
+):
+    """Get the Grafana dashboard URL."""
+    bundle: ManagementBundle = _get_bundle(ctx)
+    io_facade: IOBaseModelFacade = bundle.get_io_facade()
+    service: ManagementService = bundle.get_management_service()
+
+    dashboard_url_str: str = service.get_dashboard_url()
+
+    if open_browser:
+        if open_url_in_browser(dashboard_url_str):
+            io_facade.display_success_message(
+                "Opening Grafana Dashboard URL in browser...",
+                bundle.message_output_format,
+            )
+        else:
+            io_facade.display_error_message(
+                "Failed to open browser. Please open the URL manually.",
+                bundle.message_output_format,
+            )
+
+    io_facade.display_success_message(
+        f"Grafana Dashboard URL: {dashboard_url_str}",
+        bundle.message_output_format,
+    )
 
 
 @cluster_templates_app.command("list", help="List all available cluster templates.")

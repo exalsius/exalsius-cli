@@ -278,8 +278,5 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
     def load_kubeconfig(self, cluster_id: str) -> str:
         return self._cluster_gateway.load_kubeconfig(cluster_id=cluster_id)
 
-    def get_dashboard_url(self, cluster_id: str) -> str:
-        return self._cluster_gateway.get_dashboard_url(cluster_id=cluster_id)
-
     def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
         return self._cluster_gateway.stream_logs(cluster_id=cluster_id)

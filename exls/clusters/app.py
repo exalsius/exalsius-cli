@@ -39,7 +39,6 @@ from exls.shared.adapters.ui.utils import (
     get_app_state_from_ctx,
     get_config_from_ctx,
     help_if_no_subcommand,
-    open_url_in_browser,
 )
 from exls.shared.core.resolver import (
     AmbiguousResourceError,
@@ -497,49 +496,6 @@ def get_cluster_resources(
         data=cluster.nodes,
         output_format=bundle.object_output_format,
         view_context=CLUSTER_NODE_RESOURCES_VIEW,
-    )
-
-
-@clusters_app.command(
-    "get-dashboard-url", help="Get the monitoring dashboard URL of a cluster"
-)
-@handle_application_layer_errors(ClustersBundle)
-def get_dashboard_url(
-    ctx: typer.Context,
-    cluster_id: str = typer.Argument(
-        ...,
-        help="The name or ID of the cluster to get the monitoring dashboard URL of",
-        metavar="CLUSTER_NAME_OR_ID",
-        callback=_resolve_cluster_id_callback,
-    ),
-    open_browser: bool = typer.Option(
-        False,
-        "--open",
-        help="Open the dashboard URL in the default browser",
-    ),
-):
-    """
-    Get the monitoring dashboard URL of a cluster.
-    """
-    bundle: ClustersBundle = _get_bundle(ctx)
-    io_facade: IOBaseModelFacade = bundle.get_io_facade()
-    service: ClustersService = bundle.get_clusters_service()
-
-    dashboard_url_str: str = service.get_dashboard_url(cluster_id)
-
-    if open_browser:
-        if open_url_in_browser(dashboard_url_str):
-            io_facade.display_success_message(
-                "Opening dashboard in browser...", bundle.message_output_format
-            )
-        else:
-            io_facade.display_error_message(
-                "Failed to open browser. Please open the URL manually.",
-                bundle.message_output_format,
-            )
-
-    io_facade.display_success_message(
-        f"Monitoring Dashboard URL: {dashboard_url_str}", bundle.message_output_format
     )
 
 

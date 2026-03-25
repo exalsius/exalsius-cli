@@ -100,34 +100,6 @@ class TestClustersService(unittest.TestCase):
         self.service.delete_cluster("cluster-1")
         self.mock_repo.delete.assert_called_once_with(cluster_id="cluster-1")
 
-    def test_get_dashboard_url(self):
-        self.mock_repo.get.return_value = self.cluster1
-        self.mock_ops.get_dashboard_url.return_value = "http://dashboard"
-
-        url = self.service.get_dashboard_url("cluster-1")
-
-        self.assertEqual(url, "http://dashboard")
-        self.mock_ops.get_dashboard_url.assert_called_once_with(cluster_id="cluster-1")
-
-    def test_get_dashboard_url_invalid_status(self):
-        deploying_cluster = self.cluster1.model_copy(
-            update={"status": ClusterStatus.DEPLOYING}
-        )
-        self.mock_repo.get.return_value = deploying_cluster
-
-        with self.assertRaises(ServiceError) as cm:
-            self.service.get_dashboard_url("cluster-1")
-        self.assertIn("still deploying", str(cm.exception))
-
-        failed_cluster = self.cluster1.model_copy(
-            update={"status": ClusterStatus.FAILED}
-        )
-        self.mock_repo.get.return_value = failed_cluster
-
-        with self.assertRaises(ServiceError) as cm:
-            self.service.get_dashboard_url("cluster-1")
-        self.assertIn("deployment failed", str(cm.exception))
-
     def test_import_kubeconfig(self):
         self.mock_repo.get.return_value = self.cluster1
         self.mock_ops.load_kubeconfig.return_value = "kubeconfig-content"
@@ -437,16 +409,6 @@ class TestClustersService(unittest.TestCase):
         self.assertFalse(result.is_success)
         self.assertEqual(len(result.issues), 1)
         self.assertIn("Timed out", result.issues[0].error_message)
-
-    def test_get_dashboard_url_unknown_status(self):
-        unknown_cluster = self.cluster1.model_copy(
-            update={"status": ClusterStatus.UNKNOWN}
-        )
-        self.mock_repo.get.return_value = unknown_cluster
-
-        with self.assertRaises(ServiceError) as cm:
-            self.service.get_dashboard_url("cluster-1")
-        self.assertIn("unknown status", str(cm.exception))
 
     def test_scale_up_cluster(self):
         self.mock_repo.get.return_value = self.cluster1
