@@ -128,9 +128,5 @@ class ClustersGateway(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_dashboard_url(self, cluster_id: str) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
     def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
         raise NotImplementedError

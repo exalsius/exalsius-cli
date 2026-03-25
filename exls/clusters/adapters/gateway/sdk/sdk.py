@@ -29,9 +29,6 @@ from exalsius_api_client.models.cluster_resources_list_response_resources_inner 
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
-from exalsius_api_client.models.dashboard_url_response import (
-    DashboardUrlResponse,
-)
 
 from exls.clusters.adapters.gateway.gateway import (
     ClusterCreateParameters,
@@ -50,7 +47,6 @@ from exls.clusters.adapters.gateway.sdk.commands import (
     GetClusterNodesSdkCommand,
     GetClusterResourcesSdkCommand,
     GetClusterSdkCommand,
-    GetDashboardUrlSdkCommand,
     GetKubeconfigSdkCommand,
     ListClustersSdkCommand,
     RemoveNodeSdkCommand,
@@ -260,13 +256,6 @@ class SdkClustersGateway(ClustersGateway):
         )
         response: ClusterKubeconfigResponse = command.execute()
         return response.kubeconfig
-
-    def get_dashboard_url(self, cluster_id: str) -> str:
-        command: GetDashboardUrlSdkCommand = GetDashboardUrlSdkCommand(
-            self._management_api
-        )
-        response: DashboardUrlResponse = command.execute()
-        return response.url
 
     def stream_logs(self, cluster_id: str) -> Iterator[ClusterEvent]:
         command: StreamClusterLogsSdkCommand = StreamClusterLogsSdkCommand(

@@ -33,6 +33,7 @@ from exls.management.adapters.gateway.gateway import ManagementGateway
 from exls.management.adapters.gateway.sdk.commands import (
     AddSshKeySdkCommand,
     DeleteSshKeySdkCommand,
+    GetDashboardUrlSdkCommand,
     ListClusterTemplatesSdkCommand,
     ListCredentialsSdkCommand,
     ListServiceTemplatesSdkCommand,
@@ -177,3 +178,10 @@ class ManagementGatewaySdk(ManagementGateway):
             _workspace_template_from_sdk_model(sdk_model=wt)
             for wt in response.workspace_templates
         ]
+
+    def get_dashboard_url(self) -> str:
+        command: GetDashboardUrlSdkCommand = GetDashboardUrlSdkCommand(
+            api_client=self._management_api
+        )
+        response = command.execute()
+        return response.url

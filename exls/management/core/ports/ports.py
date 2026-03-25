@@ -33,3 +33,6 @@ class ManagementRepository(ABC):
 
     @abstractmethod
     def delete_ssh_key(self, ssh_key_id: str) -> str: ...
+
+    @abstractmethod
+    def get_dashboard_url(self) -> str: ...

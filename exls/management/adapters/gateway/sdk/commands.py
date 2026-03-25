@@ -3,6 +3,9 @@ from exalsius_api_client.models.cluster_template_list_response import (
     ClusterTemplateListResponse,
 )
 from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
+from exalsius_api_client.models.dashboard_url_response import (
+    DashboardUrlResponse,
+)
 from exalsius_api_client.models.service_template_list_response import (
     ServiceTemplateListResponse,
 )
@@ -85,3 +88,13 @@ class DeleteSshKeySdkCommand(BaseManagementSdkCommand[str]):
     def _execute_api_call(self) -> str:
         self.api_client.delete_ssh_key(ssh_key_id=self._ssh_key_id)
         return self._ssh_key_id
+
+
+class GetDashboardUrlSdkCommand(
+    ExalsiusSdkCommand[ManagementApi, DashboardUrlResponse]
+):
+    def __init__(self, api_client: ManagementApi):
+        super().__init__(api_client)
+
+    def _execute_api_call(self) -> DashboardUrlResponse:
+        return self.api_client.get_dashboard_url()

@@ -64,3 +64,7 @@ class ManagementService:
     @handle_service_layer_errors("deleting ssh key")
     def delete_ssh_key(self, ssh_key_id: str) -> str:
         return self._management_repository.delete_ssh_key(ssh_key_id)
+
+    @handle_service_layer_errors("getting dashboard url")
+    def get_dashboard_url(self) -> str:
+        return self._management_repository.get_dashboard_url()

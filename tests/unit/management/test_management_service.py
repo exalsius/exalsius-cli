@@ -259,3 +259,14 @@ class TestManagementService:
 
         assert result == expected_result
         mock_management_repository.delete_ssh_key.assert_called_once_with(ssh_key_id)
+
+    def test_get_dashboard_url(
+        self, service: ManagementService, mock_management_repository: MagicMock
+    ) -> None:
+        expected_url = "http://dashboard"
+        mock_management_repository.get_dashboard_url.return_value = expected_url
+
+        result = service.get_dashboard_url()
+
+        assert result == expected_url
+        mock_management_repository.get_dashboard_url.assert_called_once()

@@ -1,7 +1,6 @@
 from typing import Dict, Literal, Optional
 
 from exalsius_api_client.api.clusters_api import ClustersApi
-from exalsius_api_client.api.management_api import ManagementApi
 from exalsius_api_client.models.cluster_add_node_request import ClusterAddNodeRequest
 from exalsius_api_client.models.cluster_create_request import ClusterCreateRequest
 from exalsius_api_client.models.cluster_create_response import ClusterCreateResponse
@@ -19,9 +18,6 @@ from exalsius_api_client.models.cluster_resources_list_response import (
 )
 from exalsius_api_client.models.cluster_response import ClusterResponse
 from exalsius_api_client.models.clusters_list_response import ClustersListResponse
-from exalsius_api_client.models.dashboard_url_response import (
-    DashboardUrlResponse,
-)
 
 from exls.clusters.core.domain import ClusterEvent
 from exls.shared.adapters.http.commands import StreamingGetRequestCommand
@@ -177,17 +173,6 @@ class GetKubeconfigSdkCommand(BaseClustersSdkCommand[ClusterKubeconfigResponse])
                 "Kubeconfig response is empty", self.__class__.__name__
             )
 
-        return response
-
-
-class GetDashboardUrlSdkCommand(
-    ExalsiusSdkCommand[ManagementApi, DashboardUrlResponse]
-):
-    def __init__(self, api_client: ManagementApi):
-        super().__init__(api_client)
-
-    def _execute_api_call(self) -> DashboardUrlResponse:
-        response: DashboardUrlResponse = self.api_client.get_dashboard_url()
         return response
 
 
