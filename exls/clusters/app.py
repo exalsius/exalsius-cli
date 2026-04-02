@@ -21,6 +21,10 @@ from exls.clusters.adapters.ui.flows.cluster_deploy import (
     DeployClusterFlow,
     FlowDeployClusterRequestDTO,
 )
+from exls.clusters.adapters.ui.flows.remove_nodes import (
+    FlowRemoveNodesRequestDTO,
+    RemoveNodesFlow,
+)
 from exls.clusters.core.domain import (
     Cluster,
     ClusterEvent,
@@ -441,6 +445,11 @@ def remove_nodes(
         help="The names or IDs of the nodes to remove from the cluster.",
         show_default=False,
     ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="Enable interactive mode to remove nodes from the cluster",
+    ),
 ):
     """
     Remove nodes from a cluster.
@@ -448,6 +457,12 @@ def remove_nodes(
     bundle: ClustersBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
+
+    if interactive or not node_names_or_ids:
+        flow_model: FlowRemoveNodesRequestDTO = FlowRemoveNodesRequestDTO()
+        flow: RemoveNodesFlow = RemoveNodesFlow(service=service, cluster_id=cluster_id)
+        flow.execute(flow_model, FlowContext(), io_facade)
+        node_names_or_ids = [node.id for node in flow_model.nodes_to_remove]
 
     cluster: Cluster = service.get_cluster(cluster_id)
 
@@ -457,15 +472,30 @@ def remove_nodes(
         for node_name_or_id in node_names_or_ids
     ]
 
-    removed_node_ids: List[str] = service.remove_nodes_from_cluster(
+    scale_result: ClusterScaleResult = service.remove_nodes_from_cluster(
         cluster_id=cluster_id,
         node_ids=resolved_node_ids,
     )
 
-    io_facade.display_success_message(
-        message=f"Following nodes removed from cluster '{cluster.name}' successfully: {', '.join(removed_node_ids)}.",
-        output_format=bundle.message_output_format,
-    )
+    if scale_result.issues:
+        io_facade.display_error_message(
+            message="Some nodes could not be removed:",
+            output_format=bundle.message_output_format,
+        )
+        io_facade.display_data(
+            data=scale_result.issues,
+            output_format=bundle.object_output_format,
+            view_context=CLUSTER_NODE_ISSUE_VIEW,
+        )
+
+    if scale_result.nodes:
+        removed_node_names: str = ", ".join(
+            node.hostname for node in scale_result.nodes
+        )
+        io_facade.display_success_message(
+            message=f"Following nodes removed from cluster '{cluster.name}' successfully: {removed_node_names}.",
+            output_format=bundle.message_output_format,
+        )
 
 
 @clusters_app.command("show-available-resources", help="Get the resources of a cluster")
