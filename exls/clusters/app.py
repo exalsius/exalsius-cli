@@ -28,6 +28,7 @@ from exls.clusters.adapters.ui.flows.remove_nodes import (
 from exls.clusters.core.domain import (
     Cluster,
     ClusterEvent,
+    ClusterNode,
     ClusterStatus,
     ClusterType,
 )
@@ -378,10 +379,10 @@ def add_nodes(
         metavar="CLUSTER_NAME_OR_ID",
         callback=_resolve_cluster_id_callback,
     ),
-    worker_node_ids: List[str] = typer.Option(
+    node_names_or_ids: List[str] = typer.Option(
         [],
-        "--worker-nodes",
-        help="The IDs of the worker nodes to add to the cluster.",
+        "--nodes",
+        help="The names or IDs of the worker nodes to add to the cluster.",
         show_default=False,
     ),
     interactive: bool = typer.Option(
@@ -397,17 +398,23 @@ def add_nodes(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: ClustersService = bundle.get_clusters_service()
 
-    if interactive or not worker_node_ids:
+    if interactive or not node_names_or_ids:
         flow_model: FlowAddNodesRequestDTO = FlowAddNodesRequestDTO()
         flow: AddNodesFlow = AddNodesFlow(service=service, cluster_id=cluster_id)
         flow.execute(flow_model, FlowContext(), io_facade)
-        worker_node_ids = [node.id for node in flow_model.worker_node_ids]
+        node_names_or_ids = [node.id for node in flow_model.worker_node_ids]
+
+    available_nodes: List[ClusterNode] = service.list_available_nodes()
+    resolved_node_ids: List[str] = [
+        resolve_resource_id(available_nodes, name_or_id, "node")
+        for name_or_id in node_names_or_ids
+    ]
 
     cluster: Cluster = service.get_cluster(cluster_id)
 
     scale_result: ClusterScaleResult = service.scale_up_cluster(
         cluster_id=cluster_id,
-        node_ids=worker_node_ids,
+        node_ids=resolved_node_ids,
     )
 
     if scale_result.issues:
@@ -441,7 +448,7 @@ def remove_nodes(
     ),
     node_names_or_ids: List[str] = typer.Option(
         [],
-        "--node-ids",
+        "--nodes",
         help="The names or IDs of the nodes to remove from the cluster.",
         show_default=False,
     ),
