@@ -16,6 +16,7 @@ from exls.clusters.core.domain import (
     ClusterNodeRole,
     ClusterNodeStatus,
     ClusterStatus,
+    ClusterSummary,
     ClusterType,
 )
 from exls.clusters.core.ports.operations import ClusterOperations
@@ -173,29 +174,30 @@ class ClusterAdapter(ClusterRepository, ClusterOperations):
                     nodes.append(cluster_node)
         return nodes
 
-    def list(self, status: Optional[ClusterStatus]) -> List[Cluster]:
+    def list(self, status: Optional[ClusterStatus]) -> List[ClusterSummary]:
         cluster_data_list: List[ClusterData] = self._cluster_gateway.list(status=status)
-        clusters: List[Cluster] = []
+        summaries: List[ClusterSummary] = []
         for cluster_data in cluster_data_list:
-            clusters.append(
-                Cluster(
+            summaries.append(
+                ClusterSummary(
                     id=cluster_data.id,
                     name=cluster_data.name,
                     status=cluster_data.status,
                     type=cluster_data.type,
                     created_at=cluster_data.created_at,
                     updated_at=cluster_data.updated_at,
-                    nodes=self._load_cluster_nodes(cluster_data=cluster_data),
                     owner_username=cluster_data.owner_username,
                     owner_org_id=cluster_data.owner_org_id,
                     owner_org_name=cluster_data.owner_org_name,
                     owner_teams=cluster_data.owner_teams,
+                    worker_node_ids=cluster_data.worker_node_ids or [],
+                    control_plane_node_ids=cluster_data.control_plane_node_ids or [],
                 )
             )
         if status:
-            return [cluster for cluster in clusters if cluster.status == status]
+            return [summary for summary in summaries if summary.status == status]
         else:
-            return clusters
+            return summaries
 
     def get(self, cluster_id: str) -> Cluster:
         cluster_data: ClusterData = self._cluster_gateway.get(cluster_id=cluster_id)

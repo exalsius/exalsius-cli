@@ -102,7 +102,7 @@ class ClusterStatus(StrEnum):
             return cls.UNKNOWN
 
 
-class Cluster(BaseModel):
+class ClusterSummary(BaseModel):
     id: StrictStr = Field(..., description="The ID of the cluster")
     name: StrictStr = Field(..., description="The name of the cluster")
     status: ClusterStatus = Field(..., description="The status of the cluster")
@@ -111,7 +111,6 @@ class Cluster(BaseModel):
     updated_at: Optional[datetime] = Field(
         ..., description="The last update date of the cluster"
     )
-    nodes: List[ClusterNode] = Field(..., description="The nodes of the cluster")
     owner_username: Optional[StrictStr] = Field(
         default=None, description="The username of the cluster creator"
     )
@@ -124,6 +123,21 @@ class Cluster(BaseModel):
     owner_teams: Optional[List[StrictStr]] = Field(
         default=None, description="The teams of the cluster creator"
     )
+    worker_node_ids: List[StrictStr] = Field(
+        default_factory=list, description="The IDs of the worker nodes"
+    )
+    control_plane_node_ids: List[StrictStr] = Field(
+        default_factory=list, description="The IDs of the control plane nodes"
+    )
+
+    @property
+    def node_count(self) -> int:
+        """Total number of nodes (workers + control plane)."""
+        return len(self.worker_node_ids) + len(self.control_plane_node_ids)
+
+
+class Cluster(ClusterSummary):
+    nodes: List[ClusterNode] = Field(..., description="The nodes of the cluster")
 
 
 ########################################################

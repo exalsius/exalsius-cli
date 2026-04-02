@@ -18,6 +18,7 @@ from exls.shared.adapters.ui.output.view import ViewContext
 _CLUSTER_LIST_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
+    "node_count": TableRenderContext.get_column("Nodes"),
     "status": TableRenderContext.get_column("Status"),
     "created_at": TableRenderContext.get_column(
         "Created At", value_formatter=format_datetime_humanized
@@ -71,6 +72,21 @@ _CLUSTER_DETAIL_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "status": TableRenderContext.get_column("Status"),
+    "nodes": TableRenderContext.get_column(
+        "Nodes",
+        value_formatter=lambda nodes: (
+            ", ".join(
+                (
+                    str(cast(Dict[str, Any], node).get("hostname", ""))
+                    if isinstance(node, dict)
+                    else str(node)
+                )
+                for node in nodes
+            )
+            if nodes
+            else ""
+        ),
+    ),
     "created_at": TableRenderContext.get_column(
         "Created At", value_formatter=format_datetime
     ),
@@ -79,7 +95,6 @@ _CLUSTER_DETAIL_COLUMNS: Dict[str, Column] = {
     ),
     "owner_username": TableRenderContext.get_column("Creator"),
     "owner_org_name": TableRenderContext.get_column("Organization"),
-    "owner_org_id": TableRenderContext.get_column("Org ID"),
     "owner_teams": TableRenderContext.get_column(
         "Teams", value_formatter=lambda teams: ", ".join(teams) if teams else ""
     ),
