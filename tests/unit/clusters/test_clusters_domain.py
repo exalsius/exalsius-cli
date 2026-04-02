@@ -7,6 +7,7 @@ from exls.clusters.core.domain import (
     ClusterNodeRole,
     ClusterNodeStatus,
     ClusterStatus,
+    ClusterSummary,
     ClusterType,
 )
 
@@ -123,3 +124,67 @@ def test_cluster_creation() -> None:
     assert cluster.updated_at is None
     assert len(cluster.nodes) == 1
     assert cluster.nodes[0].id == "node-1"
+
+
+def test_cluster_summary_node_count() -> None:
+    now = datetime.now()
+    summary = ClusterSummary(
+        id="c-1",
+        name="test-cluster",
+        status=ClusterStatus.READY,
+        type=ClusterType.REMOTE,
+        created_at=now,
+        updated_at=None,
+        worker_node_ids=["w-1", "w-2"],
+        control_plane_node_ids=["cp-1"],
+    )
+    assert summary.node_count == 3
+
+
+def test_cluster_summary_node_count_empty() -> None:
+    now = datetime.now()
+    summary = ClusterSummary(
+        id="c-2",
+        name="empty-cluster",
+        status=ClusterStatus.PENDING,
+        type=ClusterType.REMOTE,
+        created_at=now,
+        updated_at=None,
+    )
+    assert summary.node_count == 0
+
+
+def test_cluster_inherits_cluster_summary() -> None:
+    """Cluster extends ClusterSummary and inherits node_count."""
+    resources = ClusterNodeResources(
+        gpu_type="none",
+        gpu_vendor="none",
+        gpu_count=0,
+        cpu_cores=2,
+        memory_gb=4,
+        storage_gb=50,
+    )
+    node = ClusterNode(
+        id="node-1",
+        role=ClusterNodeRole.WORKER,
+        hostname="h1",
+        username="u",
+        ssh_key_id="k",
+        status=ClusterNodeStatus.AVAILABLE,
+        endpoint="e",
+        free_resources=resources,
+        occupied_resources=resources,
+    )
+    now = datetime.now()
+    cluster = Cluster(
+        id="c-1",
+        name="test-cluster",
+        status=ClusterStatus.READY,
+        type=ClusterType.CLOUD,
+        created_at=now,
+        updated_at=None,
+        nodes=[node],
+        worker_node_ids=["node-1"],
+    )
+    assert isinstance(cluster, ClusterSummary)
+    assert cluster.node_count == 1

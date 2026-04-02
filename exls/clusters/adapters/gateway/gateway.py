@@ -39,6 +39,12 @@ class ClusterData(BaseModel):
     owner_teams: Optional[List[StrictStr]] = Field(
         None, description="The teams of the cluster creator"
     )
+    worker_node_ids: List[StrictStr] = Field(
+        default_factory=list, description="The IDs of the worker nodes"
+    )
+    control_plane_node_ids: List[StrictStr] = Field(
+        default_factory=list, description="The IDs of the control plane nodes"
+    )
 
 
 class ClusterNodeRefData(BaseModel):

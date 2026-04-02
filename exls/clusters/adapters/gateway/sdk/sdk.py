@@ -73,6 +73,8 @@ def _cluster_data_from_sdk_model(sdk_model: Cluster) -> ClusterData:
         owner_org_id=sdk_model.owner_org_id,
         owner_org_name=sdk_model.owner_org_name,
         owner_teams=sdk_model.owner_teams,
+        worker_node_ids=sdk_model.worker_node_ids or [],
+        control_plane_node_ids=sdk_model.control_plane_node_ids or [],
     )
 
 
