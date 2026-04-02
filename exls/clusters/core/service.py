@@ -389,7 +389,9 @@ class ClustersService:
                     )
                 )
                 continue
-            nodes_to_add.append(available_nodes_map[node_id])
+            node = available_nodes_map[node_id]
+            node.role = ClusterNodeRole.WORKER
+            nodes_to_add.append(node)
 
         if not nodes_to_add:
             return ClusterScaleResult(nodes=[], issues=issues)

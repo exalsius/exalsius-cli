@@ -415,7 +415,7 @@ class TestClustersService(unittest.TestCase):
 
         node2 = ClusterNode(
             id="node-2",
-            role=ClusterNodeRole.WORKER,
+            role=ClusterNodeRole.UNASSIGNED,
             hostname="host2",
             username="user",
             ssh_key_id="key2",
@@ -435,6 +435,9 @@ class TestClustersService(unittest.TestCase):
         self.assertEqual(len(result.nodes), 1)
         self.assertEqual(result.nodes[0].id, "node-2")
         self.mock_ops.scale_up.assert_called_once()
+        # Verify that UNASSIGNED nodes are assigned the WORKER role
+        called_nodes = self.mock_ops.scale_up.call_args[1]["nodes_to_add"]
+        self.assertEqual(called_nodes[0].role, ClusterNodeRole.WORKER)
 
     def test_scale_up_cluster_invalid_node(self):
         self.mock_repo.get.return_value = self.cluster1
@@ -450,7 +453,7 @@ class TestClustersService(unittest.TestCase):
         """Valid nodes are added while invalid ones are reported as issues."""
         node2 = ClusterNode(
             id="node-2",
-            role=ClusterNodeRole.WORKER,
+            role=ClusterNodeRole.UNASSIGNED,
             hostname="host2",
             username="user",
             ssh_key_id="key2",
@@ -503,7 +506,7 @@ class TestClustersService(unittest.TestCase):
         """All valid nodes are added when multiple are requested."""
         node2 = ClusterNode(
             id="node-2",
-            role=ClusterNodeRole.WORKER,
+            role=ClusterNodeRole.UNASSIGNED,
             hostname="host2",
             username="user",
             ssh_key_id="key2",
@@ -514,7 +517,7 @@ class TestClustersService(unittest.TestCase):
         )
         node3 = ClusterNode(
             id="node-3",
-            role=ClusterNodeRole.WORKER,
+            role=ClusterNodeRole.UNASSIGNED,
             hostname="host3",
             username="user",
             ssh_key_id="key3",
