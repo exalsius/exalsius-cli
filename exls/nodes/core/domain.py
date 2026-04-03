@@ -45,6 +45,9 @@ class BaseNode(BaseModel):
     price_per_hour: NonNegativeFloat = Field(
         ..., description="The price per hour of the node"
     )
+    warning_message: Optional[StrictStr] = Field(
+        default=None, description="Warning message if node is in WARNING status"
+    )
 
     @property
     def name(self) -> str:

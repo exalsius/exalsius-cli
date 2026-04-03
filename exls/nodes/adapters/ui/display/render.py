@@ -18,15 +18,23 @@ _NODE_LIST_COLUMNS: Dict[str, Column] = {
         "ID", no_wrap=True, value_formatter=format_short_id
     ),
     "hostname": TableRenderContext.get_column("Hostname"),
-    "import_time": TableRenderContext.get_column(
-        "Import Time", value_formatter=format_datetime_humanized
-    ),
     "status": TableRenderContext.get_column("Status"),
+    "resources": TableRenderContext.get_column(
+        "GPU",
+        value_formatter=lambda r: (
+            f"{r.gpu_count}x {r.gpu_vendor} {r.gpu_type}"
+            if hasattr(r, "gpu_count") and r.gpu_count > 0
+            else "N/A"
+        ),
+    ),
     "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
     # Self-Managed Node Attributes
     "username": TableRenderContext.get_column("Username"),
     "ssh_key_name": TableRenderContext.get_column("SSH Key"),
     "endpoint": TableRenderContext.get_column("Endpoint", value_formatter=format_na),
+    "import_time": TableRenderContext.get_column(
+        "Import Time", value_formatter=format_datetime_humanized
+    ),
 }
 
 NODE_LIST_VIEW = ViewContext.from_table_columns(_NODE_LIST_COLUMNS)
@@ -43,10 +51,18 @@ _NODE_DETAIL_COLUMNS: Dict[str, Column] = {
         "Import Time", value_formatter=format_datetime
     ),
     "status": TableRenderContext.get_column("Status"),
+    "warning_message": TableRenderContext.get_column("Warning", hide_if_empty=True),
+    "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
+    # Hardware Resources
+    "resources.gpu_vendor": TableRenderContext.get_column("GPU Vendor"),
+    "resources.gpu_type": TableRenderContext.get_column("GPU Type"),
+    "resources.gpu_count": TableRenderContext.get_column("GPU Count"),
+    "resources.cpu_cores": TableRenderContext.get_column("CPU Cores"),
+    "resources.memory_gb": TableRenderContext.get_column("Memory (GB)"),
+    "resources.storage_gb": TableRenderContext.get_column("Storage (GB)"),
     # Cloud Node Attributes
     "provider": TableRenderContext.get_column("Provider"),
     "instance_type": TableRenderContext.get_column("Instance Type"),
-    "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
     # Self-Managed Node Attributes
     "username": TableRenderContext.get_column("Username"),
     "ssh_key_name": TableRenderContext.get_column("SSH Key"),
