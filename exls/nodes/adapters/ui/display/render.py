@@ -4,6 +4,7 @@ from exls.shared.adapters.ui.output.render.service import (
     format_datetime,
     format_datetime_humanized,
     format_na,
+    format_short_id,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
@@ -13,15 +14,14 @@ from exls.shared.adapters.ui.output.view import ViewContext
 # -----------------------------------------------------------------------------
 
 _NODE_LIST_COLUMNS: Dict[str, Column] = {
-    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "id": TableRenderContext.get_column(
+        "ID", no_wrap=True, value_formatter=format_short_id
+    ),
     "hostname": TableRenderContext.get_column("Hostname"),
     "import_time": TableRenderContext.get_column(
         "Import Time", value_formatter=format_datetime_humanized
     ),
     "status": TableRenderContext.get_column("Status"),
-    # Cloud Node Attributes
-    "provider": TableRenderContext.get_column("Provider"),
-    "instance_type": TableRenderContext.get_column("Instance Type"),
     "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
     # Self-Managed Node Attributes
     "username": TableRenderContext.get_column("Username"),

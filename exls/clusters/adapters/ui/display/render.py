@@ -6,6 +6,7 @@ from exls.shared.adapters.ui.output.render.json import JsonRenderContext
 from exls.shared.adapters.ui.output.render.service import (
     format_datetime,
     format_datetime_humanized,
+    format_short_id,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.render.text import TextRenderContext
@@ -16,7 +17,9 @@ from exls.shared.adapters.ui.output.view import ViewContext
 # -----------------------------------------------------------------------------
 
 _CLUSTER_LIST_COLUMNS: Dict[str, Column] = {
-    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "id": TableRenderContext.get_column(
+        "ID", no_wrap=True, value_formatter=format_short_id
+    ),
     "name": TableRenderContext.get_column("Name"),
     "node_count": TableRenderContext.get_column("Nodes"),
     "status": TableRenderContext.get_column("Status"),
@@ -33,7 +36,9 @@ CLUSTER_LIST_VIEW = ViewContext.from_table_columns(_CLUSTER_LIST_COLUMNS)
 
 
 _CLUSTER_WITH_NODES_COLUMNS: Dict[str, Column] = {
-    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "id": TableRenderContext.get_column(
+        "ID", no_wrap=True, value_formatter=format_short_id
+    ),
     "name": TableRenderContext.get_column("Name"),
     "status": TableRenderContext.get_column("Status"),
     "created_at": TableRenderContext.get_column(
@@ -108,7 +113,9 @@ CLUSTER_DETAIL_VIEW = ViewContext.from_table_columns(_CLUSTER_DETAIL_COLUMNS)
 # -----------------------------------------------------------------------------
 
 _CLUSTER_NODE_COLUMNS: Dict[str, Column] = {
-    "id": TableRenderContext.get_column("Node ID", no_wrap=True),
+    "id": TableRenderContext.get_column(
+        "Node ID", no_wrap=True, value_formatter=format_short_id
+    ),
     "hostname": TableRenderContext.get_column("Node Name"),
     "role": TableRenderContext.get_column("Node Role"),
     "status": TableRenderContext.get_column("Node Status"),
@@ -137,7 +144,9 @@ CLUSTER_NODE_RESOURCES_VIEW = ViewContext.from_table_columns(
 # -----------------------------------------------------------------------------
 
 _CLUSTER_NODE_ISSUE_COLUMNS: Dict[str, Column] = {
-    "node.id": TableRenderContext.get_column("Node ID", no_wrap=True),
+    "node.id": TableRenderContext.get_column(
+        "Node ID", no_wrap=True, value_formatter=format_short_id
+    ),
     "node.hostname": TableRenderContext.get_column("Node Name"),
     "error_message": TableRenderContext.get_column("Error Message"),
 }
