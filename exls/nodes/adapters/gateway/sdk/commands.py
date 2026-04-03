@@ -35,6 +35,8 @@ class ListNodesSdkCommand(BaseNodesSdkCommand[NodesListResponse]):
         response: NodesListResponse = self.api_client.list_nodes(
             node_type=self._request.node_type if self._request else None,
             provider=self._request.provider if self._request else None,
+            sort_field=self._request.sort_field if self._request else None,
+            order_by=self._request.order_by if self._request else None,
         )
         return response
 
