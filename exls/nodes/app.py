@@ -14,7 +14,7 @@ from exls.nodes.adapters.ui.flows.node_import import (
     FlowSelfmanagedNodeSpecificationDTO,
     ImportSelfmanagedNodeFlow,
 )
-from exls.nodes.core.domain import BaseNode
+from exls.nodes.core.domain import BaseNode, NodeStatus
 from exls.nodes.core.requests import (
     ImportSelfmanagedNodeRequest,
     NodesFilterCriteria,
@@ -66,6 +66,24 @@ class AllowedNodeTypes(StrEnum):
     SELF_MANAGED = "self_managed"
 
 
+class AllowedNodeStatuses(StrEnum):
+    DISCOVERING = "discovering"
+    AVAILABLE = "available"
+    ADDED = "added"
+    DEPLOYED = "deployed"
+    FAILED = "failed"
+
+
+class AllowedSortFields(StrEnum):
+    CREATED_AT = "created_at"
+    HOSTNAME = "hostname"
+
+
+class AllowedSortOrders(StrEnum):
+    ASC = "asc"
+    DESC = "desc"
+
+
 @nodes_app.callback(invoke_without_command=True)
 def _root(  # pyright: ignore[reportUnusedFunction]
     ctx: typer.Context,
@@ -83,6 +101,15 @@ def list_nodes(
     node_type: Optional[AllowedNodeTypes] = typer.Option(
         None, "--node-type", "-t", help="The type of node to list"
     ),
+    status: Optional[AllowedNodeStatuses] = typer.Option(
+        None, "--status", "-S", help="Filter nodes by status"
+    ),
+    sort_by: Optional[AllowedSortFields] = typer.Option(
+        None, "--sort-by", "-s", help="Sort nodes by field"
+    ),
+    order: Optional[AllowedSortOrders] = typer.Option(
+        None, "--order", "-o", help="Sort order"
+    ),
 ):
     """List all nodes in the node pool"""
 
@@ -91,7 +118,12 @@ def list_nodes(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
 
     domain_nodes: List[BaseNode] = service.list_nodes(
-        NodesFilterCriteria(node_type=node_type.value.upper() if node_type else None)
+        NodesFilterCriteria(
+            node_type=node_type.value.upper() if node_type else None,
+            status=NodeStatus.from_str(status.value) if status else None,
+            sort_field=sort_by.value.upper() if sort_by else None,
+            order_by=order.value.upper() if order else None,
+        )
     )
 
     io_facade.display_data(

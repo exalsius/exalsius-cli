@@ -1,12 +1,17 @@
 from typing import Dict
 
+from exls.shared.adapters.ui.output.render.service import format_short_id
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
 
 _SERVICE_VIEW_COLUMNS: Dict[str, Column] = {
-    "id": TableRenderContext.get_column("ID", no_wrap=True),
+    "id": TableRenderContext.get_column(
+        "ID", no_wrap=True, value_formatter=format_short_id
+    ),
     "name": TableRenderContext.get_column("Name"),
-    "cluster_id": TableRenderContext.get_column("Cluster ID"),
+    "cluster_id": TableRenderContext.get_column(
+        "Cluster ID", value_formatter=format_short_id
+    ),
     "service_template": TableRenderContext.get_column("Service Template"),
     "created_at": TableRenderContext.get_column("Created At"),
 }

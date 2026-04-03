@@ -18,6 +18,12 @@ class NodesFilterCriteria(BaseModel):
     status: Optional[NodeStatus] = Field(
         default=None, description="The status of the node"
     )
+    sort_field: Optional[StrictStr] = Field(
+        default=None, description="The field to sort by (e.g. CREATED_AT, HOSTNAME)"
+    )
+    order_by: Optional[StrictStr] = Field(
+        default=None, description="The sort order (ASC or DESC)"
+    )
 
 
 class NodesSshKeySpecification(BaseModel):

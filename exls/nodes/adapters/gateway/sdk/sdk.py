@@ -87,6 +87,7 @@ def _(sdk_model: SdkCloudNode) -> CloudNode:
         instance_type=sdk_model.instance_type,
         price_per_hour=sdk_model.price_per_hour,
         resources=_map_node_resources_from_sdk_model(sdk_model),
+        warning_message=sdk_model.warning_message,
     )
 
 
@@ -103,6 +104,7 @@ def _(sdk_model: SdkSelfManagedNode) -> SelfManagedNode:
         username=sdk_model.username,
         price_per_hour=sdk_model.price_per_hour,
         resources=_map_node_resources_from_sdk_model(sdk_model),
+        warning_message=sdk_model.warning_message,
     )
 
 

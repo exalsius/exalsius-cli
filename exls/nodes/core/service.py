@@ -45,11 +45,15 @@ class NodesService:
     # This should be rather done by an adapter layer but since it's
     # rather simple logic, we keep it here for now.
     def _resolve_ssh_key_name(self, nodes: List[BaseNode]) -> List[BaseNode]:
+        has_self_managed = any(isinstance(node, SelfManagedNode) for node in nodes)
+        if not has_self_managed:
+            return nodes
+
+        ssh_key_map: Dict[str, NodeSshKey] = {
+            k.id: k for k in self._ssh_key_provider.list_keys()
+        }
         for node in nodes:
             if isinstance(node, SelfManagedNode):
-                ssh_key_map: Dict[str, NodeSshKey] = {
-                    k.id: k for k in self._ssh_key_provider.list_keys()
-                }
                 if node.ssh_key_id in ssh_key_map:
                     node.ssh_key_name = ssh_key_map[node.ssh_key_id].name
         return nodes

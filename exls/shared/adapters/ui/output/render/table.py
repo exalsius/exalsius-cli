@@ -93,6 +93,10 @@ class Column(BaseModel):
         ...,
         description="A function to format the value of the column",
     )
+    hide_if_empty: bool = Field(
+        default=False,
+        description="If True, hide this row in single-item views when the value is None or empty",
+    )
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -124,6 +128,7 @@ class TableRenderContext(BaseRenderContext):
         value_formatter: Callable[[Any], str] = lambda x: (
             str(x) if x is not None else ""
         ),
+        hide_if_empty: bool = False,
     ) -> Column:
         """
         Get a column with default styling based on the header.
@@ -149,6 +154,7 @@ class TableRenderContext(BaseRenderContext):
             justify=final_justify,
             style=final_style,
             value_formatter=value_formatter,
+            hide_if_empty=hide_if_empty,
         )
 
     @classmethod
@@ -343,16 +349,33 @@ class TableSingleItemRenderer(
         all_attrs = {**attrs, **property_values}
 
         # Determine which keys to show and in what order
-        keys_to_show = all_attrs.keys()
+        keys_to_show: Any = all_attrs.keys()
         if validated_render_context:
             # Use the columns from the context to determine order and visibility
-            # Note: We only care about keys present in both the data and the context columns
+            # Support dot-notation keys (e.g. "resources.gpu_type") by checking
+            # both flat dict keys and nested attribute access on the original object
             keys_to_show = [
-                k for k in validated_render_context.columns.keys() if k in all_attrs
+                k
+                for k in validated_render_context.columns.keys()
+                if k in all_attrs
+                or ("." in k and _get_nested_attribute(data, k, None) is not None)
             ]
 
         for key in keys_to_show:
-            value = all_attrs[key]
+            # For dot-notation keys, resolve from the original object
+            if key in all_attrs:
+                value = all_attrs[key]
+            else:
+                value = _get_nested_attribute(data, key)
+
+            # Skip empty values for columns marked with hide_if_empty
+            if (
+                validated_render_context
+                and validated_render_context.columns[key].hide_if_empty
+                and not value
+            ):
+                continue
+
             key_display = key
             if validated_render_context:
                 key_display = validated_render_context.columns[key].header
