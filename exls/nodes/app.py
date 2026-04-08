@@ -126,11 +126,17 @@ def list_nodes(
         )
     )
 
-    io_facade.display_data(
-        data=domain_nodes,
-        output_format=bundle.object_output_format,
-        view_context=NODE_LIST_VIEW,
-    )
+    if len(domain_nodes) == 0:
+        io_facade.display_info_message(
+            "No nodes found. Run 'exls nodes import' to import a node.",
+            bundle.message_output_format,
+        )
+    else:
+        io_facade.display_data(
+            data=domain_nodes,
+            output_format=bundle.object_output_format,
+            view_context=NODE_LIST_VIEW,
+        )
 
 
 @nodes_app.command("get", help="Get node details")

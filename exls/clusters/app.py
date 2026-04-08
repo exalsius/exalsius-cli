@@ -106,9 +106,18 @@ def list_clusters(
     service: ClustersService = bundle.get_clusters_service()
 
     clusters_domain: List[ClusterSummary] = service.list_clusters(status=status)
-    io_facade.display_data(
-        clusters_domain, bundle.object_output_format, view_context=CLUSTER_LIST_VIEW
-    )
+
+    if len(clusters_domain) == 0:
+        io_facade.display_info_message(
+            "No clusters found. Run 'exls clusters deploy' to deploy a cluster.",
+            bundle.message_output_format,
+        )
+    else:
+        io_facade.display_data(
+            clusters_domain,
+            bundle.object_output_format,
+            view_context=CLUSTER_LIST_VIEW,
+        )
 
 
 @clusters_app.command("get", help="Get cluster details")
