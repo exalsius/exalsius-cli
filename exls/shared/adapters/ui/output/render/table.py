@@ -17,6 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from rich.console import JustifyMethod
 from rich.style import Style, StyleType
 from rich.table import Table
+from rich.text import Text
 
 from exls.defaults import CONFIG_ENV_NESTED_DELIMITER, CONFIG_ENV_PREFIX
 from exls.shared.adapters.ui.output.interfaces import (
@@ -89,9 +90,9 @@ class Column(BaseModel):
         ...,
         description="The style of the column. See rich.style.Style for more details.",
     )
-    value_formatter: Callable[[Any], str] = Field(
+    value_formatter: Callable[[Any], Any] = Field(
         ...,
-        description="A function to format the value of the column",
+        description="A function to format the value of the column. May return a string or a Rich renderable (e.g. Text).",
     )
     hide_if_empty: bool = Field(
         default=False,
@@ -125,7 +126,7 @@ class TableRenderContext(BaseRenderContext):
         no_wrap: Optional[bool] = None,
         justify: Optional[JustifyMethod] = None,
         style: Optional[StyleType] = None,
-        value_formatter: Callable[[Any], str] = lambda x: (
+        value_formatter: Callable[[Any], Any] = lambda x: (
             str(x) if x is not None else ""
         ),
         hide_if_empty: bool = False,
@@ -292,11 +293,11 @@ class TableListRenderer(IListRenderer[T, Table], Generic[T], _BaseTableRenderer)
         table: Table = self._create_table(validated_render_context)
 
         for item_data in data:
-            row_values: List[str] = []
+            row_values: List[Any] = []
             for key, column in validated_render_context.columns.items():
                 value: Any = _get_nested_attribute(item_data, key)
                 value = column.value_formatter(value)
-                row_values.append(str(value))
+                row_values.append(value)
             table.add_row(*row_values)
 
         return table
@@ -385,10 +386,13 @@ class TableSingleItemRenderer(
             prop_col = single_item_table_render_context.columns["Property"]
             prop_str = prop_col.value_formatter(key_display)
 
-            # Format value
-            val_col = single_item_table_render_context.columns["Value"]
-            val_str = val_col.value_formatter(value)
+            # Format value — preserve Rich renderables (e.g. styled Text)
+            if isinstance(value, Text):
+                val_display = value
+            else:
+                val_col = single_item_table_render_context.columns["Value"]
+                val_display = val_col.value_formatter(value)
 
-            table.add_row(prop_str, val_str)
+            table.add_row(prop_str, val_display)
 
         return table

@@ -5,6 +5,7 @@ from exls.shared.adapters.ui.output.render.service import (
     format_datetime_humanized,
     format_list,
     format_short_id,
+    format_status,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
@@ -20,7 +21,7 @@ _WORKSPACE_LIST_COLUMNS: Dict[str, Column] = {
     ),
     "name": TableRenderContext.get_column("Name"),
     "template_name": TableRenderContext.get_column("Template"),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "created_at": TableRenderContext.get_column(
         "Created At", value_formatter=format_datetime_humanized
     ),
@@ -44,7 +45,7 @@ _WORKSPACE_DETAIL_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
     "template_name": TableRenderContext.get_column("Template"),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "created_at": TableRenderContext.get_column(
         "Created At", value_formatter=format_datetime
     ),
