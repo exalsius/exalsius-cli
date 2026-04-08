@@ -178,12 +178,30 @@ def delete_workspace(
         metavar="WORKSPACE_NAME_OR_ID",
         callback=_resolve_workspace_id_callback,
     ),
+    confirmation: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Confirm the deletion of the workspace. If not provided, you will be asked for confirmation.",
+    ),
 ):
     bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service = bundle.get_workspaces_service()
 
     workspace: Workspace = service.get_workspace(workspace_id)
+
+    if not confirmation:
+        io_facade.display_data(
+            workspace,
+            bundle.object_output_format,
+            view_context=WORKSPACE_LIST_VIEW,
+        )
+        user_confirmation: bool = io_facade.ask_confirm(
+            message="Are you sure you want to delete this workspace?"
+        )
+        if not user_confirmation:
+            raise typer.Exit()
 
     service.delete_workspaces(workspace_ids=[workspace_id])
 
