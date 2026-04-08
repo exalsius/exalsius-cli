@@ -7,6 +7,7 @@ from exls.shared.adapters.ui.output.render.service import (
     format_datetime,
     format_datetime_humanized,
     format_short_id,
+    format_status,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.render.text import TextRenderContext
@@ -22,7 +23,7 @@ _CLUSTER_LIST_COLUMNS: Dict[str, Column] = {
     ),
     "name": TableRenderContext.get_column("Name"),
     "node_count": TableRenderContext.get_column("Nodes"),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "created_at": TableRenderContext.get_column(
         "Created At", value_formatter=format_datetime_humanized
     ),
@@ -40,7 +41,7 @@ _CLUSTER_WITH_NODES_COLUMNS: Dict[str, Column] = {
         "ID", no_wrap=True, value_formatter=format_short_id
     ),
     "name": TableRenderContext.get_column("Name"),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "created_at": TableRenderContext.get_column(
         "Created At", value_formatter=format_datetime_humanized
     ),
@@ -76,7 +77,7 @@ CLUSTER_WITH_NODES_VIEW = ViewContext.from_table_columns(_CLUSTER_WITH_NODES_COL
 _CLUSTER_DETAIL_COLUMNS: Dict[str, Column] = {
     "id": TableRenderContext.get_column("ID", no_wrap=True),
     "name": TableRenderContext.get_column("Name"),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "nodes": TableRenderContext.get_column(
         "Nodes",
         value_formatter=lambda nodes: (
@@ -118,7 +119,9 @@ _CLUSTER_NODE_COLUMNS: Dict[str, Column] = {
     ),
     "hostname": TableRenderContext.get_column("Node Name"),
     "role": TableRenderContext.get_column("Node Role"),
-    "status": TableRenderContext.get_column("Node Status"),
+    "status": TableRenderContext.get_column(
+        "Node Status", value_formatter=format_status
+    ),
 }
 
 CLUSTER_NODE_LIST_VIEW = ViewContext.from_table_columns(_CLUSTER_NODE_COLUMNS)

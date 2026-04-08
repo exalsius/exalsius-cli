@@ -5,6 +5,7 @@ from exls.shared.adapters.ui.output.render.service import (
     format_datetime_humanized,
     format_na,
     format_short_id,
+    format_status,
 )
 from exls.shared.adapters.ui.output.render.table import Column, TableRenderContext
 from exls.shared.adapters.ui.output.view import ViewContext
@@ -18,7 +19,7 @@ _NODE_LIST_COLUMNS: Dict[str, Column] = {
         "ID", no_wrap=True, value_formatter=format_short_id
     ),
     "hostname": TableRenderContext.get_column("Hostname"),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "resources": TableRenderContext.get_column(
         "GPU",
         value_formatter=lambda r: (
@@ -50,7 +51,7 @@ _NODE_DETAIL_COLUMNS: Dict[str, Column] = {
     "import_time": TableRenderContext.get_column(
         "Import Time", value_formatter=format_datetime
     ),
-    "status": TableRenderContext.get_column("Status"),
+    "status": TableRenderContext.get_column("Status", value_formatter=format_status),
     "warning_message": TableRenderContext.get_column("Warning", hide_if_empty=True),
     "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
     # Hardware Resources
