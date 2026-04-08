@@ -252,9 +252,9 @@ def import_selfmanaged_node(
 
     final_ssh_key: Optional[Union[str, NodesSshKeySpecification]] = None
     if ssh_key_id and ssh_key_path and ssh_key_name:
-        raise ValueError(
+        raise typer.BadParameter(
             "You can either provide an SSH key ID or a SSH key name and path to "
-            "the private key file to import a new SSH key, but not all three"
+            "the private key file to import a new SSH key, but not all three."
         )
     if ssh_key_id:
         final_ssh_key = ssh_key_id
@@ -263,7 +263,7 @@ def import_selfmanaged_node(
             name=ssh_key_name, key_path=ssh_key_path
         )
     else:
-        raise ValueError(
+        raise typer.BadParameter(
             "No SSH key provided. Please provide an SSH key ID or a name and path to a new SSH key."
         )
 

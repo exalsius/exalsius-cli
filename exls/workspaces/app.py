@@ -358,6 +358,7 @@ def deploy_jupyter_workspace(
         "-p",
         help="The password to use for the Jupyter workspace. Must be at least 6 characters long.",
         prompt="You need a password to access your Jupyter workspace. Please enter the password (min. 6 characters)",
+        callback=_validate_optional_password,
         show_default=False,
     ),
     num_gpus: int = typer.Option(
@@ -377,9 +378,6 @@ def deploy_jupyter_workspace(
     bundle: WorkspacesBundle = _get_bundle(ctx)
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
-
-    if len(password) < 6:
-        raise ValueError("Password must be at least 6 characters long")
 
     valid_cluster_id: str
     if not cluster_id:
@@ -627,9 +625,6 @@ def deploy_marimo_workspace(
     io_facade: IOBaseModelFacade = bundle.get_io_facade()
     service: WorkspacesService = bundle.get_workspaces_service()
 
-    if len(password) < 6:
-        raise ValueError("Password must be at least 6 characters long")
-
     valid_cluster_id: str
     if not cluster_id:
         loaded_cluster_id: Optional[str] = _get_cluster_id(service, io_facade)
@@ -749,12 +744,12 @@ def deploy_dev_pod_workspace(
     service: WorkspacesService = bundle.get_workspaces_service()
 
     if not ssh_password and not ssh_public_key:
-        raise ValueError(
+        raise typer.BadParameter(
             "No SSH password or public key provided. Please provide at least one of them."
         )
 
     if ssh_password and len(ssh_password) < 6:
-        raise ValueError("SSH password must be at least 6 characters long")
+        raise typer.BadParameter("SSH password must be at least 6 characters long.")
 
     valid_cluster_id: str
     if not cluster_id:
