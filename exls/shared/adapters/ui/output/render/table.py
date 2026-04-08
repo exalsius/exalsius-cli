@@ -14,6 +14,7 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from rich import box
 from rich.console import JustifyMethod
 from rich.style import Style, StyleType
 from rich.table import Table
@@ -192,7 +193,7 @@ class DefaultTableRenderingConfig(BaseSettings):
     """
 
     header_style: str = Field(
-        description="The header style of the table", default="bold"
+        description="The header style of the table", default="bold dim #f46907"
     )
     border_style: str = Field(
         description="The border style of the table", default="custom"
@@ -255,6 +256,7 @@ class _BaseTableRenderer:
             show_header=True,
             header_style=render_context.header_style,
             border_style=render_context.border_style,
+            box=box.ROUNDED,
         )
         for column in render_context.columns.values():
             table.add_column(
