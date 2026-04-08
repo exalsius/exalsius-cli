@@ -2,20 +2,6 @@ import logging
 from typing import List, Optional
 
 from exalsius_api_client.api.management_api import ManagementApi
-from exalsius_api_client.models.cluster_template import (
-    ClusterTemplate as SdkClusterTemplate,
-)
-from exalsius_api_client.models.cluster_template_list_response import (
-    ClusterTemplateListResponse,
-)
-from exalsius_api_client.models.credentials import Credentials as SdkCredentials
-from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
-from exalsius_api_client.models.service_template import (
-    ServiceTemplate as SdkServiceTemplate,
-)
-from exalsius_api_client.models.service_template_list_response import (
-    ServiceTemplateListResponse,
-)
 from exalsius_api_client.models.ssh_key_create_request import SshKeyCreateRequest
 from exalsius_api_client.models.ssh_key_create_response import SshKeyCreateResponse
 from exalsius_api_client.models.ssh_keys_list_response import SshKeysListResponse
@@ -34,16 +20,10 @@ from exls.management.adapters.gateway.sdk.commands import (
     AddSshKeySdkCommand,
     DeleteSshKeySdkCommand,
     GetDashboardUrlSdkCommand,
-    ListClusterTemplatesSdkCommand,
-    ListCredentialsSdkCommand,
-    ListServiceTemplatesSdkCommand,
     ListSshKeysSdkCommand,
     ListWorkspaceTemplatesSdkCommand,
 )
 from exls.management.core.domain import (
-    ClusterTemplate,
-    Credentials,
-    ServiceTemplate,
     SshKey,
     SshKeyScope,
     WorkspaceTemplate,
@@ -60,35 +40,6 @@ def _ssh_key_from_sdk_model(
         return None
     scope = SshKeyScope(sdk_model.scope) if sdk_model.scope else SshKeyScope.PRIVATE
     return SshKey(id=sdk_model.id, name=sdk_model.name, scope=scope)
-
-
-def _cluster_template_from_sdk_model(
-    sdk_model: SdkClusterTemplate,
-) -> ClusterTemplate:
-    return ClusterTemplate(
-        name=sdk_model.name,
-        description=sdk_model.description,
-        k8s_version=sdk_model.k8s_version,
-    )
-
-
-def _credentials_from_sdk_model(
-    sdk_model: SdkCredentials,
-) -> Credentials:
-    return Credentials(
-        name=sdk_model.name,
-        description=sdk_model.description,
-    )
-
-
-def _service_template_from_sdk_model(
-    sdk_model: SdkServiceTemplate,
-) -> ServiceTemplate:
-    return ServiceTemplate(
-        name=sdk_model.name,
-        description=sdk_model.description if sdk_model.description else "",
-        variables=sdk_model.variables,
-    )
 
 
 def _workspace_template_from_sdk_model(
@@ -141,33 +92,6 @@ class ManagementGatewaySdk(ManagementGateway):
         )
         response: SshKeyCreateResponse = command.execute()
         return response.ssh_key_id
-
-    def list_cluster_templates(self) -> List[ClusterTemplate]:
-        command: ListClusterTemplatesSdkCommand = ListClusterTemplatesSdkCommand(
-            self._management_api
-        )
-        response: ClusterTemplateListResponse = command.execute()
-        return [
-            _cluster_template_from_sdk_model(sdk_model=ct)
-            for ct in response.cluster_templates
-        ]
-
-    def list_credentials(self) -> List[Credentials]:
-        command: ListCredentialsSdkCommand = ListCredentialsSdkCommand(
-            self._management_api
-        )
-        response: CredentialsListResponse = command.execute()
-        return [_credentials_from_sdk_model(sdk_model=c) for c in response.credentials]
-
-    def list_service_templates(self) -> List[ServiceTemplate]:
-        command: ListServiceTemplatesSdkCommand = ListServiceTemplatesSdkCommand(
-            self._management_api
-        )
-        response: ServiceTemplateListResponse = command.execute()
-        return [
-            _service_template_from_sdk_model(sdk_model=st)
-            for st in response.service_templates
-        ]
 
     def list_workspace_templates(self) -> List[WorkspaceTemplate]:
         command: ListWorkspaceTemplatesSdkCommand = ListWorkspaceTemplatesSdkCommand(

@@ -9,9 +9,6 @@ from exls.management.adapters.ui.flows.import_ssh_key import (
     ImportSshKeyFlow,
 )
 from exls.management.core.domain import (
-    ClusterTemplate,
-    Credentials,
-    ServiceTemplate,
     SshKey,
     SshKeyScope,
     WorkspaceTemplate,
@@ -56,15 +53,9 @@ def _resolve_ssh_key_id_callback(ctx: typer.Context, value: str) -> str:
         raise typer.BadParameter(str(e))
 
 
-credentials_app = typer.Typer()
-cluster_templates_app = typer.Typer()
-service_templates_app = typer.Typer()
 workspace_templates_app = typer.Typer()
 ssh_keys_app = typer.Typer()
 
-management_app.add_typer(credentials_app, name="credentials")
-management_app.add_typer(cluster_templates_app, name="cluster-templates")
-management_app.add_typer(service_templates_app, name="service-templates")
 management_app.add_typer(workspace_templates_app, name="workspace-templates")
 management_app.add_typer(ssh_keys_app, name="ssh-keys")
 
@@ -111,54 +102,6 @@ def get_dashboard_url(
     io_facade.display_success_message(
         f"Grafana Dashboard URL: {dashboard_url_str}",
         bundle.message_output_format,
-    )
-
-
-@cluster_templates_app.command("list", help="List all available cluster templates.")
-@handle_application_layer_errors(ManagementBundle)
-def list_cluster_templates(
-    ctx: typer.Context,
-):
-    """List all cluster templates."""
-    bundle: ManagementBundle = _get_bundle(ctx)
-    io_facade: IOBaseModelFacade = bundle.get_io_facade()
-    service: ManagementService = bundle.get_management_service()
-    domain_cluster_templates: List[ClusterTemplate] = service.list_cluster_templates()
-
-    io_facade.display_data(
-        domain_cluster_templates, output_format=bundle.object_output_format
-    )
-
-
-@credentials_app.command("list", help="List all available credentials")
-@handle_application_layer_errors(ManagementBundle)
-def list_credentials(ctx: typer.Context):
-    """List all available credentials."""
-    bundle: ManagementBundle = _get_bundle(ctx)
-    io_facade: IOBaseModelFacade = bundle.get_io_facade()
-    service: ManagementService = bundle.get_management_service()
-
-    domain_credentials: List[Credentials] = service.list_credentials()
-
-    io_facade.display_data(
-        domain_credentials, output_format=bundle.object_output_format
-    )
-
-
-@service_templates_app.command("list", help="List all available service templates")
-@handle_application_layer_errors(ManagementBundle)
-def list_service_templates(
-    ctx: typer.Context,
-):
-    """List all available service templates."""
-    bundle: ManagementBundle = _get_bundle(ctx)
-    io_facade: IOBaseModelFacade = bundle.get_io_facade()
-    service: ManagementService = bundle.get_management_service()
-
-    domain_service_templates: List[ServiceTemplate] = service.list_service_templates()
-
-    io_facade.display_data(
-        domain_service_templates, output_format=bundle.object_output_format
     )
 
 
