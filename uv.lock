@@ -492,13 +492,17 @@ wheels = [
 
 [[package]]
 name = "exalsius-api-client"
-version = "1.43.0"
-source = { git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.44.0#805bba33e600636ae0de2801ae8c449e9d8b8210" }
+version = "1.45.3"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "python-dateutil" },
     { name = "typing-extensions" },
     { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/74/58/fdff1ae92a3e13ba502c4ab8bcf4c00d76db07ed7fda996e556301713023/exalsius_api_client-1.45.3.tar.gz", hash = "sha256:fdb6ba31b763a4df09403b21d0bf91a7276fed5d8381009379f2a25badbda0db", size = 115866 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/6a/08fa32dfc0bec4d982b8d81dc6b6d927887d5421da6efacdd961ab642819/exalsius_api_client-1.45.3-py3-none-any.whl", hash = "sha256:a145937103468de75361c48d1722d6285550e75b0f662cde75967e3b6d8f7706", size = 281952 },
 ]
 
 [[package]]
@@ -541,7 +545,7 @@ requires-dist = [
     { name = "auth0-python", specifier = ">=5.0.0" },
     { name = "coolname", specifier = ">=2.2.0" },
     { name = "cryptography", specifier = ">=46.0.3" },
-    { name = "exalsius-api-client", git = "https://github.com/exalsius/exalsius-api-spec.git?subdirectory=client-sdk&rev=v1.44.0" },
+    { name = "exalsius-api-client", specifier = "==1.45.3" },
     { name = "filelock", specifier = ">=3.17.0" },
     { name = "humanize", specifier = ">=4.15.0" },
     { name = "keyring", specifier = ">=25.6.0" },
