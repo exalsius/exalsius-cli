@@ -1,4 +1,5 @@
 import logging
+from importlib.metadata import version
 from typing import Optional
 
 import typer
@@ -66,8 +67,7 @@ app.add_typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        # TODO: Replace with actual version
-        typer.echo("0.2.0")
+        typer.echo(version("exls"))
         raise typer.Exit()
 
 
