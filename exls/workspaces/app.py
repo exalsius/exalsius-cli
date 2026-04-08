@@ -113,7 +113,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
 
-@workspaces_app.command("list", help="List all workspaces of a cluster")
+@workspaces_app.command("list", help="List workspaces")
 @handle_application_layer_errors(WorkspacesBundle)
 def list_workspaces(
     ctx: typer.Context,
@@ -144,7 +144,7 @@ def list_workspaces(
         )
 
 
-@workspaces_app.command("get", help="Get a workspace of a cluster")
+@workspaces_app.command("get", help="Get workspace details")
 @handle_application_layer_errors(WorkspacesBundle)
 def get_workspace(
     ctx: typer.Context,
@@ -168,7 +168,7 @@ def get_workspace(
     )
 
 
-@workspaces_app.command("delete", help="Delete workspace of a cluster")
+@workspaces_app.command("delete", help="Delete a workspace")
 @handle_application_layer_errors(WorkspacesBundle)
 def delete_workspace(
     ctx: typer.Context,
