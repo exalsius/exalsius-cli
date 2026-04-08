@@ -196,7 +196,7 @@ class DefaultTableRenderingConfig(BaseSettings):
         description="The header style of the table", default="bold dim #f46907"
     )
     border_style: str = Field(
-        description="The border style of the table", default="custom"
+        description="The border style of the table", default="dim #f46907"
     )
 
     default_no_wrap: bool = Field(
