@@ -167,6 +167,12 @@ def delete_nodes(
         help="The names (hostnames) or IDs of the nodes to delete",
         metavar="NODE_NAMES_OR_IDS",
     ),
+    confirmation: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Confirm the deletion of the nodes. If not provided, you will be asked for confirmation.",
+    ),
 ):
     """Delete a node in the node pool."""
     bundle: NodesBundle = _get_bundle(ctx)
@@ -179,6 +185,21 @@ def delete_nodes(
         resolve_resource_id(nodes, node_name_or_id, "node")
         for node_name_or_id in node_names_or_ids
     ]
+
+    if not confirmation:
+        resolved_nodes: List[BaseNode] = [
+            node for node in nodes if node.id in resolved_node_ids
+        ]
+        io_facade.display_data(
+            data=resolved_nodes,
+            output_format=bundle.object_output_format,
+            view_context=NODE_LIST_VIEW,
+        )
+        user_confirmation: bool = io_facade.ask_confirm(
+            message=f"Are you sure you want to delete {len(resolved_node_ids)} node(s)?"
+        )
+        if not user_confirmation:
+            raise typer.Exit()
 
     deleted_node_ids_result = service.delete_nodes(resolved_node_ids)
 

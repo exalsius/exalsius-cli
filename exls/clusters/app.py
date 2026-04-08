@@ -413,6 +413,19 @@ def add_nodes(
 
     cluster: Cluster = service.get_cluster(cluster_id)
 
+    resolved_nodes: List[ClusterNode] = [
+        node for node in available_nodes if node.id in resolved_node_ids
+    ]
+    io_facade.display_data(
+        data=resolved_nodes,
+        output_format=bundle.object_output_format,
+        view_context=CLUSTER_NODE_LIST_VIEW,
+    )
+    if not io_facade.ask_confirm(
+        message=f"Add {len(resolved_node_ids)} node(s) to cluster '{cluster.name}'?"
+    ):
+        raise typer.Exit()
+
     scale_result: ClusterScaleResult = service.scale_up_cluster(
         cluster_id=cluster_id,
         node_ids=resolved_node_ids,
@@ -479,6 +492,19 @@ def remove_nodes(
         resolve_resource_id(cluster.nodes, node_name_or_id, "node")
         for node_name_or_id in node_names_or_ids
     ]
+
+    resolved_nodes: List[ClusterNode] = [
+        node for node in cluster.nodes if node.id in resolved_node_ids
+    ]
+    io_facade.display_data(
+        data=resolved_nodes,
+        output_format=bundle.object_output_format,
+        view_context=CLUSTER_NODE_LIST_VIEW,
+    )
+    if not io_facade.ask_confirm(
+        message=f"Remove {len(resolved_node_ids)} node(s) from cluster '{cluster.name}'?"
+    ):
+        raise typer.Exit()
 
     scale_result: ClusterScaleResult = service.remove_nodes_from_cluster(
         cluster_id=cluster_id,
