@@ -51,8 +51,7 @@ def login(
         help="Auth0 organization ID or name for org-scoped logins",
     ),
 ):
-    """
-    Authenticate and store credentials.
+    """Authenticate and store credentials
 
     Auto-detects PKCE (browser) or Device Code (headless) based on environment.
     Use --auth-flow to override.
@@ -98,11 +97,9 @@ def login(
 
 
 def logout(ctx: typer.Context):
-    """
-    Logs the user out by removing stored credentials.
+    """Log out and remove stored credentials
 
-    This command removes the user's authentication tokens from the system's
-    keyring, effectively logging them out of the Exalsius CLI.
+    Removes authentication tokens from the system's keyring.
     """
     bundle = _get_bundle(ctx)
     io_facade: IOAuthFacade = bundle.get_io_facade()

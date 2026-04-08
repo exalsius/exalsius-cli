@@ -94,7 +94,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
 
-@nodes_app.command("list", help="List all nodes in the node pool.")
+@nodes_app.command("list", help="List nodes")
 @handle_application_layer_errors(NodesBundle)
 def list_nodes(
     ctx: typer.Context,
@@ -133,7 +133,7 @@ def list_nodes(
     )
 
 
-@nodes_app.command("get", help="Get a node in the node pool.")
+@nodes_app.command("get", help="Get node details")
 @handle_application_layer_errors(NodesBundle)
 def get_node(
     ctx: typer.Context,
@@ -158,7 +158,7 @@ def get_node(
     )
 
 
-@nodes_app.command("delete", help="Delete a node in the node pool.")
+@nodes_app.command("delete", help="Delete nodes")
 @handle_application_layer_errors(NodesBundle)
 def delete_nodes(
     ctx: typer.Context,
@@ -215,7 +215,7 @@ def delete_nodes(
         # We could add a view for delete issues if needed
 
 
-@nodes_app.command("import-ssh", help="Import a self-managed node into the node pool.")
+@nodes_app.command("import-ssh", help="Import a self-managed node via SSH")
 @handle_application_layer_errors(NodesBundle)
 def import_selfmanaged_node(
     ctx: typer.Context,
@@ -282,7 +282,7 @@ def import_selfmanaged_node(
     _display_import_result(1, result, bundle, io_facade)
 
 
-@nodes_app.command("import", help="Import nodes using interactive mode")
+@nodes_app.command("import", help="Import nodes interactively")
 @handle_application_layer_errors(NodesBundle)
 def import_nodes(ctx: typer.Context):
     """Import nodes using interactive mode."""

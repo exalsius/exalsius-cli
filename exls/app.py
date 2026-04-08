@@ -42,7 +42,7 @@ app.command()(logout)
 app.add_typer(
     nodes_app,
     name="nodes",
-    help="Manage the node pool",
+    help="Manage nodes",
 )
 
 app.add_typer(
@@ -54,13 +54,13 @@ app.add_typer(
 app.add_typer(
     workspaces_app,
     name="workspaces",
-    help="Manage workspaces of a cluster",
+    help="Manage workspaces",
 )
 
 app.add_typer(
     management_app,
     name="management",
-    help="Manage management resources",
+    help="Manage SSH keys and monitoring",
 )
 
 

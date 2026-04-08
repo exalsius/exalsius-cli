@@ -70,7 +70,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
 
-@management_app.command("get-dashboard-url", help="Get the Grafana dashboard URL")
+@management_app.command("get-dashboard-url", help="Get Grafana dashboard URL")
 @handle_application_layer_errors(ManagementBundle)
 def get_dashboard_url(
     ctx: typer.Context,
@@ -105,7 +105,7 @@ def get_dashboard_url(
     )
 
 
-@workspace_templates_app.command("list", help="List all available workspace templates")
+@workspace_templates_app.command("list", help="List workspace templates")
 @handle_application_layer_errors(ManagementBundle)
 def list_workspace_templates(
     ctx: typer.Context,
@@ -124,7 +124,7 @@ def list_workspace_templates(
     )
 
 
-@ssh_keys_app.command("list", help="List all available SSH keys")
+@ssh_keys_app.command("list", help="List SSH keys")
 @handle_application_layer_errors(ManagementBundle)
 def list_ssh_keys(
     ctx: typer.Context,
@@ -139,7 +139,7 @@ def list_ssh_keys(
     io_facade.display_data(domain_ssh_keys, output_format=bundle.object_output_format)
 
 
-@ssh_keys_app.command("import", help="Import a new SSH key")
+@ssh_keys_app.command("import", help="Import an SSH key")
 @handle_application_layer_errors(ManagementBundle)
 def import_ssh_key(
     ctx: typer.Context,

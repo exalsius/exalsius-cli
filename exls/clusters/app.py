@@ -88,7 +88,7 @@ def _root(  # pyright: ignore[reportUnusedFunction]
     help_if_no_subcommand(ctx)
 
 
-@clusters_app.command("list", help="List all clusters")
+@clusters_app.command("list", help="List clusters")
 @handle_application_layer_errors(ClustersBundle)
 def list_clusters(
     ctx: typer.Context,
@@ -111,7 +111,7 @@ def list_clusters(
     )
 
 
-@clusters_app.command("get", help="Get a cluster")
+@clusters_app.command("get", help="Get cluster details")
 @handle_application_layer_errors(ClustersBundle)
 def get_cluster(
     ctx: typer.Context,
@@ -192,7 +192,7 @@ def _validate_worker_node_ids(value: Optional[List[str]]) -> Optional[List[str]]
     return value
 
 
-@clusters_app.command("deploy", help="Create a cluster")
+@clusters_app.command("deploy", help="Deploy a cluster")
 @handle_application_layer_errors(ClustersBundle)
 def deploy_cluster(
     ctx: typer.Context,
@@ -339,7 +339,7 @@ def deploy_cluster(
         )
 
 
-@clusters_app.command("list-nodes", help="List all nodes of a cluster")
+@clusters_app.command("list-nodes", help="List nodes of a cluster")
 @handle_application_layer_errors(ClustersBundle)
 def list_nodes(
     ctx: typer.Context,
@@ -532,7 +532,9 @@ def remove_nodes(
         )
 
 
-@clusters_app.command("show-available-resources", help="Get the resources of a cluster")
+@clusters_app.command(
+    "show-available-resources", help="Show available resources of a cluster"
+)
 @handle_application_layer_errors(ClustersBundle)
 def get_cluster_resources(
     ctx: typer.Context,
@@ -563,9 +565,7 @@ def get_cluster_resources(
     )
 
 
-@clusters_app.command(
-    "import-kubeconfig", help="Import a kubeconfig file into a cluster"
-)
+@clusters_app.command("import-kubeconfig", help="Import kubeconfig for a cluster")
 @handle_application_layer_errors(ClustersBundle)
 def import_kubeconfig(
     ctx: typer.Context,
@@ -598,7 +598,7 @@ def import_kubeconfig(
     )
 
 
-@clusters_app.command("logs", help="Stream logs for a cluster")
+@clusters_app.command("logs", help="Stream cluster logs")
 @handle_application_layer_errors(ClustersBundle)
 def cluster_logs(
     ctx: typer.Context,
