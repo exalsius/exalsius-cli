@@ -4,9 +4,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from exls.management.core.domain import (
-    ClusterTemplate,
-    Credentials,
-    ServiceTemplate,
     SshKey,
     SshKeyScope,
     WorkspaceTemplate,
@@ -34,56 +31,6 @@ class TestManagementService:
             management_repository=mock_management_repository,
             file_read_adapter=mock_file_read_adapter,
         )
-
-    def test_list_cluster_templates(
-        self, service: ManagementService, mock_management_repository: MagicMock
-    ) -> None:
-        expected_templates = [
-            ClusterTemplate(name="template1", description="desc", k8s_version="1.20"),
-            ClusterTemplate(name="template2", description="desc", k8s_version="1.21"),
-        ]
-        mock_management_repository.list_cluster_templates.return_value = (
-            expected_templates
-        )
-
-        result = service.list_cluster_templates()
-
-        assert result == expected_templates
-        mock_management_repository.list_cluster_templates.assert_called_once()
-
-    def test_list_credentials(
-        self, service: ManagementService, mock_management_repository: MagicMock
-    ) -> None:
-        expected_credentials = [
-            Credentials(name="cred1", description="desc1"),
-            Credentials(name="cred2", description="desc2"),
-        ]
-        mock_management_repository.list_credentials.return_value = expected_credentials
-
-        result = service.list_credentials()
-
-        assert result == expected_credentials
-        mock_management_repository.list_credentials.assert_called_once()
-
-    def test_list_service_templates(
-        self, service: ManagementService, mock_management_repository: MagicMock
-    ) -> None:
-        expected_templates = [
-            ServiceTemplate(
-                name="svc1", description="desc1", variables={"var1": "val1"}
-            ),
-            ServiceTemplate(
-                name="svc2", description="desc2", variables={"var2": "val2"}
-            ),
-        ]
-        mock_management_repository.list_service_templates.return_value = (
-            expected_templates
-        )
-
-        result = service.list_service_templates()
-
-        assert result == expected_templates
-        mock_management_repository.list_service_templates.assert_called_once()
 
     def test_list_workspace_templates(
         self, service: ManagementService, mock_management_repository: MagicMock

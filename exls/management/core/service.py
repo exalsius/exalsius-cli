@@ -2,9 +2,6 @@ from pathlib import Path
 from typing import List, Optional
 
 from exls.management.core.domain import (
-    ClusterTemplate,
-    Credentials,
-    ServiceTemplate,
     SshKey,
     WorkspaceTemplate,
 )
@@ -22,18 +19,6 @@ class ManagementService:
     ):
         self._management_repository: ManagementRepository = management_repository
         self._file_read_adapter: FileReadPort[str] = file_read_adapter
-
-    @handle_service_layer_errors("listing cluster templates")
-    def list_cluster_templates(self) -> List[ClusterTemplate]:
-        return self._management_repository.list_cluster_templates()
-
-    @handle_service_layer_errors("listing credentials")
-    def list_credentials(self) -> List[Credentials]:
-        return self._management_repository.list_credentials()
-
-    @handle_service_layer_errors("listing service templates")
-    def list_service_templates(self) -> List[ServiceTemplate]:
-        return self._management_repository.list_service_templates()
 
     @handle_service_layer_errors("listing workspace templates")
     def list_workspace_templates(self) -> List[WorkspaceTemplate]:

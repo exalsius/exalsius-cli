@@ -13,8 +13,6 @@ from exls.clusters.app import clusters_app
 from exls.logging import setup_logging
 from exls.management.app import management_app
 from exls.nodes.app import nodes_app
-from exls.offers.app import offers_app
-from exls.services.app import services_app
 from exls.shared.adapters.ui.output.values import OutputFormat
 from exls.shared.adapters.ui.utils import (
     get_app_state_from_ctx,
@@ -42,12 +40,6 @@ app.command()(logout)
 
 
 app.add_typer(
-    offers_app,
-    name="offers",
-    help="List and manage GPU offers from cloud providers",
-)
-
-app.add_typer(
     nodes_app,
     name="nodes",
     help="Manage the node pool",
@@ -63,12 +55,6 @@ app.add_typer(
     workspaces_app,
     name="workspaces",
     help="Manage workspaces of a cluster",
-)
-
-app.add_typer(
-    services_app,
-    name="services",
-    help="Manage services of a cluster",
 )
 
 app.add_typer(

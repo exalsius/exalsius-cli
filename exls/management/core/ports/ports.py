@@ -2,24 +2,12 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from exls.management.core.domain import (
-    ClusterTemplate,
-    Credentials,
-    ServiceTemplate,
     SshKey,
     WorkspaceTemplate,
 )
 
 
 class ManagementRepository(ABC):
-    @abstractmethod
-    def list_cluster_templates(self) -> List[ClusterTemplate]: ...
-
-    @abstractmethod
-    def list_credentials(self) -> List[Credentials]: ...
-
-    @abstractmethod
-    def list_service_templates(self) -> List[ServiceTemplate]: ...
-
     @abstractmethod
     def list_workspace_templates(self) -> List[WorkspaceTemplate]: ...
 

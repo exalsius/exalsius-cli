@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from pydantic import BaseModel, Field, StrictStr
 
@@ -7,33 +7,6 @@ from pydantic import BaseModel, Field, StrictStr
 class SshKeyScope(StrEnum):
     PRIVATE = "private"
     ORG = "org"
-
-
-class ClusterTemplate(BaseModel):
-    name: StrictStr = Field(..., description="The name of the cluster template")
-    description: Optional[StrictStr] = Field(
-        None, description="The description of the cluster template"
-    )
-    k8s_version: Optional[StrictStr] = Field(
-        None, description="The Kubernetes version of the cluster template"
-    )
-
-
-class Credentials(BaseModel):
-    name: StrictStr = Field(..., description="The name of the credentials")
-    description: Optional[StrictStr] = Field(
-        None, description="The description of the credentials"
-    )
-
-
-class ServiceTemplate(BaseModel):
-    name: StrictStr = Field(..., description="The name of the service template")
-    description: StrictStr = Field(
-        ..., description="The description of the service template"
-    )
-    variables: Dict[StrictStr, Any] = Field(
-        ..., description="The variables of the service template"
-    )
 
 
 class WorkspaceTemplate(BaseModel):

@@ -1,13 +1,6 @@
 from exalsius_api_client.api.management_api import ManagementApi
-from exalsius_api_client.models.cluster_template_list_response import (
-    ClusterTemplateListResponse,
-)
-from exalsius_api_client.models.credentials_list_response import CredentialsListResponse
 from exalsius_api_client.models.dashboard_url_response import (
     DashboardUrlResponse,
-)
-from exalsius_api_client.models.service_template_list_response import (
-    ServiceTemplateListResponse,
 )
 from exalsius_api_client.models.ssh_key_create_request import SshKeyCreateRequest
 from exalsius_api_client.models.ssh_key_create_response import SshKeyCreateResponse
@@ -26,28 +19,6 @@ class BaseManagementSdkCommand[T_Cmd_Return](
 
     def _execute_api_call(self) -> T_Cmd_Return:
         raise NotImplementedError
-
-
-class ListClusterTemplatesSdkCommand(
-    BaseManagementSdkCommand[ClusterTemplateListResponse]
-):
-    def _execute_api_call(self) -> ClusterTemplateListResponse:
-        response: ClusterTemplateListResponse = self.api_client.list_cluster_templates()
-        return response
-
-
-class ListCredentialsSdkCommand(BaseManagementSdkCommand[CredentialsListResponse]):
-    def _execute_api_call(self) -> CredentialsListResponse:
-        response: CredentialsListResponse = self.api_client.list_credentials()
-        return response
-
-
-class ListServiceTemplatesSdkCommand(
-    BaseManagementSdkCommand[ServiceTemplateListResponse]
-):
-    def _execute_api_call(self) -> ServiceTemplateListResponse:
-        response: ServiceTemplateListResponse = self.api_client.list_service_templates()
-        return response
 
 
 class ListWorkspaceTemplatesSdkCommand(
