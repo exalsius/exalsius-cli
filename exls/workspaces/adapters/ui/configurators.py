@@ -30,7 +30,7 @@ class IntegratedWorkspaceTemplates(StrEnum):
     MARIMO = "marimo-workspace-template"
     DEV_POD = "vscode-devcontainer-template"
     DIST_TRAINING = "diloco-training-template"
-    LLM_D = "llm-d-model-template"
+    LLM_D = "llm-d-model-template-0-1-1"
     OTHER = "other"
 
     @classmethod
