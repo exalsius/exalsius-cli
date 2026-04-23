@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/exalsius/exalsius-cli/compare/v0.3.0...v0.4.0) (2026-04-23)
+
+
+### Features
+
+* **workspaces:** add support for api-protection in llm-inference ([f7e68b2](https://github.com/exalsius/exalsius-cli/commit/f7e68b2cebce79a98beab9293bb331dfbf0b9127))
+* **workspaces:** use versioned llm-d workspace template ([eeb495a](https://github.com/exalsius/exalsius-cli/commit/eeb495af9fb648e56881ca18a68717491a61e5b0))
+
 ## [0.3.0](https://github.com/exalsius/exalsius-cli/compare/v0.2.0...v0.3.0) (2026-04-08)
 
 
