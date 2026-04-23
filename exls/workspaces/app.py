@@ -494,6 +494,12 @@ def deploy_llm_inference_workspace(
         help="The number of GPUs (sets vLLM tensor parallelism for multi-GPU inference; please make sure your model supports this particular tensor parallelism configuration)",
         callback=_validate_num_gpus,
     ),
+    llm_api_key: Optional[str] = typer.Option(
+        None,
+        "--llm-api-key",
+        envvar=["LLM_API_KEY"],
+        help="Optional LLM API key to protect the API endpoints from unauthorized access. If not provided, the API endpoints will be publicly accessible.",
+    ),
     wait_for_ready: bool = typer.Option(
         False, "--wait-for-ready", "-w", help="Wait for the workspace to be ready"
     ),
@@ -539,6 +545,7 @@ def deploy_llm_inference_workspace(
         workspace_name=name,
         num_gpus=num_gpus,
         gpu_vendor=resources.gpu_vendor,
+        llm_api_key=llm_api_key,
     )
     try:
         template_variables: Dict[str, Any] = configurator.configure_and_validate(

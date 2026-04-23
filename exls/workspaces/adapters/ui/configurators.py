@@ -293,6 +293,7 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         workspace_name: str,
         num_gpus: int,
         gpu_vendor: Optional[WorkspaceGPUVendor] = None,
+        llm_api_key: Optional[str] = None,
     ):
         super().__init__(editor_render_bundle)
         self._huggingface_token: str = huggingface_token
@@ -300,6 +301,7 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
         self._workspace_name: str = workspace_name
         self._num_gpus: int = num_gpus
         self._gpu_vendor: Optional[WorkspaceGPUVendor] = gpu_vendor
+        self._llm_api_key: Optional[str] = llm_api_key
 
     @property
     def template_id(self) -> IntegratedWorkspaceTemplates:
@@ -334,11 +336,14 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
             "amd" if self._gpu_vendor == WorkspaceGPUVendor.AMD else "nvidia"
         )
 
+        auth_details_secret_name = f"{self._workspace_name}-auth-details"
+
         overrides: Dict[str, Any] = {
             "huggingfaceToken": self._huggingface_token,
+            "inferenceApiKey": self._llm_api_key or "",
             "ms": {
                 "modelArtifacts": {
-                    "authSecretName": f"{self._workspace_name}-hf-token",
+                    "authSecretName": auth_details_secret_name,
                     "uri": f"hf://{self._model_name}",
                     "name": self._model_name,
                     "labels": {"llm-d.ai/model": model_short_name},
@@ -354,8 +359,39 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
                 }
             },
         }
-
+        # Due to how deep_merge works, we need to merge the overrides into the variables dictionary first before altering list entries.
         variables = deep_merge(variables, overrides)
+        # Ensure VLLM_API_KEY env entry uses the secret ref backed by `auth_details_secret_name`
+        ms = variables.setdefault("ms", {})
+        decode = ms.setdefault("decode", {})
+        containers = decode.setdefault("containers", [])
+        if containers:
+            env_list = containers[0].setdefault("env", [])
+            found = False
+            for env in env_list:
+                if env.get("name") == "VLLM_API_KEY":
+                    env.pop("valueFrom", None)
+                    env["valueFrom"] = {
+                        "secretKeyRef": {
+                            "name": auth_details_secret_name,
+                            "key": "VLLM_API_KEY",
+                        }
+                    }
+                    found = True
+                    break
+            if not found:
+                env_list.append(
+                    {
+                        "name": "VLLM_API_KEY",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "name": auth_details_secret_name,
+                                "key": "VLLM_API_KEY",
+                            }
+                        },
+                    }
+                )
+
         return super().configure_and_validate(variables, io_facade)
 
 
