@@ -375,6 +375,7 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
                         "secretKeyRef": {
                             "name": auth_details_secret_name,
                             "key": "VLLM_API_KEY",
+                            "optional": len(variables.get("inferenceApiKey", "")) == 0,
                         }
                     }
                     found = True
@@ -387,6 +388,8 @@ class LLMInferenceConfigurator(BaseWorkspaceConfigurator):
                             "secretKeyRef": {
                                 "name": auth_details_secret_name,
                                 "key": "VLLM_API_KEY",
+                                "optional": len(variables.get("inferenceApiKey", ""))
+                                == 0,
                             }
                         },
                     }
