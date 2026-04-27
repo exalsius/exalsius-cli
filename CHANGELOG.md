@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/exalsius/exalsius-cli/compare/v0.4.0...v0.4.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* soft-mount of env-var from secret depending on llm-api-key value ([#201](https://github.com/exalsius/exalsius-cli/issues/201)) ([3627016](https://github.com/exalsius/exalsius-cli/commit/36270168088d41d8dcdc410ba2b7144749711201))
+
 ## [0.4.0](https://github.com/exalsius/exalsius-cli/compare/v0.3.0...v0.4.0) (2026-04-23)
 
 
