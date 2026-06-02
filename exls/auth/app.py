@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Optional
 
@@ -126,3 +127,37 @@ def logout(ctx: typer.Context):
     io_facade.display_success_message(
         "Logged out successfully", output_format=bundle.message_output_format
     )
+
+
+def get_token(ctx: typer.Context):
+    """Print the current access token
+
+    Writes the access token to stdout so it can be captured, for example:
+
+        curl -H "Authorization: Bearer $(exls get-token)" https://api.exalsius.ai/...
+
+    The token is refreshed automatically if it has expired. With --format json
+    the output is {"access_token": "<token>"}; otherwise the bare token is
+    printed. Diagnostics are written to stderr and, on any failure, nothing is
+    written to stdout and the command exits non-zero.
+    """
+    bundle = _get_bundle(ctx)
+    auth_service: AuthService = bundle.get_auth_service()
+
+    try:
+        auth_session = auth_service.acquire_access_token()
+    except NotLoggedInWarning:
+        typer.echo("You are not logged in. Please log in.", err=True)
+        raise typer.Exit(1)
+    except ServiceError as e:
+        typer.echo(
+            f"Failed to acquire access token. Please log in again. Error: {str(e)}",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    access_token: str = auth_session.token.access_token
+    if bundle.object_output_format == OutputFormat.JSON:
+        typer.echo(json.dumps({"access_token": access_token}))
+    else:
+        typer.echo(access_token)

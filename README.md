@@ -80,6 +80,9 @@ Here are some of the core commands to get you started:
 - **`exls workspaces`**: Manage workspaces on your clusters.
   - `exls workspaces deploy jupyter <cluster-id>`: Deploy a Jupyter workspace on a cluster.
   - `exls workspaces list <cluster-id>`: List workspaces on a cluster.
+- **`exls get-token`**: Print your access (bearer) token for use in scripts that call the exalsius API. The token is refreshed automatically if expired.
+  - `curl -H "Authorization: Bearer $(exls get-token)" https://api.exalsius.ai/...`
+  - `exls get-token --format json`: Emit `{"access_token": "<token>"}` instead of the bare token.
 
 For more details on each command, you can use the `--help` flag, for example `exls clusters --help`.
 
