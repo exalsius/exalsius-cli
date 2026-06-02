@@ -7,7 +7,7 @@ import typer
 from exls import config as cli_config
 from exls.auth.adapters.bundle import AuthBundle
 from exls.auth.adapters.ui.display.display import IOAuthFacade
-from exls.auth.app import login, logout
+from exls.auth.app import get_token, login, logout
 from exls.auth.core.domain import AuthSession
 from exls.auth.core.service import AuthService, NotLoggedInWarning
 from exls.clusters.app import clusters_app
@@ -24,7 +24,7 @@ from exls.shared.core.exceptions import ServiceError
 from exls.state import AppState
 from exls.workspaces.app import workspaces_app
 
-NON_AUTH_COMMANDS = ["login", "logout"]
+NON_AUTH_COMMANDS = ["login", "logout", "get-token"]
 
 
 def _get_bundle(ctx: typer.Context) -> AuthBundle:
@@ -38,6 +38,7 @@ app = typer.Typer()
 # use them without a subcommand.
 app.command()(login)
 app.command()(logout)
+app.command()(get_token)
 
 
 app.add_typer(
