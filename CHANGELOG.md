@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/exalsius/exalsius-cli/compare/v0.4.1...v0.5.0) (2026-06-02)
+
+
+### Features
+
+* **auth:** add get-token command for scripting ([33d7b6c](https://github.com/exalsius/exalsius-cli/commit/33d7b6c981ffc67ab7ba180651e16878912764e3))
+
 ## [0.4.1](https://github.com/exalsius/exalsius-cli/compare/v0.4.0...v0.4.1) (2026-04-27)
 
 
