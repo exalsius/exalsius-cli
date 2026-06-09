@@ -250,6 +250,12 @@ def import_selfmanaged_node(
         "--ssh-key-name",
         help="The name of the SSH key to import",
     ),
+    description: Optional[str] = typer.Option(
+        None,
+        "--description",
+        "-d",
+        help="An optional description for the node to import",
+    ),
 ):
     """Import a self-managed node into the node pool."""
     bundle: NodesBundle = _get_bundle(ctx)
@@ -281,6 +287,7 @@ def import_selfmanaged_node(
                 username=username,
                 price_per_hour=price_per_hour,
                 ssh_key=final_ssh_key,
+                description=description,
             )
         ]
     )

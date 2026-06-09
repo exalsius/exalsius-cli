@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, NonNegativeFloat, StrictStr
 
@@ -21,6 +21,9 @@ class ImportSelfmanagedNodeParameters(BaseModel):
     price_per_hour: NonNegativeFloat = Field(
         ..., description="The price per hour to use"
     )
+    description: Optional[StrictStr] = Field(
+        default=None, description="Description of the node"
+    )
 
     @classmethod
     def from_request(
@@ -33,6 +36,7 @@ class ImportSelfmanagedNodeParameters(BaseModel):
             username=request.username,
             ssh_key_id=request.ssh_key,
             price_per_hour=request.price_per_hour,
+            description=request.description,
         )
 
     @classmethod
@@ -45,6 +49,7 @@ class ImportSelfmanagedNodeParameters(BaseModel):
             username=parameters.username,
             ssh_key=parameters.ssh_key_id,
             price_per_hour=parameters.price_per_hour,
+            description=parameters.description,
         )
 
 

@@ -52,6 +52,9 @@ _NODE_DETAIL_COLUMNS: Dict[str, Column] = {
         "Import Time", value_formatter=format_datetime
     ),
     "status": TableRenderContext.get_column("Status", value_formatter=format_status),
+    "description": TableRenderContext.get_column(
+        "Description", value_formatter=format_na
+    ),
     "warning_message": TableRenderContext.get_column("Warning", hide_if_empty=True),
     "price_per_hour": TableRenderContext.get_column("Price", value_formatter=format_na),
     # Hardware Resources
