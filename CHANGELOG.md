@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/exalsius/exalsius-cli/compare/v0.5.0...v0.6.0) (2026-06-09)
+
+
+### Features
+
+* **nodes:** support description on node import ([db148f2](https://github.com/exalsius/exalsius-cli/commit/db148f237fcc56c4956d47b0431a556119903521))
+
 ## [0.5.0](https://github.com/exalsius/exalsius-cli/compare/v0.4.1...v0.5.0) (2026-06-02)
 
 
