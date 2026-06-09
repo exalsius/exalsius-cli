@@ -278,6 +278,38 @@ class TestNodesService:
         assert result.imported_nodes[0].id == "node-1"
         assert len(result.issues) == 0
 
+    def test_import_selfmanaged_nodes_forwards_description(
+        self,
+        nodes_service: NodesService,
+        mock_nodes_operations: MagicMock,
+        mock_ssh_key_provider: MagicMock,
+        mock_nodes_repository: MagicMock,
+        sample_ssh_key: NodeSshKey,
+        sample_self_managed_node: SelfManagedNode,
+    ) -> None:
+        # Arrange
+        request = ImportSelfmanagedNodeRequest(
+            hostname="host1",
+            endpoint="1.2.3.4",
+            username="user",
+            ssh_key="key-1",
+            price_per_hour=2.1,
+            description="A100 box, lab 2",
+        )
+        mock_ssh_key_provider.list_keys.return_value = [sample_ssh_key]
+        mock_nodes_operations.import_selfmanaged_node.return_value = "node-1"
+        mock_nodes_repository.get.return_value = sample_self_managed_node
+
+        # Act
+        nodes_service.import_selfmanaged_nodes([request])
+
+        # Assert
+        mock_nodes_operations.import_selfmanaged_node.assert_called_once()
+        passed_parameters = (
+            mock_nodes_operations.import_selfmanaged_node.call_args.kwargs["parameters"]
+        )
+        assert passed_parameters.description == "A100 box, lab 2"
+
     def test_import_selfmanaged_nodes_with_new_key(
         self,
         nodes_service: NodesService,

@@ -52,6 +52,7 @@ class FlowSelfmanagedNodeSpecificationDTO(BaseModel):
     ssh_key: Optional[Union[NodeSshKey, FlowNodesSshKeySpecification]] = Field(
         default=None, description="The SSH key to use"
     )
+    description: StrictStr = Field(default="", description="Description of the node")
 
     def to_domain(self) -> ImportSelfmanagedNodeRequest:
         ssh_key_val: Union[str, NodesSshKeySpecification]
@@ -71,6 +72,7 @@ class FlowSelfmanagedNodeSpecificationDTO(BaseModel):
             username=self.username,
             price_per_hour=self.price_per_hour,
             ssh_key=ssh_key_val,
+            description=self.description or None,
         )
 
 
@@ -205,6 +207,11 @@ class ImportSelfmanagedNodeFlow(FlowStep[FlowSelfmanagedNodeSpecificationDTO]):
                 ),
                 # We could allow to cancel the subflow of ssh key import but we would need
                 # to detect the cancellation and jump to a previous step.
+                TextInputStep[FlowSelfmanagedNodeSpecificationDTO](
+                    key="description",
+                    message="Description (optional):",
+                    default="",
+                ),
             ]
         )
 

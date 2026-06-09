@@ -45,6 +45,9 @@ class ImportSelfmanagedNodeRequest(BaseModel):
     ssh_key: Union[StrictStr, NodesSshKeySpecification] = Field(
         ..., description="The SSH key to use"
     )
+    description: Optional[StrictStr] = Field(
+        default=None, description="Description of the node"
+    )
 
 
 class ImportCloudNodeRequest(BaseModel):

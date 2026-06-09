@@ -250,6 +250,7 @@ class NodesService:
                     username=node_import_request.username,
                     ssh_key_id=ssh_key_id,
                     price_per_hour=node_import_request.price_per_hour,
+                    description=node_import_request.description,
                 )
             )
 
